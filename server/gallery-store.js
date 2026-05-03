@@ -46,9 +46,14 @@ export function galleryKey(item) {
   return item?.url || item?.id || item?.outputName || item?.filename || "";
 }
 
+export function isComfyOutputItem(item) {
+  return Boolean(item?.url && String(item.url).startsWith("/comfy/view?"));
+}
+
 export function hideGalleryItems(items) {
   const hiddenAt = Date.now();
   for (const item of items) {
+    if (isComfyOutputItem(item)) continue;
     const key = galleryKey(item);
     if (key) hiddenGalleryIds.set(key, hiddenAt);
   }
@@ -65,7 +70,10 @@ export function isGalleryHidden(item) {
 }
 
 export function filterVisibleGallery(items) {
-  return items.filter((item) => !isGalleryHidden(item));
+  return items.filter((item) => {
+    if (isComfyOutputItem(item)) return hasExistingOutputFile(item);
+    return !isGalleryHidden(item);
+  });
 }
 
 export function outputFileCandidates(item) {

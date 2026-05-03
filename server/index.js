@@ -45,6 +45,7 @@ app.get("/api/gallery", async (_req, res) => {
     saveGallery();
   }
   setGallery(filterVisibleGallery(dedupeGallery(gallery)));
+  saveGallery();
   res.json({ outputs: gallery });
 });
 
@@ -117,7 +118,6 @@ app.post("/api/queue/cancel", async (_req, res) => {
 app.post("/api/gallery/clear", (_req, res) => {
   const cleared = gallery.filter((item) => item.status === "done");
   const files = deleteGalleryFiles(cleared);
-  hideGalleryItems(cleared);
   setGallery(gallery.filter((item) => item.status !== "done"));
   saveGallery();
   res.json({ ok: true, files, outputs: gallery });
@@ -151,7 +151,7 @@ app.delete("/api/gallery/:id", (req, res) => {
   const before = gallery.length;
   const removed = gallery.filter((item) => item.id === id || item.url === id);
   const files = deleteGalleryFiles(removed);
-  hideGalleryItems(removed);
+  hideGalleryItems(removed.filter((item) => item.status !== "done"));
   setGallery(gallery.filter((item) => item.id !== id && item.url !== id));
   if (gallery.length !== before) saveGallery();
   res.json({ ok: true, files, removed: before - gallery.length, outputs: gallery });

@@ -53,6 +53,27 @@ function promptTitle(text = "") {
   return oneLine.length > 68 ? `${oneLine.slice(0, 65)}...` : oneLine || "Untitled prompt";
 }
 
+function modelBasename(name = "") {
+  return String(name).split(/[\\/]/).pop() || name;
+}
+
+function prettyModelName(name = "") {
+  const base = modelBasename(name).replace(/\.(safetensors|ckpt|pt|bin)$/i, "");
+  return base
+    .replace(/distill/ig, "")
+    .replace(/aio/ig, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\bfp(\d+)\b/ig, "FP$1")
+    .replace(/\bti2v\b/ig, "TI2V")
+    .replace(/\b(\d+)step\b/ig, "$1-Step")
+    .replace(/\bz anime\b/ig, "Z-Anime")
+    .replace(/\bz image\b/ig, "Z-Image")
+    .replace(/\bwan(\d)/ig, "Wan $1")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function isZImageModel(name = "") {
   return /z[-_ ]?anime|z[-_ ]?image|turbo/i.test(name);
 }
@@ -70,11 +91,13 @@ function aspectSet(defaults, ratios) {
   return ratios.map(([label, w, h]) => ({ label, value: `${w}x${h}`, w, h, default: w === defaults.width && h === defaults.height }));
 }
 
-function buildProfile({ id, kind, label, model, workflow, family, defaults, aspects, options = {}, capabilities = {}, constraints = {} }) {
+function buildProfile({ id, kind, label, displayName, description, model, workflow, family, defaults, aspects, options = {}, capabilities = {}, constraints = {} }) {
   return {
     id,
     kind,
     label,
+    displayName: displayName || label,
+    description: description || modelBasename(model),
     model,
     workflow,
     family,
@@ -132,7 +155,9 @@ function inferModels(info) {
     profiles.push(buildProfile({
       id: `image:unet-z:${name}`,
       kind: "image",
-      label: `${name} · Z image`,
+      label: `${prettyModelName(name)} · Z image`,
+      displayName: prettyModelName(name),
+      description: "Z image workflow",
       model: name,
       workflow: "unet-image",
       family: "z-image",
@@ -166,7 +191,9 @@ function inferModels(info) {
     profiles.push(buildProfile({
       id: `image:checkpoint:${name}`,
       kind: "image",
-      label: `${name} · checkpoint`,
+      label: `${prettyModelName(name)} · checkpoint`,
+      displayName: prettyModelName(name),
+      description: "Checkpoint workflow",
       model: name,
       workflow: "checkpoint-image",
       family: "checkpoint",
@@ -197,7 +224,9 @@ function inferModels(info) {
     profiles.push(buildProfile({
       id: `video:wan:${name}`,
       kind: "video",
-      label: `${name} · Wan video`,
+      label: `${prettyModelName(name)} · Wan video`,
+      displayName: prettyModelName(name),
+      description: "Wan video workflow",
       model: name,
       workflow: "wan-video",
       family: "wan",

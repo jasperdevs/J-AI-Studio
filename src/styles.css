@@ -46,6 +46,34 @@ input:focus, textarea:focus, select:focus { border-color: var(--soft); }
 .select select { border: 0; padding-left: 0; appearance: none; background: transparent; min-width: 0; }
 
 .aspect-picker { position: relative; min-width: 0; }
+.model-picker { position: relative; min-width: 0; }
+.model-trigger, .model-option {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  background: #070707;
+  color: var(--text);
+  border-radius: 7px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 9px;
+  cursor: pointer;
+  text-align: left;
+}
+.model-trigger:hover, .model-option:hover { border-color: var(--line-strong); }
+.model-glyph { width: 28px; height: 28px; border: 1px solid var(--line-strong); border-radius: 6px; display: grid; place-items: center; color: var(--soft); font-size: 11px; font-weight: 600; background: #0d0d0d; }
+.model-copy { min-width: 0; display: grid; gap: 2px; }
+.model-copy strong { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; letter-spacing: 0; }
+.model-copy em { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; font-style: normal; }
+.model-menu { position: absolute; z-index: 14; top: calc(100% + 6px); left: 0; right: 0; display: grid; gap: 5px; padding: 6px; border: 1px solid var(--line); border-radius: 9px; background: #050505; }
+.model-option { min-height: 54px; border-color: transparent; grid-template-columns: 32px minmax(0, 1fr) auto; }
+.model-option.active { background: #f4f4f4; color: #050505; }
+.model-option.active .model-glyph { background: #050505; color: #f4f4f4; border-color: #050505; }
+.model-option.active .model-copy em { color: #333; }
+.model-badge { margin: 0 !important; padding: 3px 6px; border: 1px solid currentColor; border-radius: 999px; color: var(--muted); font-size: 10px !important; line-height: 1; white-space: nowrap; }
+.model-option.active .model-badge { color: #333; }
 .aspect-trigger, .aspect-option {
   width: 100%;
   min-height: 34px;

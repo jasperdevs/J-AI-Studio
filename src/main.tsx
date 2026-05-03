@@ -27,6 +27,8 @@ type Profile = {
   id: string;
   kind: Mode;
   label: string;
+  displayName?: string;
+  description?: string;
   model: string;
   workflow: string;
   family: string;
@@ -184,6 +186,53 @@ function AspectPicker({ value, options, onChange }: { value: string; options: As
   );
 }
 
+function familyLabel(profile: Profile | null) {
+  if (!profile) return "";
+  if (profile.family === "z-image") return "Z image";
+  if (profile.family === "checkpoint") return "Checkpoint";
+  if (profile.family === "wan") return "Wan video";
+  return profile.family;
+}
+
+function ModelPicker({ value, profiles, onChange }: { value: string; profiles: Profile[]; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = profiles.find((profile) => profile.id === value) || profiles[0] || null;
+  return (
+    <div className="model-picker">
+      <button type="button" className="model-trigger" onClick={() => setOpen((next) => !next)}>
+        <span className="model-glyph">{selected?.kind === "video" ? "V" : "I"}</span>
+        <span className="model-copy">
+          <strong>{selected?.displayName || selected?.label || "No model"}</strong>
+          <em>{selected ? familyLabel(selected) : "No supported workflow"}</em>
+        </span>
+        <ChevronDown size={14} className={cn(open && "flip")} />
+      </button>
+      {open ? (
+        <div className="model-menu">
+          {profiles.map((profile) => (
+            <button
+              key={profile.id}
+              type="button"
+              className={cn("model-option", profile.id === value && "active")}
+              onClick={() => {
+                onChange(profile.id);
+                setOpen(false);
+              }}
+            >
+              <span className="model-glyph">{profile.kind === "video" ? "V" : "I"}</span>
+              <span className="model-copy">
+                <strong>{profile.displayName || profile.label}</strong>
+                <em>{profile.description || familyLabel(profile)}</em>
+              </span>
+              <span className="model-badge">{familyLabel(profile)}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function App() {
   const [mode, setMode] = useState<Mode>("image");
   const [models, setModels] = useState<Models | null>(null);
@@ -294,9 +343,9 @@ function App() {
     setHeight(preset.h);
   }
 
-  const modelOptions = useMemo(() => {
+  const modelProfiles = useMemo(() => {
     if (!models) return [];
-    return mode === "image" ? models.imageModels : models.videoModels;
+    return models.profiles.filter((profile) => profile.kind === mode);
   }, [mode, models]);
 
   const currentProfile = useMemo(() => models?.profiles.find((profile) => profile.id === model) || null, [model, models]);
@@ -425,7 +474,7 @@ function App() {
 
         <section className="panel">
           <Field label={mode === "image" ? "Image model" : "Video model"}>
-            <Select value={model} onChange={chooseModel} options={modelOptions} />
+            <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} />
           </Field>
           <Field label="Prompt">
             <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />

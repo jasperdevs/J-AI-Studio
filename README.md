@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./docs/screenshots/hero.png" alt="J AI Studio gallery view" width="1100" />
+  <img src="./docs/screenshots/hero.jpg" alt="J AI Studio gallery view" width="1100" />
 </p>
 
 <h1 align="center">J AI Studio</h1>
@@ -20,9 +20,9 @@
 
 | View | Preview |
 | --- | --- |
-| **Main view**<br />Prompt controls with a local output gallery. | <img src="./docs/screenshots/hero.png" alt="Main view screenshot" width="760" /> |
-| **Zen mode**<br />Fullscreen prompt-first generation. | <img src="./docs/screenshots/zen.png" alt="Zen mode screenshot" width="760" /> |
-| **Fullscreen details**<br />Inspect an output and copy its settings. | <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="760" /> |
+| **Main view**<br />Prompt controls with a local output gallery. | <img src="./docs/screenshots/hero.jpg" alt="Main view screenshot" width="760" /> |
+| **Zen mode**<br />Fullscreen prompt-first generation. | <img src="./docs/screenshots/zen.jpg" alt="Zen mode screenshot" width="760" /> |
+| **Fullscreen details**<br />Inspect an output and copy its settings. | <img src="./docs/screenshots/fullscreen.jpg" alt="Fullscreen details screenshot" width="760" /> |
 | **Realtime generation**<br />Live ComfyUI previews while an image is running. | <a href="./docs/screenshots/realtime-generation.mp4"><img src="./docs/screenshots/realtime-generation.gif" alt="Realtime generation preview" width="760" /></a> |
 
 ## Features

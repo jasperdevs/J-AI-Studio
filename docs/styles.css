@@ -480,8 +480,8 @@ footer a:focus-visible {
   justify-items: center;
   overflow: hidden;
   overflow-x: clip;
-  min-height: 44rem;
-  padding: 8.5rem 0 17rem;
+  min-height: 36rem;
+  padding: 8.5rem 0 9rem;
   text-align: center;
 }
 
@@ -496,33 +496,32 @@ footer a:focus-visible {
   font-size: 1.15rem;
 }
 
-.contact-sheet {
-  position: absolute;
-  left: 50%;
-  bottom: -5.2rem;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(20rem, 1fr));
-  gap: 0.7rem;
-  width: min(92rem, 100%);
-  padding: 0.7rem;
-  background: var(--black);
-  transform: translateX(-50%) rotate(-1.5deg);
-}
-
-.contact-sheet img {
-  height: 13rem;
-  width: 100%;
-  object-fit: cover;
-  object-position: center top;
-}
-
 .site-footer {
   width: 100%;
   overflow-x: clip;
   border-top: 1px solid var(--rule-strong);
-  padding: 1rem max(1rem, calc((100vw - 92rem) / 2)) 2rem;
+  padding: 0 max(1rem, calc((100vw - 92rem) / 2)) 2rem;
   background: linear-gradient(to bottom, var(--paper-deep), var(--paper));
   color: var(--ink);
+}
+
+.footer-strip {
+  display: grid;
+  grid-template-columns: 0.72fr 1.26fr 0.82fr;
+  gap: 0.55rem;
+  height: 9.25rem;
+  overflow: hidden;
+  border-right: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  border-left: 1px solid var(--ink);
+  background: var(--black);
+}
+
+.footer-strip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
 }
 
 .footer-inner {
@@ -530,8 +529,7 @@ footer a:focus-visible {
   grid-template-columns: minmax(14rem, 1fr) minmax(12rem, 0.8fr) auto;
   align-items: center;
   gap: 2rem;
-  min-height: 6.75rem;
-  border-top: 1px solid var(--rule);
+  min-height: 7.5rem;
   border-bottom: 1px solid var(--rule);
 }
 
@@ -665,16 +663,21 @@ footer a:focus-visible {
   }
 
   .final-cta {
-    min-height: 36rem;
-  }
-
-  .contact-sheet {
-    width: 100%;
-    grid-template-columns: 1fr;
+    min-height: 32rem;
+    padding-bottom: 7rem;
   }
 
   .site-footer {
     padding-bottom: 1.5rem;
+  }
+
+  .footer-strip {
+    grid-template-columns: 1fr;
+    height: 11rem;
+  }
+
+  .footer-strip img:not(:first-child) {
+    display: none;
   }
 
   .footer-inner {

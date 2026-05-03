@@ -1053,7 +1053,10 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .viewer-dock .icon-button:hover,
 .viewer-dock .text-button:hover { background: hsl(var(--accent)); border-color: transparent; color: hsl(var(--foreground)); }
 .viewer-dock .icon-button.active { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
+.viewer-dock .icon-button:disabled { opacity: 0.35; cursor: not-allowed; background: transparent; color: hsl(var(--muted-foreground)); }
+.viewer-dock .icon-button:disabled:hover { background: transparent; color: hsl(var(--muted-foreground)); }
 .viewer-dock .danger-tone:hover { background: hsl(var(--destructive) / 0.22); color: hsl(var(--destructive-foreground)); }
+.viewer-dock .viewer-zoom { color: hsl(var(--foreground)); padding: 0 8px; min-width: 52px; }
 
 .viewer-stage {
   position: relative;
@@ -1433,7 +1436,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   .topbar { justify-content: flex-start; }
   .status-pill { min-height: 30px; }
   .stage-gallery {
-    padding: 0 8px 206px;
+    padding: 8px 8px calc(206px + env(safe-area-inset-bottom));
     overscroll-behavior: contain;
   }
   .gallery, .gallery-column { gap: 4px; }
@@ -1542,26 +1545,29 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   .viewer-stage.with-side { grid-template-columns: minmax(0, 1fr); }
   .viewer-canvas { padding: 8px 8px 80px; }
   .viewer-dock {
-    bottom: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
     max-width: calc(100vw - 20px);
+    padding: 4px;
+    gap: 2px;
     overflow-x: auto;
     scrollbar-width: none;
   }
   .viewer-dock::-webkit-scrollbar { display: none; }
+  .viewer-dock .icon-button { width: 36px; height: 36px; }
+  .viewer-dock .text-button { min-height: 36px; }
   .viewer-stage.with-side .viewer-dock { left: 50%; }
   .viewer-canvas img, .viewer-canvas video { border-radius: var(--radius); }
   .viewer-side {
     position: absolute;
-    inset: 8px;
+    left: 8px; right: 8px; top: 8px; bottom: 76px;
     z-index: 6;
     border: 1px solid hsl(var(--border));
     border-radius: calc(var(--radius) + 4px);
     box-shadow: var(--shadow-xl);
-    max-height: calc(100% - 16px);
   }
   .viewer-side-body { padding: 14px; gap: 14px; }
   .viewer-side-foot { padding: 12px; }
-  .viewer-arrow { width: 34px; height: 54px; }
+  .viewer-arrow { width: 34px; height: 54px; top: calc(50% - 36px); }
   .viewer-arrow.prev { left: 10px; }
   .viewer-arrow.next,
   .viewer-stage.with-side .viewer-arrow.next { right: 10px; }

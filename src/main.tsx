@@ -121,6 +121,7 @@ const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
 
 const fallbackSamplers = ["euler_ancestral", "euler", "uni_pc", "dpmpp_2m", "dpmpp_sde"];
 const fallbackSchedulers = ["beta", "simple", "normal", "karras", "sgm_uniform"];
+const githubUrl = "https://github.com/jasperdevs/J-AI-Studio";
 const promptLimit = 1800;
 const negativeLimit = 1200;
 
@@ -497,10 +498,10 @@ function App() {
   const [scheduler, setScheduler] = useState(String(initialDraft.scheduler || "beta"));
   const advanced = true;
   const [settings, setSettings] = useState(false);
-  const [zenControls, setZenControls] = useState(false);
+  const [zenControls, setZenControls] = useState(Boolean(initialDraft.zenControls));
   const [showNegativePrompt, setShowNegativePrompt] = useState(Boolean(initialDraft.showNegativePrompt));
   const [zenGalleryOpen, setZenGalleryOpen] = useState(initialDraft.zenGalleryOpen !== false);
-  const [zenSelectedId, setZenSelectedId] = useState("");
+  const [zenSelectedId, setZenSelectedId] = useState(String(initialDraft.zenSelectedId || ""));
   const [status, setStatus] = useState("Ready");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [active, setActive] = useState<GalleryItem | null>(null);
@@ -630,14 +631,16 @@ function App() {
       advanced,
       showDetails,
       showNegativePrompt,
-      zenGalleryOpen
+      zenGalleryOpen,
+      zenControls,
+      zenSelectedId
     };
     try {
       localStorage.setItem("j-ai-studio-draft", JSON.stringify(draft));
     } catch {
       localStorage.setItem("j-ai-studio-draft", JSON.stringify({ ...draft, startImage: "" }));
     }
-  }, [mode, prompt, negative, model, textEncoder, vae, clipType, weightDtype, width, height, steps, cfg, denoise, seed, count, frames, fps, sampler, scheduler, customSize, startImage, startImageName, advanced, showDetails, showNegativePrompt, zenGalleryOpen]);
+  }, [mode, prompt, negative, model, textEncoder, vae, clipType, weightDtype, width, height, steps, cfg, denoise, seed, count, frames, fps, sampler, scheduler, customSize, startImage, startImageName, advanced, showDetails, showNegativePrompt, zenGalleryOpen, zenControls, zenSelectedId]);
 
   useEffect(() => {
     if (!active) return;
@@ -759,7 +762,7 @@ function App() {
           const defaultProfile = data.profiles.find((item) => item.id === data.defaults.imageModel) || data.profiles[0];
           if (defaultProfile) applyProfile(defaultProfile);
         }
-        if (notify) showToast("Models refreshed", "success");
+        if (notify) setStatus("Ready");
       })
       .catch((error) => {
         setStatus(error.message);
@@ -907,7 +910,6 @@ function App() {
         queuedJobs.push(jobId);
         if (items?.length) setGallery((current) => dedupeGalleryItems([...items, ...current]));
       }
-      showToast(startMessage, "success");
       generatePostingRef.current = false;
 
       await Promise.all(queuedJobs.map(async (jobId) => {
@@ -940,7 +942,7 @@ function App() {
           setZenSelectedId(latest.id);
         }
       }
-      setStatus("Outputs updated");
+      setStatus("Ready");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Generation failed");
       showToast("Generation failed", "error");
@@ -955,27 +957,45 @@ function App() {
     setGallery((current) => current.filter((item) => item.jobId !== jobId));
     await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).catch(() => null);
     setStatus("Ready");
-    showToast("Generation canceled");
   }
 
   async function cancelQueue() {
     if (!window.confirm("Cancel everything currently queued or generating?")) return;
     setGallery((current) => current.filter((item) => item.status !== "pending" && item.status !== "canceled"));
     await fetch("/api/queue/cancel", { method: "POST" }).catch(() => null);
-    setStatus("Queue canceled");
-    showToast("Queue canceled");
+    setStatus("Ready");
   }
 
   async function clearGallery() {
     if (!window.confirm("Clear finished gallery items from this app?")) return;
     const data = await fetch("/api/gallery/clear", { method: "POST" }).then((res) => res.json()).catch(() => null);
         if (data?.outputs) setGallery(data.outputs.filter((item: GalleryItem) => item.status !== "canceled"));
-    showToast("Gallery cleared");
+    setStatus("Ready");
+  }
+
+  async function resetAllSettings() {
+    if (!window.confirm("Reset all saved J AI Studio settings and prompt drafts?")) return;
+    localStorage.removeItem("j-ai-studio-draft");
+    localStorage.removeItem("j-ai-studio-prefs");
+    if ("caches" in window) {
+      await caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).catch(() => null);
+    }
+    window.location.reload();
+  }
+
+  async function clearAllCache() {
+    if (!window.confirm("Clear browser cache, queued preview state, and free ComfyUI memory? Finished gallery items will stay.")) return;
+    if ("caches" in window) {
+      await caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).catch(() => null);
+    }
+    const data = await fetch("/api/cache/clear", { method: "POST" }).then((res) => res.json()).catch(() => null);
+    if (data?.outputs) setGallery(data.outputs.filter((item: GalleryItem) => item.status !== "canceled"));
+    setStatus("Ready");
   }
 
   async function openOutputFolder() {
     const response = await fetch("/api/open-output-folder", { method: "POST" }).catch(() => null);
-    showToast(response?.ok ? "Opened output folder" : "Could not open folder", response?.ok ? "success" : "error");
+    if (!response?.ok) showToast("Could not open folder", "error");
   }
 
   async function deleteItem(item: GalleryItem, confirmed = false) {
@@ -1510,12 +1530,26 @@ function App() {
 
             <div className="settings-grid">
               <section>
+                <h3>Project</h3>
+                <div className="project-card">
+                  <img src="/j-ai-logo.png" alt="" />
+                  <div>
+                    <strong>J AI Studio</strong>
+                    <span>Local image and video studio</span>
+                  </div>
+                </div>
+                <div className="setting-actions single">
+                  <Tip content="Open the public GitHub repo"><a className="wide-button link-button" href={githubUrl} target="_blank" rel="noreferrer">GitHub</a></Tip>
+                </div>
+              </section>
+
+              <section>
                 <h3>Connection</h3>
                 <div className="setting-row"><span>Studio</span><strong>127.0.0.1:8787</strong></div>
                 <div className="setting-row"><span>ComfyUI</span><strong>127.0.0.1:8188</strong></div>
                 <div className="setting-actions">
                   <Tip content="Rescan local models"><button onClick={() => refreshModels()}>Refresh models</button></Tip>
-                  <Tip content="Open ComfyUI in a new tab"><button onClick={() => { window.open("http://127.0.0.1:8188", "_blank"); showToast("Opening ComfyUI"); }}>Open ComfyUI</button></Tip>
+                  <Tip content="Open ComfyUI in a new tab"><button onClick={() => { window.open("http://127.0.0.1:8188", "_blank"); }}>Open ComfyUI</button></Tip>
                 </div>
               </section>
 
@@ -1564,6 +1598,14 @@ function App() {
                   <Tip content="Open the output folder"><button onClick={openOutputFolder} disabled={!paths.outputDir}>Open output folder</button></Tip>
                 </div>
                 <Tip content="Remove finished items from this gallery"><button className="wide-button subtle-danger" onClick={clearGallery}>Clear finished gallery</button></Tip>
+              </section>
+
+              <section>
+                <h3>Maintenance</h3>
+                <div className="setting-actions">
+                  <Tip content="Reset prompts, layout, model choices, and saved settings"><button onClick={resetAllSettings}>Reset all settings</button></Tip>
+                  <Tip content="Clear browser cache, stale queue state, and free ComfyUI memory"><button onClick={clearAllCache}>Clear all cache</button></Tip>
+                </div>
               </section>
 
             </div>
@@ -1646,14 +1688,10 @@ function App() {
                   </aside>
                 ) : null}
                 <div className={cn("viewer-dock", showDetails && "with-side")}>
-                  {viewerZoom > 1 ? (
-                    <>
-                      <Tip content="Zoom out (-)"><button className="icon-button" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)}><ZoomOut size={15} /></button></Tip>
-                      <Tip content="Reset zoom (0)"><button className="text-button viewer-zoom" onClick={resetViewer}><RotateCcw size={13} /> {Math.round(viewerZoom * 100)}%</button></Tip>
-                      <Tip content="Zoom in (+)"><button className="icon-button" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)}><ZoomIn size={15} /></button></Tip>
-                      <span className="viewer-divider" />
-                    </>
-                  ) : null}
+                  <Tip content="Zoom out (-)"><button className="icon-button" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)} disabled={viewerZoom <= 0.5}><ZoomOut size={15} /></button></Tip>
+                  <Tip content="Reset zoom (0)"><button className="text-button viewer-zoom" onClick={resetViewer}>{viewerZoom > 1 ? <RotateCcw size={13} /> : null} {Math.round(viewerZoom * 100)}%</button></Tip>
+                  <Tip content="Zoom in (+)"><button className="icon-button" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)} disabled={viewerZoom >= 6}><ZoomIn size={15} /></button></Tip>
+                  <span className="viewer-divider" />
                   <Tip content={active.type === "image" ? "Copy image" : "Copy output link"}><button className="icon-button" aria-label={active.type === "image" ? "Copy image" : "Copy output link"} onClick={() => copyImageAndToast(active)}><Copy size={15} /></button></Tip>
                   <Tip content="Download file"><a className="icon-button" aria-label="Download file" href={active.url} download><Download size={15} /></a></Tip>
                   <Tip content="Delete (Del)"><button className="icon-button danger-tone" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button></Tip>
@@ -1673,8 +1711,42 @@ function App() {
 }
 
 function Media({ item, muted = false }: { item: Output; muted?: boolean }) {
-  if (item.type === "video") return <video src={item.url} controls={!muted} muted={muted} loop autoPlay={muted} preload="metadata" draggable={false} />;
-  return <img src={item.url} alt={item.filename} loading="lazy" decoding="async" draggable={false} onDragStart={(e) => e.preventDefault()} />;
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setLoaded(false);
+    setFailed(false);
+  }, [item.url]);
+  if (failed) return <div className="media-fallback"><span>{titleFromPrompt(item.prompt || item.filename) || "Output unavailable"}</span></div>;
+  if (item.type === "video") {
+    return (
+      <video
+        className={cn(!loaded && "media-loading")}
+        src={item.url}
+        controls={!muted}
+        muted={muted}
+        loop
+        autoPlay={muted}
+        preload="metadata"
+        draggable={false}
+        onLoadedData={() => setLoaded(true)}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <img
+      className={cn(!loaded && "media-loading")}
+      src={item.url}
+      alt={item.filename}
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+      onLoad={() => setLoaded(true)}
+      onError={() => setFailed(true)}
+      onDragStart={(e) => e.preventDefault()}
+    />
+  );
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

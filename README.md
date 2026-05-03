@@ -24,6 +24,18 @@ For image generation, the current workflow expects ComfyUI nodes for `UNETLoader
 
 For video generation, it expects Wan-style video support through `Wan22ImageToVideoLatent` plus ComfyUI's `CreateVideo` and `SaveVideo` nodes.
 
+## ComfyUI Setup
+
+J AI Studio does not bundle ComfyUI. Keep ComfyUI as its own install, then run J AI Studio beside it. This keeps the repo small and lets you update ComfyUI or models without replacing the app.
+
+1. Install and start ComfyUI.
+2. Confirm ComfyUI opens at `http://127.0.0.1:8188`.
+3. Put image models, video models, text encoders, and VAEs in ComfyUI's normal model folders.
+4. Open `http://127.0.0.1:8188/object_info` in a browser if you want to confirm ComfyUI is exposing its nodes.
+5. Start J AI Studio and open `http://127.0.0.1:8787`.
+
+The model picker is populated from ComfyUI's `/object_info` response. If a model, VAE, text encoder, sampler, scheduler, or optional reference-image path is not exposed by ComfyUI, J AI Studio will not show it.
+
 ## Quick Start
 
 Start ComfyUI first. By default, J AI Studio connects to:
@@ -77,6 +89,27 @@ npm start
 ```
 
 To make it reachable from another device on your network, set `HOST=0.0.0.0` and open the chosen `PORT` in your firewall. Do this only on a trusted network.
+
+## Desktop Shortcut
+
+On Windows, you can make a shortcut that starts ComfyUI, starts J AI Studio, and opens the browser. Point the shortcut at a PowerShell script like this:
+
+```powershell
+$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$appRoot = Join-Path $root "J-AI-Studio"
+$comfyRoot = Join-Path $root "SwarmUI\dlbackend\comfy\ComfyUI"
+$python = Join-Path $root "SwarmUI\dlbackend\comfy\python_embeded\python.exe"
+
+if (-not (Get-NetTCPConnection -LocalPort 8188 -State Listen -ErrorAction SilentlyContinue)) {
+  Start-Process $python "main.py --listen 127.0.0.1 --port 8188 --disable-auto-launch" -WorkingDirectory $comfyRoot -WindowStyle Hidden
+}
+
+if (-not (Get-NetTCPConnection -LocalPort 8787 -State Listen -ErrorAction SilentlyContinue)) {
+  Start-Process node "server/index.js" -WorkingDirectory $appRoot -WindowStyle Hidden
+}
+
+Start-Process "http://127.0.0.1:8787/"
+```
 
 ## Troubleshooting
 

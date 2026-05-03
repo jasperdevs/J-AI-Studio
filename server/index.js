@@ -11,6 +11,7 @@ const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 8787);
 const app = express();
 const jobs = new Map();
+const gallery = [];
 
 app.use(express.json({ limit: "25mb" }));
 
@@ -56,15 +57,31 @@ function inferModels(info) {
     },
     capabilities: {
       image: imageModels.length > 0 || unets.length > 0,
-      video: videoModels.length > 0 && Boolean(info.Wan22ImageToVideoLatent || info.WanImageToVideo)
+      video: videoModels.length > 0 && Boolean(info.Wan22ImageToVideoLatent || info.WanImageToVideo),
+      referenceImage: Boolean(info.LoadImage && info.VAEEncode)
     }
   };
 }
 
-function imageGraph(body) {
+async function uploadReferenceImage(dataUrl) {
+  if (!dataUrl || !dataUrl.includes(",")) return "";
+  const [header, data] = dataUrl.split(",", 2);
+  const match = header.match(/data:(.*?);base64/);
+  const type = match?.[1] || "image/png";
+  const ext = type.includes("jpeg") ? "jpg" : "png";
+  const filename = `j-ai-studio-reference-${crypto.randomUUID()}.${ext}`;
+  const bytes = Buffer.from(data, "base64");
+  const form = new FormData();
+  form.append("image", new Blob([bytes], { type }), filename);
+  form.append("type", "input");
+  const uploaded = await comfy("/upload/image", { method: "POST", body: form });
+  return uploaded.name || filename;
+}
+
+async function imageGraph(body) {
   const seed = Number(body.seed || crypto.randomInt(1, 2 ** 31));
   const count = Math.max(1, Math.min(8, Number(body.count || 1)));
-  return {
+  const graph = {
     "1": { class_type: "UNETLoader", inputs: { unet_name: body.model, weight_dtype: body.weightDtype || "default" } },
     "2": { class_type: "CLIPLoader", inputs: { clip_name: body.textEncoder, type: body.clipType || "wan", device: body.clipDevice || "default" } },
     "3": { class_type: "VAELoader", inputs: { vae_name: body.vae } },
@@ -89,6 +106,16 @@ function imageGraph(body) {
     "8": { class_type: "VAEDecode", inputs: { samples: ["7", 0], vae: ["3", 0] } },
     "9": { class_type: "SaveImage", inputs: { images: ["8", 0], filename_prefix: "j-ai-studio/image" } }
   };
+
+  if (body.referenceImage) {
+    const imageName = await uploadReferenceImage(body.referenceImage);
+    graph["6"] = { class_type: "LoadImage", inputs: { image: imageName } };
+    graph["10"] = { class_type: "VAEEncode", inputs: { pixels: ["6", 0], vae: ["3", 0] } };
+    graph["7"].inputs.latent_image = ["10", 0];
+    graph["7"].inputs.denoise = Number(body.denoise || 0.65);
+  }
+
+  return graph;
 }
 
 function videoGraph(body) {
@@ -147,7 +174,7 @@ function outputsFrom(history) {
 
 async function runJob(id, body) {
   try {
-    const prompt = body.kind === "video" ? videoGraph(body) : imageGraph(body);
+    const prompt = body.kind === "video" ? videoGraph(body) : await imageGraph(body);
     const queued = await comfy("/prompt", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -157,7 +184,10 @@ async function runJob(id, body) {
     while (true) {
       const history = await comfy(`/history/${queued.prompt_id}`);
       if (history[queued.prompt_id]) {
-        jobs.set(id, { ...jobs.get(id), status: "done", outputs: outputsFrom(history[queued.prompt_id]) });
+        const outputs = outputsFrom(history[queued.prompt_id]);
+        gallery.unshift(...outputs);
+        gallery.splice(100);
+        jobs.set(id, { ...jobs.get(id), status: "done", outputs });
         return;
       }
       await new Promise((resolve) => setTimeout(resolve, 1600));
@@ -181,6 +211,10 @@ app.get("/api/models", async (_req, res) => {
   res.json(inferModels(info));
 });
 
+app.get("/api/gallery", (_req, res) => {
+  res.json({ outputs: gallery });
+});
+
 app.post("/api/generate", (req, res) => {
   const id = crypto.randomUUID();
   jobs.set(id, { status: "queued", kind: req.body.kind, prompt: req.body.prompt, outputs: [] });
@@ -190,6 +224,11 @@ app.post("/api/generate", (req, res) => {
 
 app.get("/api/jobs/:id", (req, res) => {
   res.json(jobs.get(req.params.id) || { status: "missing" });
+});
+
+app.post("/api/shutdown", (_req, res) => {
+  res.json({ ok: true });
+  setTimeout(() => process.exit(0), 250);
 });
 
 app.get("/comfy/*path", async (req, res) => {

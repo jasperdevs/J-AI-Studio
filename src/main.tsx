@@ -133,9 +133,6 @@ const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
 const fallbackSamplers = ["euler_ancestral", "euler", "uni_pc", "dpmpp_2m", "dpmpp_sde"];
 const fallbackSchedulers = ["beta", "simple", "normal", "karras", "sgm_uniform"];
 const githubUrl = "https://github.com/jasperdevs/J-AI-Studio";
-const negativeLimit = 1200;
-const visiblePromptLimit = 1200;
-
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
@@ -173,9 +170,18 @@ function formatGeneratedAt(value?: string) {
   });
 }
 
-function characterMeta(length: number, limit: number) {
+function settingMax(meta?: { max?: number }) {
+  return Number.isFinite(meta?.max) && Number(meta?.max) > 0 ? Number(meta?.max) : undefined;
+}
+
+function characterMeta(length: number, limit?: number) {
+  if (!limit) return `${length.toLocaleString()} chars`;
   const remaining = Math.max(0, limit - length);
   return remaining === 0 ? "Limit reached" : `${remaining.toLocaleString()} left`;
+}
+
+function clampText(text: string, limit?: number) {
+  return limit ? text.slice(0, limit) : text;
 }
 
 function fullGenerationText(item: GalleryItem) {
@@ -454,6 +460,7 @@ function StepsPicker({ value, onChange, min = 1, max = 150 }: { value: number; o
       className="zen-steps"
       onWheel={(event) => { event.preventDefault(); stepBy(event.deltaY < 0 ? 1 : -1); }}
     >
+      <span className="zen-steps-label">Steps</span>
       <Tip content="Decrease steps"><button
         type="button"
         className="zen-steps-btn"
@@ -464,7 +471,6 @@ function StepsPicker({ value, onChange, min = 1, max = 150 }: { value: number; o
         onPointerLeave={clearHold}
         onPointerCancel={clearHold}
       ><Minus size={12} /></button></Tip>
-      <span className="zen-steps-label">Steps</span>
       {editing ? (
         <input
           ref={inputRef}
@@ -658,7 +664,6 @@ function App() {
   const latestZenIdRef = useRef("");
   const touchGestureRef = useRef<TouchGesture | null>(null);
   const lastTapRef = useRef(0);
-  const promptRemaining = Math.max(0, visiblePromptLimit - prompt.length);
 
   useEffect(() => {
     refreshHealth();
@@ -950,14 +955,14 @@ function App() {
     setWeightDtype(String(profile.defaults.weightDtype || "default"));
     setWidth(Number(profile.defaults.width || 1024));
     setHeight(Number(profile.defaults.height || 1024));
-    setSteps(Number(profile.defaults.steps || (profile.kind === "video" ? prefs.defaultVideoSteps : prefs.defaultImageSteps)));
-    setCfg(Number(profile.defaults.cfg || 1));
+    setSteps(Number(profile.defaults.steps || profile.constraints?.steps?.default || (profile.kind === "video" ? prefs.defaultVideoSteps : prefs.defaultImageSteps)));
+    setCfg(Number(profile.defaults.cfg || profile.constraints?.cfg?.default || 1));
     setSampler(String(profile.defaults.sampler || "euler_ancestral"));
     setScheduler(String(profile.defaults.scheduler || "beta"));
-    setDenoise(Number(profile.defaults.denoise || 0.65));
+    setDenoise(Number(profile.defaults.denoise || profile.constraints?.denoise?.default || 0.65));
     if (profile.kind === "video") {
       setFrames(Number(profile.defaults.frames || prefs.defaultVideoFrames));
-      setFps(Number(profile.defaults.fps || prefs.defaultFps));
+      setFps(Number(profile.defaults.fps || profile.constraints?.fps?.default || prefs.defaultFps));
     }
     setStartImage("");
     setStartImageName("");
@@ -998,6 +1003,15 @@ function App() {
   const widthMeta = currentProfile?.constraints?.width || {};
   const heightMeta = currentProfile?.constraints?.height || {};
   const frameMeta = currentProfile?.constraints?.frames || {};
+  const countMeta = currentProfile?.constraints?.count || {};
+  const stepsMeta = currentProfile?.constraints?.steps || {};
+  const cfgMeta = currentProfile?.constraints?.cfg || {};
+  const denoiseMeta = currentProfile?.constraints?.denoise || {};
+  const fpsMeta = currentProfile?.constraints?.fps || {};
+  const promptLimit = settingMax(currentProfile?.constraints?.prompt);
+  const negativeLimit = settingMax(currentProfile?.constraints?.negative);
+  const promptRemaining = promptLimit ? Math.max(0, promptLimit - prompt.length) : undefined;
+  const negativeRemaining = negativeLimit ? Math.max(0, negativeLimit - negative.length) : undefined;
   const profileOptions = currentProfile?.options || {};
   const aspectValue = `${width}x${height}`;
   const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "custom" : aspectValue;
@@ -1213,8 +1227,10 @@ function App() {
     const matchingAspects = matchingProfile?.aspectPresets?.length ? matchingProfile.aspectPresets : fallbackAspectPresets[nextMode];
     setMode(nextMode);
     if (matchingProfile) setModel(matchingProfile.id);
-    setPrompt((item.prompt || "").slice(0, visiblePromptLimit));
-    setNegative((item.negative || "").slice(0, negativeLimit));
+    const nextPromptLimit = settingMax(matchingProfile?.constraints?.prompt);
+    const nextNegativeLimit = settingMax(matchingProfile?.constraints?.negative);
+    setPrompt(clampText(item.prompt || "", nextPromptLimit));
+    setNegative(clampText(item.negative || "", nextNegativeLimit));
     setWidth(Number(item.width || itemSettings.width || width));
     setHeight(Number(item.height || itemSettings.height || height));
     if (itemSettings.steps) setSteps(Number(itemSettings.steps));
@@ -1467,7 +1483,7 @@ function App() {
       <div className="control-grid">
         {mode === "image" ? (
           <Field label="Variations">
-            <input type="number" min={1} max={8} value={count} onChange={(event) => setCount(Math.max(1, Math.min(8, Number(event.target.value))))} />
+            <input type="number" min={countMeta.min || 1} max={countMeta.max} step={countMeta.step || 1} value={count} onChange={(event) => setCount(Number(event.target.value))} />
           </Field>
         ) : (
           <Field label="Frames">
@@ -1475,7 +1491,7 @@ function App() {
           </Field>
         )}
         {mode === "video" ? (
-          <Field label="FPS"><input type="number" min={1} value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field>
+          <Field label="FPS"><input type="number" min={fpsMeta.min || 1} max={fpsMeta.max} step={fpsMeta.step || 1} value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field>
         ) : (
           <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field>
         )}
@@ -1494,7 +1510,7 @@ function App() {
                   {startImageName ? <Tip content="Clear start image"><button type="button" onClick={(event) => { event.preventDefault(); if (confirmAction("Clear the selected start image?")) { setStartImage(""); setStartImageName(""); } }}>Clear</button></Tip> : null}
           </label>
           {currentProfile?.capabilities.denoise ? (
-            <input type="number" min={0} max={1} step="0.01" value={denoise} onChange={(event) => setDenoise(Number(event.target.value))} placeholder="Denoise" />
+            <input type="number" min={denoiseMeta.min} max={denoiseMeta.max} step={denoiseMeta.step || 0.01} value={denoise} onChange={(event) => setDenoise(Number(event.target.value))} placeholder="Denoise" />
           ) : null}
         </Field>
       ) : null}
@@ -1504,7 +1520,7 @@ function App() {
           {currentProfile?.capabilities.textEncoder ? <Field label="Text encoder"><Select value={textEncoder} onChange={setTextEncoder} options={profileOptions.textEncoders || models?.textEncoders || []} /></Field> : null}
           {currentProfile?.capabilities.vae ? <Field label="VAE"><Select value={vae} onChange={setVae} options={profileOptions.vaes || models?.vaes || []} /></Field> : null}
           {currentProfile?.capabilities.weightDtype ? <Field label="Weight dtype"><Select value={weightDtype} onChange={setWeightDtype} options={profileOptions.weightDtypes || models?.weightDtypes || []} /></Field> : null}
-          <Field label="CFG"><input type="number" value={cfg} step="0.1" onChange={(event) => setCfg(Number(event.target.value))} /></Field>
+          <Field label="CFG"><input type="number" min={cfgMeta.min} max={cfgMeta.max} step={cfgMeta.step || 0.1} value={cfg} onChange={(event) => setCfg(Number(event.target.value))} /></Field>
           <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={profileOptions.samplers?.length ? profileOptions.samplers : models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
           <Field label="Scheduler"><Select value={scheduler} onChange={setScheduler} options={profileOptions.schedulers?.length ? profileOptions.schedulers : models?.schedulers?.length ? models.schedulers : fallbackSchedulers} /></Field>
         </div>
@@ -1580,11 +1596,11 @@ function App() {
           </aside>
 
           <section className="zen-prompt">
-            <textarea ref={zenPromptRef} maxLength={visiblePromptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, visiblePromptLimit))} />
-            <span className={cn("prompt-count", promptRemaining <= 0 && "limit")}>{characterMeta(prompt.length, visiblePromptLimit)}</span>
+            <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(clampText(event.target.value, promptLimit))} />
+            <span className={cn("prompt-count", promptRemaining === 0 && "limit")}>{characterMeta(prompt.length, promptLimit)}</span>
             <div data-open-surface className={cn("negative-drawer", showNegativePrompt && "open")}>
               <label className="negative-drawer-label">Negative prompt</label>
-              <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
+              <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(clampText(event.target.value, negativeLimit))} />
               <span>{characterMeta(negative.length, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
@@ -1595,7 +1611,7 @@ function App() {
                   Negative
                 </button></Tip>
                 <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
-                <StepsPicker value={steps} onChange={setSteps} />
+                <StepsPicker value={steps} onChange={setSteps} min={stepsMeta.min || 1} max={stepsMeta.max || 150} />
               </div>
               <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />
@@ -1692,11 +1708,11 @@ function App() {
           </aside>
 
           <section className="zen-prompt">
-            <textarea ref={zenPromptRef} maxLength={visiblePromptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, visiblePromptLimit))} />
-            <span className={cn("prompt-count", promptRemaining <= 0 && "limit")}>{characterMeta(prompt.length, visiblePromptLimit)}</span>
+            <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(clampText(event.target.value, promptLimit))} />
+            <span className={cn("prompt-count", promptRemaining === 0 && "limit")}>{characterMeta(prompt.length, promptLimit)}</span>
             <div data-open-surface className={cn("negative-drawer", showNegativePrompt && "open")}>
               <label className="negative-drawer-label">Negative prompt</label>
-              <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
+              <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(clampText(event.target.value, negativeLimit))} />
               <span>{characterMeta(negative.length, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
@@ -1707,7 +1723,7 @@ function App() {
                   Negative
                 </button></Tip>
                 <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
-                <StepsPicker value={steps} onChange={setSteps} />
+                <StepsPicker value={steps} onChange={setSteps} min={stepsMeta.min || 1} max={stepsMeta.max || 150} />
               </div>
               <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />

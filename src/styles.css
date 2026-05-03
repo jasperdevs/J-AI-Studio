@@ -93,13 +93,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   pointer-events: none;
   background: linear-gradient(
     to top,
-    hsl(var(--background)) 0%,
-    hsl(var(--background) / 0.94) 22%,
-    hsl(var(--background) / 0.78) 42%,
-    hsl(var(--background) / 0.5) 62%,
-    hsl(var(--background) / 0.22) 80%,
+    hsl(var(--background) / 0.92) 0%,
+    hsl(var(--background) / 0.78) 28%,
+    hsl(var(--background) / 0.5) 55%,
+    hsl(var(--background) / 0.2) 80%,
     transparent 100%
   );
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 45%, transparent 100%);
+  mask-image: linear-gradient(to top, black 0%, black 45%, transparent 100%);
   z-index: 5;
 }
 .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
@@ -432,7 +435,25 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .zen-empty { width: 100%; height: 100%; display: grid; place-items: center; background: hsl(var(--background)); }
 .zen-empty img { width: 56px; height: 56px; filter: invert(1); opacity: 0.4; }
-.zen-fade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, hsl(var(--background) / 0.4) 0%, transparent 18%, transparent 60%, hsl(var(--background) / 0.6) 100%); }
+.zen-fade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, hsl(var(--background) / 0.4) 0%, transparent 18%, transparent 60%, hsl(var(--background) / 0.55) 100%); }
+.zen-fade::before,
+.zen-fade::after {
+  content: "";
+  position: absolute; left: 0; right: 0;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.zen-fade::before {
+  top: 0; height: 96px;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 25%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 25%, transparent 100%);
+}
+.zen-fade::after {
+  bottom: 0; height: 140px;
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 35%, transparent 100%);
+  mask-image: linear-gradient(to top, black 0%, black 35%, transparent 100%);
+}
 
 .zen-control-button {
   position: fixed; bottom: 18px; left: 18px; z-index: 13;
@@ -695,7 +716,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   line-height: 1;
   letter-spacing: -0.005em;
   color: hsl(var(--muted-foreground));
-  padding: 0 6px 0 4px;
+  padding: 0 4px 0 8px;
   pointer-events: none;
 }
 .zen-steps-btn {
@@ -1710,7 +1731,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
     font-size: 0;
   }
   .zen-steps { gap: 2px; padding: 2px; height: 36px; }
-  .zen-steps-label { font-size: 11px; padding: 0 4px 0 2px; }
+  .zen-steps-label { font-size: 11px; padding: 0 4px 0 6px; }
   .zen-steps-btn { width: 32px; height: 32px; }
   .zen-steps-value { min-width: 28px; height: 32px; font-size: 13px; }
   .zen-steps-input { width: 42px; height: 32px; font-size: 13px; }

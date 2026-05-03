@@ -31,6 +31,10 @@ button { color: inherit; }
 .mode-tabs button { min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 7px; color: var(--muted); }
 .mode-tabs button:hover, .ratio:hover, .icon-button:hover, .tile:hover { transform: translateY(-1px); border-color: var(--line-strong); }
 .mode-tabs .active { color: #000; background: #fff; }
+.mode-summary { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; background: #09090a; padding: 11px 12px; margin-bottom: 12px; }
+.mode-summary.video { background: #0d0d0e; }
+.mode-summary strong { display: block; font-size: 13px; margin-bottom: 2px; }
+.mode-summary span { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
 
 .panel { border: 1px solid var(--line); background: linear-gradient(180deg, #101011, #0b0b0c); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
 .field { display: grid; gap: 7px; margin-bottom: 12px; }

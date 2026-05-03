@@ -8,7 +8,6 @@ import {
   Columns3,
   Copy,
   Download,
-  Expand,
   Film,
   GalleryHorizontal,
   Image as ImageIcon,
@@ -16,10 +15,7 @@ import {
   Maximize2,
   Monitor,
   PanelsTopLeft,
-  Play,
-  Plus,
   RefreshCw,
-  Settings2,
   SlidersHorizontal,
   Sparkles,
   Square,
@@ -111,6 +107,7 @@ function App() {
   const [scheduler, setScheduler] = useState("beta");
   const [advanced, setAdvanced] = useState(false);
   const [status, setStatus] = useState("Ready");
+  const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState<Output[]>([]);
   const [active, setActive] = useState<Output | null>(null);
 
@@ -147,6 +144,7 @@ function App() {
       setHeight(288);
       setSteps(12);
       setCfg(5);
+      setCount(1);
       setSampler("uni_pc");
       setScheduler("simple");
     }
@@ -158,44 +156,50 @@ function App() {
   }, [mode, models]);
 
   async function generate() {
-    setStatus(mode === "image" ? "Generating image..." : "Generating video...");
-    const response = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        kind: mode,
-        prompt,
-        negative,
-        model,
-        textEncoder,
-        vae,
-        width,
-        height,
-        steps,
-        cfg,
-        sampler,
-        scheduler,
-        seed,
-        count,
-        frames,
-        fps
-      })
-    });
-    const { jobId } = await response.json();
-    while (true) {
-      await new Promise((resolve) => setTimeout(resolve, 1600));
-      const job: Job = await fetch(`/api/jobs/${jobId}`).then((res) => res.json());
-      if (job.status === "done") {
-        setStatus("Done");
-        setGallery((current) => [...job.outputs, ...current]);
-        setActive(job.outputs[0] || null);
-        return;
+    if (isGenerating) return;
+    setIsGenerating(true);
+    setStatus(mode === "image" ? `Generating ${count} image${count === 1 ? "" : "s"}...` : "Generating video...");
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: mode,
+          prompt,
+          negative,
+          model,
+          textEncoder,
+          vae,
+          width,
+          height,
+          steps,
+          cfg,
+          sampler,
+          scheduler,
+          seed,
+          count,
+          frames,
+          fps
+        })
+      });
+      const { jobId } = await response.json();
+      while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 1600));
+        const job: Job = await fetch(`/api/jobs/${jobId}`).then((res) => res.json());
+        if (job.status === "done") {
+          setStatus(`${job.outputs.length} output${job.outputs.length === 1 ? "" : "s"} added`);
+          setGallery((current) => [...job.outputs, ...current]);
+          setActive(job.outputs[0] || null);
+          return;
+        }
+        if (job.status === "error") {
+          setStatus(job.error || "Generation failed");
+          return;
+        }
+        setStatus(job.status === "queued" ? "Queued" : mode === "image" ? "Rendering images" : "Rendering video");
       }
-      if (job.status === "error") {
-        setStatus(job.error || "Generation failed");
-        return;
-      }
-      setStatus(job.status === "queued" ? "Queued" : "Rendering");
+    } finally {
+      setIsGenerating(false);
     }
   }
 
@@ -210,9 +214,17 @@ function App() {
           </div>
         </header>
 
-        <div className="mode-tabs" role="tablist">
-          <button className={cn(mode === "image" && "active")} onClick={() => changeMode("image")}><ImageIcon size={16} /> Image</button>
-          <button className={cn(mode === "video" && "active")} onClick={() => changeMode("video")}><Clapperboard size={16} /> Video</button>
+        <div className="mode-tabs" role="tablist" aria-label="Generation mode">
+          <button className={cn(mode === "image" && "active")} onClick={() => changeMode("image")}><ImageIcon size={16} /> Image stills</button>
+          <button className={cn(mode === "video" && "active")} onClick={() => changeMode("video")}><Clapperboard size={16} /> Video clip</button>
+        </div>
+
+        <div className={cn("mode-summary", mode === "video" && "video")}>
+          {mode === "image" ? <ImageIcon size={16} /> : <Clapperboard size={16} />}
+          <div>
+            <strong>{mode === "image" ? "Image mode" : "Video mode"}</strong>
+            <span>{mode === "image" ? "Creates one batch of still images from the prompt." : "Creates one motion clip; image batching is turned off."}</span>
+          </div>
         </div>
 
         <section className="panel">
@@ -249,6 +261,25 @@ function App() {
         </section>
 
         <section className="panel">
+          <div className="section-title">{mode === "image" ? <ImageIcon size={15} /> : <Film size={15} />} Output</div>
+          {mode === "image" ? (
+            <div className="split">
+              <Field label="Images at once">
+                <input type="number" min={1} max={8} value={count} onChange={(event) => setCount(Math.max(1, Math.min(8, Number(event.target.value))))} />
+              </Field>
+              <Field label="Seed">
+                <input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} />
+              </Field>
+            </div>
+          ) : (
+            <div className="split">
+              <Field label="Frames"><input type="number" min={5} value={frames} step={4} onChange={(event) => setFrames(Number(event.target.value))} /></Field>
+              <Field label="FPS"><input type="number" min={1} value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field>
+            </div>
+          )}
+        </section>
+
+        <section className="panel">
           <button className="advanced-toggle" onClick={() => setAdvanced((value) => !value)}>
             <SlidersHorizontal size={15} /> Advanced <ChevronDown size={15} className={cn(advanced && "flip")} />
           </button>
@@ -260,17 +291,13 @@ function App() {
               <Field label="CFG"><input type="number" value={cfg} step="0.1" onChange={(event) => setCfg(Number(event.target.value))} /></Field>
               <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
               <Field label="Scheduler"><Select value={scheduler} onChange={setScheduler} options={models?.schedulers?.length ? models.schedulers : fallbackSchedulers} /></Field>
-              <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field>
-              {mode === "image" ? <Field label="Variations"><input type="number" min={1} max={8} value={count} onChange={(event) => setCount(Number(event.target.value))} /></Field> : null}
-              {mode === "video" ? <Field label="Frames"><input type="number" value={frames} step={4} onChange={(event) => setFrames(Number(event.target.value))} /></Field> : null}
-              {mode === "video" ? <Field label="FPS"><input type="number" value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field> : null}
             </div>
           ) : null}
         </section>
 
-        <button className="generate" onClick={generate} disabled={!model || !textEncoder || !vae}>
-          {status === "Rendering" || status === "Generating image..." || status === "Generating video..." ? <Loader2 className="spin" size={17} /> : <Wand2 size={17} />}
-          {mode === "image" ? "Generate image" : "Generate video"}
+        <button className="generate" onClick={generate} disabled={!model || !textEncoder || !vae || isGenerating}>
+          {isGenerating ? <Loader2 className="spin" size={17} /> : <Wand2 size={17} />}
+          {mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video clip"}
         </button>
 
         <div className="status-row">
@@ -282,6 +309,7 @@ function App() {
       <main className="workspace">
         <div className="topbar">
           <Stat icon={Monitor} label="Backend" value="ComfyUI" />
+          <Stat icon={mode === "image" ? ImageIcon : Clapperboard} label="Mode" value={mode === "image" ? `${count} image${count === 1 ? "" : "s"}` : `${frames} frames`} />
           <Stat icon={GalleryHorizontal} label="Gallery" value={`${gallery.length} items`} />
           <button className="icon-button" title="Refresh models" onClick={() => location.reload()}><RefreshCw size={16} /></button>
         </div>

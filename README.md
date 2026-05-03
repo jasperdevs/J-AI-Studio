@@ -67,9 +67,10 @@ Copy `.env.example` to `.env` if you want to change the default ports.
 COMFY_URL=http://127.0.0.1:8188
 HOST=127.0.0.1
 PORT=8787
+JAI_DATA_DIR=C:\Users\bunny\AI\J-AI-Studio-Data
 ```
 
-`COMFY_URL` is the ComfyUI server J AI Studio should talk to. `HOST` and `PORT` control where J AI Studio itself is served.
+`COMFY_URL` is the ComfyUI server J AI Studio should talk to. `HOST` and `PORT` control where J AI Studio itself is served. `JAI_DATA_DIR` controls where local gallery metadata is stored, which is useful when the development repo is separate from your local model/runtime folders.
 
 ## Development
 
@@ -124,4 +125,4 @@ If outputs generate but do not preview, check that ComfyUI can serve the file fr
 
 ## Notes
 
-J AI Studio does not download models, include models, or publish generated outputs. Models stay in your ComfyUI installation. Gallery metadata is stored locally in `data/gallery.json`, and generated files stay in ComfyUI's output folder.
+J AI Studio does not download models, include models, or publish generated outputs. Models stay in your ComfyUI installation. Gallery metadata is stored locally in `data/gallery.json` by default, or in `JAI_DATA_DIR` when that environment variable is set. Generated files stay in ComfyUI's output folder.

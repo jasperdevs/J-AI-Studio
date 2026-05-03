@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "private": false,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasperdevs/J-AI-Studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jasperdevs/J-AI-Studio/issues"
+  },
+  "homepage": "https://github.com/jasperdevs/J-AI-Studio#readme",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite --host 127.0.0.1 --port 5173\" \"node server/index.js\"",

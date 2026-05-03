@@ -1046,6 +1046,9 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .has-tip:hover::after, .has-tip:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
 .zen-top-actions .has-tip::after,
+.zen-control-button.has-tip::after,
+.zen-gallery-restore.has-tip::after,
+.zen-gallery-toggle.has-tip::after,
 .viewer-tools .has-tip::after,
 .viewer-close.has-tip::after {
   top: calc(100% + 8px);
@@ -1054,6 +1057,12 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .zen-top-actions .has-tip:hover::after,
 .zen-top-actions .has-tip:focus-visible::after,
+.zen-control-button.has-tip:hover::after,
+.zen-control-button.has-tip:focus-visible::after,
+.zen-gallery-restore.has-tip:hover::after,
+.zen-gallery-restore.has-tip:focus-visible::after,
+.zen-gallery-toggle.has-tip:hover::after,
+.zen-gallery-toggle.has-tip:focus-visible::after,
 .viewer-tools .has-tip:hover::after,
 .viewer-tools .has-tip:focus-visible::after,
 .viewer-close.has-tip:hover::after,

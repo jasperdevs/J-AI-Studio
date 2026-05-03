@@ -1826,7 +1826,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
-  padding: 14px;
+  padding: 14px 18px 14px 14px;
   border: 1px solid hsl(var(--border));
   border-radius: calc(var(--radius) + 2px);
   background: hsl(var(--input));
@@ -1840,6 +1840,8 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .toggle-row input {
   width: 40px; height: 22px;
   min-height: 0;
+  justify-self: end;
+  margin: 0;
   appearance: none;
   border: 0;
   border-radius: 999px;

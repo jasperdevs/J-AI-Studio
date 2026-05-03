@@ -12,6 +12,12 @@ import { jobs, runJob } from './jobs.js';
 const app = express();
 app.use(express.json({ limit: "25mb" }));
 
+function openFolder(folder) {
+  if (process.platform === "win32") return execFile("explorer.exe", [folder]);
+  if (process.platform === "darwin") return execFile("open", [folder]);
+  return execFile("xdg-open", [folder]);
+}
+
 app.get("/api/health", async (_req, res) => {
   try {
     const stats = await comfy("/system_stats");
@@ -167,7 +173,7 @@ app.post("/api/open-output-folder", (req, res) => {
     res.status(404).json({ ok: false, error: "Output folder is not configured." });
     return;
   }
-  execFile("explorer.exe", [comfyOutputDir]);
+  openFolder(comfyOutputDir);
   res.json({ ok: true, outputDir: comfyOutputDir });
 });
 

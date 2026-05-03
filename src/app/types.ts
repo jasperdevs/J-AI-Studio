@@ -1,0 +1,64 @@
+export type Mode = "image" | "video";
+export type Progress = { value: number; max: number; node?: string };
+export type Output = { url: string; filename: string; type: "image" | "video"; prompt?: string; negative?: string; outputName?: string };
+export type GenerationSettings = Record<string, string | number | boolean | null | undefined>;
+export type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; preview?: string; width?: number; height?: number; createdAt?: string; durationMs?: number; model?: string; settings?: GenerationSettings; index?: number; referenceImage?: string; referenceImageName?: string };
+export type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress; preview?: string };
+export type TouchGesture = { mode: "pan"; id: number; x: number; y: number; panX: number; panY: number; moved: boolean } | { mode: "pinch"; distance: number; zoom: number; panX: number; panY: number; centerX: number; centerY: number; moved: boolean };
+export type SelectOption = { label: string; value: string };
+export type Provider = { id: string; name: string; logoUrl?: string; source?: string };
+export type Profile = {
+  id: string;
+  kind: Mode;
+  label: string;
+  displayName?: string;
+  description?: string;
+  model: string;
+  workflow: string;
+  family: string;
+  provider?: Provider;
+  defaults: Record<string, string | number>;
+  aspectPresets: AspectPreset[];
+  constraints?: Record<string, { min?: number; max?: number; step?: number; default?: number }>;
+  options?: {
+    textEncoders?: string[];
+    vaes?: string[];
+    clipTypes?: string[];
+    weightDtypes?: string[];
+    samplers?: string[];
+    schedulers?: string[];
+  };
+  capabilities: Record<string, boolean>;
+};
+export type Models = {
+  imageModels: SelectOption[];
+  videoModels: SelectOption[];
+  profiles: Profile[];
+  unsupportedModels?: string[];
+  textEncoders: string[];
+  vaes: string[];
+  clipTypes?: string[];
+  weightDtypes?: string[];
+  samplers: string[];
+  schedulers: string[];
+  defaults: Record<string, string>;
+  capabilities: Record<string, boolean>;
+};
+export type Paths = { outputDir?: string; galleryDir?: string };
+export type Health = { ok: boolean; comfyUrl?: string; error?: string };
+export type AspectPreset = { label: string; value: string; w: number; h: number };
+
+export type Preferences = {
+  defaultImageCount: number;
+  defaultImageSteps: number;
+  defaultVideoFrames: number;
+  defaultVideoSteps: number;
+  defaultFps: number;
+  variationQueueMode: "batch" | "separate";
+  zenMode: boolean;
+  confirmActions: boolean;
+  enterToGenerate: boolean;
+  followLatest: boolean;
+  showFailedItems: boolean;
+  mobileZenDefaulted?: boolean;
+};

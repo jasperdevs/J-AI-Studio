@@ -1,0 +1,180 @@
+@media (max-width: 620px) {
+  body { overflow: hidden; }
+  .left-panel, .workspace { padding: 12px; }
+  .control-grid, .split, .advanced-grid, .number-row { grid-template-columns: 1fr; }
+  .topbar { justify-content: flex-start; }
+  .status-pill { min-height: 30px; }
+  .stage-gallery {
+    padding: 8px 8px calc(206px + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+  }
+  .gallery, .gallery-column { gap: 4px; }
+  .aspect-menu, .model-menu {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: 10px;
+    width: auto;
+    max-height: min(72vh, 560px);
+    overflow: auto;
+    z-index: 40;
+    border-radius: calc(var(--radius) + 8px);
+    padding: 8px;
+  }
+  .model-trigger {
+    min-height: 44px;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .model-option {
+    min-height: 64px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    padding: 10px;
+  }
+  .model-copy strong,
+  .model-copy em {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .model-copy em { -webkit-line-clamp: 1; }
+  .model-badge { display: none !important; }
+  .aspect-option { min-height: 44px; }
+  .settings-card { width: calc(100vw - 20px); max-height: calc(100vh - 20px); border-radius: calc(var(--radius) + 4px); }
+  .settings-card header { padding: 14px; }
+  .settings-grid { grid-template-columns: 1fr; }
+  .settings-grid section:nth-last-child(1):nth-child(odd) { grid-column: auto; }
+  .setting-row { grid-template-columns: 1fr; gap: 4px; }
+  .setting-row strong { text-align: left; white-space: normal; }
+  .setting-actions { grid-template-columns: 1fr; }
+  .zen-shell { --zen-prompt-h: 252px; }
+  .zen-shell.negative-open { --zen-prompt-h: 340px; }
+  .zen-control-button { top: auto; bottom: calc(var(--zen-prompt-h) + 10px + env(safe-area-inset-bottom)); left: 10px; width: 40px; height: 40px; }
+  .zen-gallery-restore { top: 10px; left: 10px; width: 40px; height: 40px; }
+  .zen-top-actions { top: auto; bottom: calc(var(--zen-prompt-h) + 10px + env(safe-area-inset-bottom)); right: 10px; }
+  .zen-zoom-dock { bottom: calc(var(--zen-prompt-h) + 10px + env(safe-area-inset-bottom)); left: 60px; height: 40px; }
+  .zen-zoom-dock .icon-button { width: 32px; height: 32px; }
+  .zen-zoom-dock .viewer-zoom { height: 32px; min-width: 52px; }
+  .zen-zoom-dock.with-side { display: none; }
+  .zen-controls {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    bottom: calc(var(--zen-prompt-h) + 48px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: none;
+    padding: 12px;
+  }
+  .zen-output { padding: 12px 8px 196px; }
+  .zen-prompt {
+    width: calc(100vw - 16px);
+    max-width: none;
+    min-width: 0;
+    left: 8px;
+    right: 8px;
+    transform: none;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    padding: 10px;
+    gap: 8px;
+  }
+  .zen-prompt textarea { min-height: 44px; max-height: 112px; font-size: 16px; padding-top: 7px; }
+  .negative-drawer.open { max-height: 82px; }
+  .negative-drawer textarea { height: 56px; font-size: 14px; }
+  .zen-prompt-actions {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .zen-prompt-actions .generate {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    justify-content: center;
+    padding: 0 14px;
+  }
+  .zen-inline-settings {
+    grid-column: 1;
+    grid-row: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    width: 100%;
+    justify-content: stretch;
+    gap: 6px;
+    overflow: visible;
+    scrollbar-width: none;
+    padding-bottom: 0;
+  }
+  .zen-inline-settings::-webkit-scrollbar { display: none; }
+  .zen-inline-settings .model-picker {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .zen-inline-settings .model-picker.is-compact .model-trigger {
+    width: 100%;
+    grid-template-columns: 24px minmax(0, 1fr) 14px;
+  }
+  .zen-inline-settings .aspect-picker,
+  .zen-inline-settings .number-picker {
+    width: 100%;
+  }
+  .zen-inline-settings .aspect-picker > button,
+  .zen-inline-settings .number-picker { height: 38px; min-height: 38px; }
+  .zen-inline-settings .number-picker { gap: 2px; padding: 2px; justify-content: space-between; }
+  .zen-inline-settings .number-picker-label {
+    font-size: 11px;
+    padding: 0 4px 0 7px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .zen-inline-settings .number-picker-btn { width: 30px; height: 32px; }
+  .zen-inline-settings .number-picker-value,
+  .zen-inline-settings .number-picker-input { min-width: 28px; height: 32px; font-size: 13px; }
+  .zen-inline-settings .number-picker-input { width: 42px; min-width: 42px; }
+  .zen-status {
+    grid-column: 1;
+    grid-row: 2;
+    min-width: 0;
+    align-self: center;
+  }
+  .prompt-left-actions { grid-column: 1; grid-row: auto; width: 100%; }
+  .prompt-left-actions .negative-toggle { width: 100%; height: 38px; }
+  .zen-prompt-actions .generate { grid-column: 1; grid-row: auto; }
+  .zen-gallery-wrap { top: 8px; max-width: calc(100vw - 16px); grid-template-columns: auto auto minmax(0, 1fr); }
+  .zen-gallery-strip button { width: 46px; height: 46px; }
+  .scrim { overflow: hidden; }
+  .modal-scrim { padding: 10px; }
+  .viewer-shell { grid-template-rows: minmax(0, 1fr); }
+  .viewer-stage.with-side { grid-template-columns: minmax(0, 1fr); }
+  .viewer-canvas { padding: 8px 8px 80px; }
+  .viewer-dock {
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    max-width: calc(100vw - 20px);
+    padding: 4px;
+    gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .viewer-dock::-webkit-scrollbar { display: none; }
+  .viewer-dock .icon-button { width: 36px; height: 36px; }
+  .viewer-dock .text-button { min-height: 36px; }
+  .viewer-stage.with-side .viewer-dock { left: 50%; }
+  .viewer-canvas img, .viewer-canvas video { border-radius: var(--radius); }
+  .viewer-side {
+    position: absolute;
+    left: 8px; right: 8px; top: 8px; bottom: 76px;
+    z-index: 6;
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) + 4px);
+    box-shadow: var(--shadow-xl);
+  }
+  .viewer-side-body { padding: 14px; gap: 14px; }
+  .viewer-arrow { width: 40px; height: 56px; top: calc(50% - 36px); }
+  .viewer-arrow.prev { left: 10px; }
+  .viewer-arrow.next,
+  .viewer-stage.with-side .viewer-arrow.next { right: 10px; }
+  .viewer-strip { padding: 8px 10px; }
+  .viewer-thumb { width: 54px; height: 54px; }
+}
+

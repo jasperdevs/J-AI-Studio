@@ -154,6 +154,14 @@ function loadPrefs(): Preferences {
   }
 }
 
+function loadDraft() {
+  try {
+    return JSON.parse(localStorage.getItem("j-ai-studio-draft") || "{}");
+  } catch {
+    return {};
+  }
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="field">
@@ -274,36 +282,37 @@ function ModelPicker({ value, profiles, onChange }: { value: string; profiles: P
 }
 
 function App() {
+  const initialDraft = useMemo(() => loadDraft(), []);
   const [mode, setMode] = useState<Mode>("image");
   const [models, setModels] = useState<Models | null>(null);
   const [prefs, setPrefsState] = useState<Preferences>(() => loadPrefs());
-  const [prompt, setPrompt] = useState("");
-  const [negative, setNegative] = useState("");
-  const [model, setModel] = useState("");
+  const [prompt, setPrompt] = useState(String(initialDraft.prompt || ""));
+  const [negative, setNegative] = useState(String(initialDraft.negative || ""));
+  const [model, setModel] = useState(String(initialDraft.model || ""));
   const [paths, setPaths] = useState<Paths>({});
-  const [textEncoder, setTextEncoder] = useState("");
-  const [vae, setVae] = useState("");
-  const [clipType, setClipType] = useState("");
-  const [weightDtype, setWeightDtype] = useState("default");
-  const [width, setWidth] = useState(1024);
-  const [height, setHeight] = useState(1024);
-  const [steps, setSteps] = useState(prefs.defaultImageSteps);
-  const [cfg, setCfg] = useState(1);
-  const [denoise, setDenoise] = useState(0.65);
-  const [seed, setSeed] = useState("");
-  const [count, setCount] = useState(prefs.defaultImageCount);
-  const [frames, setFrames] = useState(prefs.defaultVideoFrames);
-  const [fps, setFps] = useState(prefs.defaultFps);
-  const [sampler, setSampler] = useState("euler_ancestral");
-  const [scheduler, setScheduler] = useState("beta");
+  const [textEncoder, setTextEncoder] = useState(String(initialDraft.textEncoder || ""));
+  const [vae, setVae] = useState(String(initialDraft.vae || ""));
+  const [clipType, setClipType] = useState(String(initialDraft.clipType || ""));
+  const [weightDtype, setWeightDtype] = useState(String(initialDraft.weightDtype || "default"));
+  const [width, setWidth] = useState(Number(initialDraft.width || 1024));
+  const [height, setHeight] = useState(Number(initialDraft.height || 1024));
+  const [steps, setSteps] = useState(Number(initialDraft.steps || prefs.defaultImageSteps));
+  const [cfg, setCfg] = useState(Number(initialDraft.cfg || 1));
+  const [denoise, setDenoise] = useState(Number(initialDraft.denoise || 0.65));
+  const [seed, setSeed] = useState(String(initialDraft.seed || ""));
+  const [count, setCount] = useState(Number(initialDraft.count || prefs.defaultImageCount));
+  const [frames, setFrames] = useState(Number(initialDraft.frames || prefs.defaultVideoFrames));
+  const [fps, setFps] = useState(Number(initialDraft.fps || prefs.defaultFps));
+  const [sampler, setSampler] = useState(String(initialDraft.sampler || "euler_ancestral"));
+  const [scheduler, setScheduler] = useState(String(initialDraft.scheduler || "beta"));
   const [advanced, setAdvanced] = useState(false);
   const [settings, setSettings] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [active, setActive] = useState<GalleryItem | null>(null);
   const [viewerZoom, setViewerZoom] = useState(1);
-  const [showDetails, setShowDetails] = useState(true);
-  const [customSize, setCustomSize] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [customSize, setCustomSize] = useState(Boolean(initialDraft.customSize));
   const [now, setNow] = useState(Date.now());
   const [startImage, setStartImage] = useState("");
   const [startImageName, setStartImageName] = useState("");
@@ -327,19 +336,67 @@ function App() {
   }, []);
 
   useEffect(() => {
+    localStorage.setItem("j-ai-studio-draft", JSON.stringify({
+      mode,
+      prompt,
+      negative,
+      model,
+      textEncoder,
+      vae,
+      clipType,
+      weightDtype,
+      width,
+      height,
+      steps,
+      cfg,
+      denoise,
+      seed,
+      count,
+      frames,
+      fps,
+      sampler,
+      scheduler,
+      customSize
+    }));
+  }, [mode, prompt, negative, model, textEncoder, vae, clipType, weightDtype, width, height, steps, cfg, denoise, seed, count, frames, fps, sampler, scheduler, customSize]);
+
+  useEffect(() => {
     if (!active) return;
+    const activeItem = active;
     const doneItems = gallery.filter((item) => item.status === "done");
-    const currentIndex = doneItems.findIndex((item) => item.id === active.id);
+    const currentIndex = doneItems.findIndex((item) => item.id === activeItem.id);
     function onKeyDown(event: KeyboardEvent) {
+      if (event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement) return;
       if (event.key === "ArrowRight" && currentIndex >= 0) {
+        event.preventDefault();
         setViewerZoom(1);
         setActive(doneItems[(currentIndex + 1) % doneItems.length]);
       }
       if (event.key === "ArrowLeft" && currentIndex >= 0) {
+        event.preventDefault();
         setViewerZoom(1);
         setActive(doneItems[(currentIndex - 1 + doneItems.length) % doneItems.length]);
       }
-      if (event.key === "Escape") setActive(null);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setActive(null);
+      }
+      if (event.key === "+" || event.key === "=") {
+        event.preventDefault();
+        setViewerZoom((value) => Math.min(4, Number((value + 0.25).toFixed(2))));
+      }
+      if (event.key === "-" || event.key === "_") {
+        event.preventDefault();
+        setViewerZoom((value) => Math.max(0.5, Number((value - 0.25).toFixed(2))));
+      }
+      if (event.key === "0") {
+        event.preventDefault();
+        setViewerZoom(1);
+      }
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        if (window.confirm("Delete this generation from the gallery?")) deleteItem(activeItem, true);
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -520,18 +577,21 @@ function App() {
 
   async function cancelJob(jobId: string | undefined) {
     if (!jobId) return;
+    if (!window.confirm("Cancel this generation?")) return;
     await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).catch(() => null);
     loadGallery();
     setStatus("Canceled");
   }
 
   async function cancelQueue() {
+    if (!window.confirm("Cancel everything currently queued or generating?")) return;
     await fetch("/api/queue/cancel", { method: "POST" }).catch(() => null);
     loadGallery();
     setStatus("Queue canceled");
   }
 
   async function clearGallery() {
+    if (!window.confirm("Clear finished gallery items from this app?")) return;
     const data = await fetch("/api/gallery/clear", { method: "POST" }).then((res) => res.json()).catch(() => null);
     if (data?.outputs) setGallery(data.outputs);
   }
@@ -540,7 +600,8 @@ function App() {
     await fetch("/api/open-output-folder", { method: "POST" }).catch(() => null);
   }
 
-  async function deleteItem(item: GalleryItem) {
+  async function deleteItem(item: GalleryItem, confirmed = false) {
+    if (!confirmed && !window.confirm("Delete this generation from the gallery?")) return;
     setGallery((current) => current.filter((next) => next.id !== item.id));
     if (active?.id === item.id) setActive(null);
     await fetch(`/api/gallery/${encodeURIComponent(item.id)}`, { method: "DELETE" }).catch(() => null);
@@ -548,11 +609,12 @@ function App() {
 
   function openItem(item: GalleryItem) {
     setViewerZoom(1);
-    setShowDetails(true);
+    setShowDetails(false);
     setActive(item);
   }
 
   async function shutdown() {
+    if (!window.confirm("Close the local J AI Studio server?")) return;
     setStatus("Closing localhost...");
     await fetch("/api/shutdown", { method: "POST" }).catch(() => null);
   }
@@ -576,9 +638,11 @@ function App() {
           </Field>
           <Field label="Prompt">
             <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />
+            <span className="field-meta">{prompt.length} characters</span>
           </Field>
           <Field label="Negative prompt">
             <textarea className="short" value={negative} onChange={(event) => setNegative(event.target.value)} />
+            <span className="field-meta">{negative.length} characters</span>
           </Field>
         </section>
 
@@ -620,7 +684,7 @@ function App() {
             <label className="file-pick">
               <input type="file" accept="image/*" onChange={(event) => readStartImage(event.target.files?.[0])} />
               <span>{startImageName || "Choose image"}</span>
-              {startImageName ? <button type="button" onClick={(event) => { event.preventDefault(); setStartImage(""); setStartImageName(""); }}>Clear</button> : null}
+              {startImageName ? <button type="button" onClick={(event) => { event.preventDefault(); if (window.confirm("Clear the selected start image?")) { setStartImage(""); setStartImageName(""); } }}>Clear</button> : null}
             </label>
             {currentProfile?.capabilities.denoise ? (
               <Field label="Denoise">

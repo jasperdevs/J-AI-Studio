@@ -37,6 +37,7 @@ button { color: inherit; }
 .field { display: grid; gap: 6px; margin-bottom: 10px; }
 .field:last-child { margin-bottom: 0; }
 .field > span, .section-title { color: var(--muted); font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.field .field-meta { justify-self: end; color: #777; font-size: 11px; font-weight: 500; }
 
 textarea, input, select { width: 100%; border: 1px solid var(--line); background: #070707; color: var(--text); border-radius: 6px; padding: 8px 9px; outline: none; min-height: 34px; font-weight: 400; }
 textarea { min-height: 118px; resize: vertical; line-height: 1.4; }
@@ -127,7 +128,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--soft); }
 .tile img, .tile video, .generating { width: 100%; aspect-ratio: var(--tile-ratio, 1); object-fit: cover; border-radius: 3px; display: grid; place-items: center; background: #000; overflow: hidden; }
 .tile span { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 8px 7px; background: linear-gradient(transparent, rgba(0,0,0,.72)); opacity: 0; transition: opacity 140ms ease; }
-.tile:hover .tile-caption, .tile.pending .tile-caption, .tile.error .tile-caption, .tile.canceled .tile-caption { opacity: 1; }
+.tile:hover .tile-caption { opacity: 1; }
 .tile-caption strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff; font-size: 12px; font-weight: 500; }
 .tile-caption em { display: block; margin-top: 2px; color: #cfcfcf; font-size: 11px; font-style: normal; }
 .tile-action, .tile-delete { position: absolute; top: 7px; right: 7px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; background: rgba(0,0,0,.62); color: var(--soft) !important; margin: 0 !important; font-size: 11px !important; opacity: 0; transition: opacity 140ms ease; }
@@ -157,9 +158,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--soft); }
 
 .viewer { position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 20; display: grid; place-items: center; padding: 20px; }
 .viewer-bar { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; z-index: 22; flex-wrap: wrap; justify-content: flex-end; }
-.viewer-layout { width: min(1500px, 96vw); height: min(880px, 90vh); display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: stretch; }
+.viewer-layout { width: min(1500px, 96vw); height: min(880px, 90vh); display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 12px; align-items: stretch; }
+.viewer-layout:has(.viewer-media:last-child) { grid-template-columns: 1fr; }
 .viewer-media { min-width: 0; min-height: 0; display: grid; place-items: center; overflow: auto; border-radius: 8px; background: #030303; }
-.viewer-media img, .viewer-media video { max-width: 92%; max-height: 92%; object-fit: contain; border-radius: 6px; transform: scale(var(--zoom, 1)); transform-origin: center; transition: transform 120ms ease; }
+.viewer-media img, .viewer-media video { max-width: calc(96% / var(--zoom, 1)); max-height: calc(96% / var(--zoom, 1)); object-fit: contain; border-radius: 6px; transform: scale(var(--zoom, 1)); transform-origin: center; transition: transform 120ms ease; }
 .viewer-details { border: 1px solid var(--line); background: #090909; border-radius: 9px; padding: 12px; overflow: auto; align-self: stretch; }
 .viewer-details h3 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
 .viewer-details label { display: grid; gap: 6px; margin-bottom: 10px; }

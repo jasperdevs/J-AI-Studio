@@ -96,6 +96,18 @@ function nodeRange(info, node, key, fallback = {}) {
   return typeof meta === "object" && !Array.isArray(meta) ? { ...fallback, ...meta } : fallback;
 }
 
+function textRange(info, node, key) {
+  const meta = info?.[node]?.input?.required?.[key]?.[1];
+  if (typeof meta !== "object" || Array.isArray(meta)) return {};
+  const tooltip = String(meta.tooltip || "");
+  const match = tooltip.match(/maximum(?: length)? (?:is |of )?([0-9,]+)\s*(?:characters|chars)?/i);
+  const parsedMax = match ? Number(match[1].replace(/,/g, "")) : undefined;
+  return {
+    ...meta,
+    max: Number(meta.max || meta.maxLength || meta.max_length || parsedMax || 0) || undefined
+  };
+}
+
 function aspectSet(defaults, ratios) {
   return ratios.map(([label, w, h]) => ({ label, value: `${w}x${h}`, w, h, default: w === defaults.width && h === defaults.height }));
 }
@@ -145,19 +157,28 @@ function inferModels(info) {
   const samplers = optionsFor(info, "KSampler", "sampler_name");
   const schedulers = optionsFor(info, "KSampler", "scheduler");
   const weightDtypes = optionsFor(info, "UNETLoader", "weight_dtype");
+  const textMeta = textRange(info, "CLIPTextEncode", "text");
+  const samplerRange = {
+    steps: nodeRange(info, "KSampler", "steps", { default: 20, min: 1, max: 10000, step: 1 }),
+    cfg: nodeRange(info, "KSampler", "cfg", { default: 8, min: 0, max: 100, step: 0.1 }),
+    denoise: nodeRange(info, "KSampler", "denoise", { default: 1, min: 0, max: 1, step: 0.01 })
+  };
   const profiles = [];
   const sd3Range = {
     width: nodeRange(info, "EmptySD3LatentImage", "width", { default: 1024, min: 16, max: 16384, step: 16 }),
-    height: nodeRange(info, "EmptySD3LatentImage", "height", { default: 1024, min: 16, max: 16384, step: 16 })
+    height: nodeRange(info, "EmptySD3LatentImage", "height", { default: 1024, min: 16, max: 16384, step: 16 }),
+    count: nodeRange(info, "EmptySD3LatentImage", "batch_size", { default: 1, min: 1, max: 4096, step: 1 })
   };
   const imageRange = {
     width: nodeRange(info, "EmptyLatentImage", "width", { default: 512, min: 16, max: 16384, step: 8 }),
-    height: nodeRange(info, "EmptyLatentImage", "height", { default: 512, min: 16, max: 16384, step: 8 })
+    height: nodeRange(info, "EmptyLatentImage", "height", { default: 512, min: 16, max: 16384, step: 8 }),
+    count: nodeRange(info, "EmptyLatentImage", "batch_size", { default: 1, min: 1, max: 4096, step: 1 })
   };
   const wanRange = {
     width: nodeRange(info, "Wan22ImageToVideoLatent", "width", { default: 512, min: 32, max: 16384, step: 32 }),
     height: nodeRange(info, "Wan22ImageToVideoLatent", "height", { default: 288, min: 32, max: 16384, step: 32 }),
-    frames: nodeRange(info, "Wan22ImageToVideoLatent", "length", { default: 49, min: 1, max: 16384, step: 4 })
+    frames: nodeRange(info, "Wan22ImageToVideoLatent", "length", { default: 49, min: 1, max: 16384, step: 4 }),
+    fps: nodeRange(info, "CreateVideo", "fps", { default: 30, min: 1, max: 120, step: 1 })
   };
 
   const zImageNames = new Set(unets.filter(isZImageModel));
@@ -192,7 +213,7 @@ function inferModels(info) {
         ["2.35:1", 1536, 640]
       ]),
       options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
-      constraints: { width: sd3Range.width, height: sd3Range.height },
+      constraints: { prompt: textMeta, negative: textMeta, width: sd3Range.width, height: sd3Range.height, count: sd3Range.count, ...samplerRange },
       capabilities: { textEncoder: true, vae: true, weightDtype: true }
     }));
   }
@@ -225,7 +246,7 @@ function inferModels(info) {
         ["2.35:1", 1536, 640]
       ]),
       options: { samplers, schedulers },
-      constraints: { width: imageRange.width, height: imageRange.height },
+      constraints: { prompt: textMeta, negative: textMeta, width: imageRange.width, height: imageRange.height, count: imageRange.count, ...samplerRange },
       capabilities: { startImage: Boolean(info.LoadImage && info.VAEEncode), denoise: Boolean(info.LoadImage && info.VAEEncode) }
     }));
   }
@@ -263,7 +284,7 @@ function inferModels(info) {
         ["2.35:1", 640, 272]
       ]),
       options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
-      constraints: { width: wanRange.width, height: wanRange.height, frames: wanRange.frames },
+      constraints: { prompt: textMeta, negative: textMeta, width: wanRange.width, height: wanRange.height, frames: wanRange.frames, fps: wanRange.fps, ...samplerRange },
       capabilities: { negativePrompt: true, textEncoder: true, vae: true, weightDtype: true }
     }));
   }
@@ -503,6 +524,7 @@ function dedupeGallery(items) {
 }
 
 function cleanupGalleryState() {
+  let changed = false;
   const doneKeys = new Set(
     gallery
       .filter((item) => item.status === "done")
@@ -510,11 +532,24 @@ function cleanupGalleryState() {
   );
   gallery = gallery.filter((item) => {
     if (item.status !== "pending") return true;
-    if (gallery.some((next) => next.status === "done" && next.jobId && next.jobId === item.jobId)) return false;
+    if (item.jobId && !jobs.has(item.jobId)) {
+      item.status = "error";
+      item.filename = "Generation interrupted";
+      changed = true;
+      return true;
+    }
+    if (gallery.some((next) => next.status === "done" && next.jobId && next.jobId === item.jobId)) {
+      changed = true;
+      return false;
+    }
     const key = `${item.jobId || ""}|${item.prompt || ""}|${item.model || ""}|${item.width || ""}|${item.height || ""}`;
-    if (item.jobId && doneKeys.has(key)) return false;
+    if (item.jobId && doneKeys.has(key)) {
+      changed = true;
+      return false;
+    }
     return true;
   });
+  if (changed) saveGallery();
 }
 
 function generationSettings(body) {
@@ -540,6 +575,69 @@ function generationSettings(body) {
     settings.fps = Number(body.fps || 0);
   }
   return settings;
+}
+
+function clampNumber(value, fallback, min, max) {
+  const number = Number(value);
+  const safeFallback = Number.isFinite(Number(fallback)) ? Number(fallback) : 0;
+  const safeMin = Number.isFinite(Number(min)) ? Number(min) : -Number.MAX_SAFE_INTEGER;
+  const safeMax = Number.isFinite(Number(max)) ? Number(max) : Number.MAX_SAFE_INTEGER;
+  if (!Number.isFinite(number)) return safeFallback;
+  return Math.max(safeMin, Math.min(safeMax, number));
+}
+
+function clampInteger(value, fallback, min, max) {
+  return Math.round(clampNumber(value, fallback, min, max));
+}
+
+function sanitizeGenerateBody(input = {}, info = {}) {
+  const kind = input.kind === "video" ? "video" : "image";
+  const workflow = String(input.workflow || "");
+  const prompt = String(input.prompt || "").trim();
+  if (!prompt) throw new Error("Prompt is required.");
+  if (!String(input.model || "").trim()) throw new Error("Choose a supported model first.");
+  if (!["unet-image", "checkpoint-image", "wan-video"].includes(workflow)) throw new Error("This model does not have a supported workflow.");
+  if (kind === "video" && workflow !== "wan-video") throw new Error("The selected model is not a video workflow.");
+  if (kind === "image" && workflow === "wan-video") throw new Error("The selected model is not an image workflow.");
+  if ((workflow === "unet-image" || workflow === "wan-video") && (!input.textEncoder || !input.vae)) {
+    throw new Error("This workflow needs a text encoder and VAE.");
+  }
+
+  const latentNode = workflow === "wan-video" ? "Wan22ImageToVideoLatent" : workflow === "unet-image" ? "EmptySD3LatentImage" : "EmptyLatentImage";
+  const widthRange = nodeRange(info, latentNode, "width", { default: kind === "video" ? 512 : 1024, min: 16, max: 16384 });
+  const heightRange = nodeRange(info, latentNode, "height", { default: kind === "video" ? 288 : 1024, min: 16, max: 16384 });
+  const countRange = nodeRange(info, latentNode, "batch_size", { default: 1, min: 1, max: 8 });
+  const frameRange = nodeRange(info, latentNode, "length", { default: 33, min: 1, max: 16384 });
+  const fpsRange = nodeRange(info, "CreateVideo", "fps", { default: 16, min: 1, max: 120 });
+  const stepsRange = nodeRange(info, "KSampler", "steps", { default: kind === "video" ? 12 : 8, min: 1, max: 10000 });
+  const cfgRange = nodeRange(info, "KSampler", "cfg", { default: kind === "video" ? 5 : 1, min: 0, max: 100 });
+  const denoiseRange = nodeRange(info, "KSampler", "denoise", { default: 1, min: 0, max: 1 });
+
+  return {
+    ...input,
+    kind,
+    workflow,
+    prompt,
+    negative: String(input.negative || ""),
+    model: String(input.model || ""),
+    textEncoder: String(input.textEncoder || ""),
+    vae: String(input.vae || ""),
+    clipType: String(input.clipType || "wan"),
+    weightDtype: String(input.weightDtype || "default"),
+    width: clampNumber(input.width, widthRange.default, widthRange.min, widthRange.max),
+    height: clampNumber(input.height, heightRange.default, heightRange.min, heightRange.max),
+    steps: clampInteger(input.steps, stepsRange.default, stepsRange.min, stepsRange.max),
+    cfg: clampNumber(input.cfg, cfgRange.default, cfgRange.min, cfgRange.max),
+    denoise: clampNumber(input.denoise, denoiseRange.default, denoiseRange.min, denoiseRange.max),
+    sampler: String(input.sampler || ""),
+    scheduler: String(input.scheduler || ""),
+    seed: String(input.seed || ""),
+    count: clampInteger(input.count, countRange.default, countRange.min, countRange.max),
+    frames: clampInteger(input.frames, frameRange.default, frameRange.min, frameRange.max),
+    fps: clampInteger(input.fps, fpsRange.default, fpsRange.min, fpsRange.max),
+    startImage: String(input.startImage || ""),
+    startImageName: String(input.startImageName || "")
+  };
 }
 
 function replaceGalleryJob(id, outputs, body, status = "done") {
@@ -702,8 +800,12 @@ app.get("/api/health", async (_req, res) => {
 });
 
 app.get("/api/models", async (_req, res) => {
-  const info = await comfy("/object_info");
-  res.json(inferModels(info));
+  try {
+    const info = await comfy("/object_info");
+    res.json(inferModels(info));
+  } catch (error) {
+    res.status(503).json({ error: error.message });
+  }
 });
 
 app.get("/api/paths", (_req, res) => {
@@ -724,13 +826,21 @@ app.get("/api/gallery", async (_req, res) => {
   res.json({ outputs: gallery });
 });
 
-app.post("/api/generate", (req, res) => {
+app.post("/api/generate", async (req, res) => {
+  let body;
+  try {
+    const info = await comfy("/object_info");
+    body = sanitizeGenerateBody(req.body, info);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
   const id = crypto.randomUUID();
-  const items = makePendingItems(id, req.body);
+  const items = makePendingItems(id, body);
   gallery = dedupeGallery([...items, ...gallery]).slice(0, 200);
   saveGallery();
-  jobs.set(id, { status: "queued", kind: req.body.kind, prompt: req.body.prompt, outputs: [], items, startedAt: Date.now() });
-  runJob(id, req.body);
+  jobs.set(id, { status: "queued", kind: body.kind, prompt: body.prompt, outputs: [], items, startedAt: Date.now() });
+  runJob(id, body);
   res.json({ jobId: id, items });
 });
 
@@ -784,6 +894,30 @@ app.post("/api/queue/cancel", async (_req, res) => {
 app.post("/api/gallery/clear", (_req, res) => {
   gallery = gallery.filter((item) => item.status === "pending");
   saveGallery();
+  res.json({ ok: true, outputs: gallery });
+});
+
+app.post("/api/gallery/errors/clear", (_req, res) => {
+  gallery = gallery.filter((item) => item.status !== "error" && item.status !== "canceled");
+  saveGallery();
+  res.json({ ok: true, outputs: gallery });
+});
+
+app.post("/api/cache/clear", async (_req, res) => {
+  for (const [id, job] of jobs) {
+    if (job.status === "queued" || job.status === "running" || job.status === "canceling") {
+      jobs.set(id, { ...job, status: "canceled" });
+      updateGalleryJob(id, { status: "canceled" });
+    }
+  }
+  gallery = gallery
+    .filter((item) => item.status === "done")
+    .map(({ preview, progress, ...item }) => item)
+    .slice(0, 200);
+  saveGallery();
+  await comfy("/queue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ clear: true }) }).catch(() => null);
+  await comfy("/interrupt", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => null);
+  await comfy("/free", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ unload_models: true, free_memory: true }) }).catch(() => null);
   res.json({ ok: true, outputs: gallery });
 });
 

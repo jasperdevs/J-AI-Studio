@@ -1248,14 +1248,11 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   font-size: 11px;
   font-weight: 500;
   letter-spacing: -0.005em;
-  color: hsl(var(--muted-foreground));
 }
 .generate-step-label.is-queued {
-  color: hsl(var(--muted-foreground));
   font-size: 12px;
 }
 .generate-step-count {
-  color: hsl(var(--foreground));
   font-size: 16px;
   font-weight: 600;
   line-height: 1;
@@ -1263,15 +1260,65 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .generate-step-count i {
   font-style: normal;
-  color: hsl(var(--muted-foreground));
   font-weight: 400;
   margin: 0 2px;
 }
 .generate-elapsed {
   font-size: 11px;
   font-weight: 500;
-  color: hsl(var(--muted-foreground));
   font-variant-numeric: tabular-nums;
+}
+
+@keyframes shimmer-sweep {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.generate-overlay .generate-step-label,
+.generate-overlay .generate-step-count,
+.generate-overlay .generate-step-count i,
+.generate-overlay .generate-elapsed {
+  background-image: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground) / 0.5) 0%,
+    hsl(var(--muted-foreground) / 0.5) 35%,
+    hsl(var(--foreground)) 50%,
+    hsl(var(--muted-foreground) / 0.5) 65%,
+    hsl(var(--muted-foreground) / 0.5) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shimmer-sweep 2.2s linear infinite;
+}
+.generate-overlay .generate-step-count {
+  background-image: linear-gradient(
+    90deg,
+    hsl(var(--foreground) / 0.55) 0%,
+    hsl(var(--foreground) / 0.55) 35%,
+    hsl(var(--foreground)) 50%,
+    hsl(var(--foreground) / 0.55) 65%,
+    hsl(var(--foreground) / 0.55) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .generate-overlay .generate-step-label,
+  .generate-overlay .generate-step-count,
+  .generate-overlay .generate-step-count i,
+  .generate-overlay .generate-elapsed {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    color: hsl(var(--foreground));
+  }
 }
 
 .generate-bar {

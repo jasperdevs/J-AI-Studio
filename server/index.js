@@ -15,6 +15,7 @@ const app = express();
 const jobs = new Map();
 const dataDir = process.env.JAI_DATA_DIR ? path.resolve(process.env.JAI_DATA_DIR) : path.join(root, "data");
 const galleryPath = path.join(dataDir, "gallery.json");
+const galleryLimit = Number(process.env.JAI_GALLERY_LIMIT || 1000);
 let gallery = loadGallery();
 const localHosts = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 
@@ -53,7 +54,7 @@ function loadGallery() {
 
 function saveGallery() {
   fs.mkdirSync(dataDir, { recursive: true });
-  const persistable = gallery.slice(0, 200).map(({ preview, ...rest }) => rest);
+  const persistable = gallery.slice(0, galleryLimit).map(({ preview, ...rest }) => rest);
   fs.writeFileSync(galleryPath, JSON.stringify(persistable, null, 2));
 }
 
@@ -779,7 +780,7 @@ function replaceGalleryJob(id, outputs, body, status = "done") {
     if (completed[nextIndex]) replaced.push(completed[nextIndex++]);
   });
   while (completed[nextIndex]) replaced.unshift(completed[nextIndex++]);
-  gallery = dedupeGallery(replaced).slice(0, 200);
+  gallery = dedupeGallery(replaced).slice(0, galleryLimit);
   saveGallery();
   return completed;
 }
@@ -984,10 +985,10 @@ app.get("/api/paths", (_req, res) => {
 app.get("/api/gallery", async (_req, res) => {
   cleanupGalleryState();
   if (!gallery.some((item) => item.status === "done")) {
-    const history = await comfy("/history?max_items=100").catch(() => ({}));
+    const history = await comfy(`/history?max_items=${Math.min(galleryLimit, 500)}`).catch(() => ({}));
     const recovered = recordsFromComfyHistory(history);
     if (recovered.length) {
-      gallery = [...gallery.filter((item) => item.status === "pending"), ...recovered].slice(0, 200);
+      gallery = [...gallery.filter((item) => item.status === "pending"), ...recovered].slice(0, galleryLimit);
       saveGallery();
     }
   }
@@ -1006,7 +1007,7 @@ app.post("/api/generate", async (req, res) => {
   }
   const id = crypto.randomUUID();
   const items = makePendingItems(id, body);
-  gallery = dedupeGallery([...items, ...gallery]).slice(0, 200);
+  gallery = dedupeGallery([...items, ...gallery]).slice(0, galleryLimit);
   saveGallery();
   jobs.set(id, { status: "queued", kind: body.kind, prompt: body.prompt, outputs: [], items, startedAt: Date.now() });
   runJob(id, body);
@@ -1082,7 +1083,7 @@ app.post("/api/cache/clear", async (_req, res) => {
   gallery = gallery
     .filter((item) => item.status === "done")
     .map(({ preview, progress, ...item }) => item)
-    .slice(0, 200);
+    .slice(0, galleryLimit);
   saveGallery();
   await comfy("/queue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ clear: true }) }).catch(() => null);
   await comfy("/interrupt", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => null);

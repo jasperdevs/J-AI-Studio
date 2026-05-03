@@ -1029,6 +1029,29 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   flex-direction: column;
   gap: 6px;
 }
+.gallery-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(240px, calc(100vw - 32px));
+  min-height: 40px;
+  margin: 18px auto 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 220ms var(--spring);
+}
+.gallery-load-more:hover {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border-strong));
+  transform: translateY(-1px);
+}
 .tile {
   position: relative;
   display: block;

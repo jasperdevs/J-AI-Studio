@@ -114,6 +114,9 @@ const defaultPrefs: Preferences = {
   showFailedItems: true
 };
 
+const galleryInitialBatch = 72;
+const galleryBatchSize = 48;
+
 const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
   image: [
     { label: "1:1", value: "1024x1024", w: 1024, h: 1024 },
@@ -724,6 +727,7 @@ function App() {
   const [status, setStatus] = useState("Ready");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [galleryLoaded, setGalleryLoaded] = useState(false);
+  const [galleryRenderCount, setGalleryRenderCount] = useState(galleryInitialBatch);
   const [active, setActive] = useState<GalleryItem | null>(null);
   const [viewerZoom, setViewerZoom] = useState(1);
   const [viewerPan, setViewerPan] = useState({ x: 0, y: 0 });
@@ -738,6 +742,7 @@ function App() {
   const viewerDragEndRef = useRef<number>(0);
   const [isDraggingViewer, setIsDraggingViewer] = useState(false);
   const zenPromptRef = useRef<HTMLTextAreaElement | null>(null);
+  const galleryStageRef = useRef<HTMLElement | null>(null);
   const zenStripRef = useRef<HTMLDivElement | null>(null);
   const zenStripDragRef = useRef<{ id: number; x: number; scrollLeft: number; moved: boolean } | null>(null);
   const latestZenIdRef = useRef("");
@@ -1103,14 +1108,36 @@ function App() {
   const aspectValue = `${width}x${height}`;
   const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "free" : aspectValue;
   const visibleGallery = useMemo(() => sortGalleryItems(gallery.filter((item) => item.type === mode && item.status !== "canceled" && (prefs.showFailedItems || item.status !== "error"))), [gallery, mode, prefs.showFailedItems]);
+  const renderedGallery = useMemo(() => visibleGallery.slice(0, galleryRenderCount), [visibleGallery, galleryRenderCount]);
   const galleryColumnCount = useGalleryColumnCount();
-  const galleryColumns = useMemo(() => distributeGalleryColumns(visibleGallery, galleryColumnCount), [visibleGallery, galleryColumnCount]);
+  const galleryColumns = useMemo(() => distributeGalleryColumns(renderedGallery, galleryColumnCount), [renderedGallery, galleryColumnCount]);
+  const hasMoreGallery = renderedGallery.length < visibleGallery.length;
   const runningCount = visibleGallery.filter((item) => item.status === "pending").length;
   const doneGallery = visibleGallery.filter((item) => item.status === "done" || item.status === "error");
   const zenPendingItem = visibleGallery.find((item) => item.status === "pending") || null;
   const zenItem = doneGallery.find((item) => item.id === zenSelectedId) || doneGallery[0] || null;
   const zenDisplayItem = zenPendingItem || zenItem;
   const generateDisabled = !currentProfile || (currentProfile.capabilities.textEncoder && !textEncoder) || (currentProfile.capabilities.vae && !vae);
+
+  useEffect(() => {
+    setGalleryRenderCount(galleryInitialBatch);
+    galleryStageRef.current?.scrollTo({ top: 0 });
+  }, [mode]);
+
+  useEffect(() => {
+    setGalleryRenderCount((current) => Math.min(Math.max(galleryInitialBatch, current), Math.max(galleryInitialBatch, visibleGallery.length)));
+  }, [visibleGallery.length]);
+
+  function loadMoreGalleryItems() {
+    setGalleryRenderCount((current) => Math.min(current + galleryBatchSize, visibleGallery.length));
+  }
+
+  function onGalleryScroll(event: React.UIEvent<HTMLElement>) {
+    if (!hasMoreGallery) return;
+    const target = event.currentTarget;
+    const remaining = target.scrollHeight - target.scrollTop - target.clientHeight;
+    if (remaining < 900) loadMoreGalleryItems();
+  }
 
   function chooseModel(profileId: string) {
     const profile = models?.profiles.find((item) => item.id === profileId);
@@ -1773,7 +1800,7 @@ function App() {
         </>
       ) : (
         <>
-          <main className="stage-gallery">
+          <main ref={galleryStageRef} className="stage-gallery" onScroll={onGalleryScroll}>
             <section className="gallery" style={{ "--gallery-columns": galleryColumnCount } as React.CSSProperties}>
           {!galleryLoaded ? <GallerySkeleton columns={galleryColumnCount} /> : visibleGallery.length ? galleryColumns.map((column, columnIndex) => (
             <div className="gallery-column" key={`gallery-column-${columnIndex}`}>
@@ -1826,6 +1853,11 @@ function App() {
             </div>
           )}
             </section>
+            {galleryLoaded && hasMoreGallery ? (
+              <button className="gallery-load-more" onClick={loadMoreGalleryItems}>
+                Load more
+              </button>
+            ) : null}
             <div className="bottom-fade" />
           </main>
 

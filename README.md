@@ -63,8 +63,6 @@ http://127.0.0.1:8188
 - A running ComfyUI server
 - Local ComfyUI model files
 
-J AI Studio does not download models, include models, or publish generated outputs. Models stay in your ComfyUI install. Generated files stay in ComfyUI's output folder.
-
 ## ComfyUI
 
 J AI Studio runs on top of ComfyUI. It reads available models, samplers, schedulers, size limits, prompt limits, text encoders, and VAEs from your local ComfyUI server where ComfyUI exposes them.

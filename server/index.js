@@ -6,7 +6,7 @@ import { execFile } from "node:child_process";
 import { comfy, comfyOutputDir, comfyUrl, host, localHosts, port, root } from './comfy.js';
 import { inferModels } from './models.js';
 import { sanitizeGenerateBody } from './validation.js';
-import { dedupeGallery, filterVisibleGallery, gallery, galleryLimit, dataDir, hideGalleryItems, makePendingItems, recordsFromComfyHistory, saveGallery, setGallery, cleanupGalleryState, updateGalleryJob } from './gallery-store.js';
+import { dedupeGallery, deleteGalleryFiles, filterVisibleGallery, gallery, galleryLimit, dataDir, hideGalleryItems, makePendingItems, recordsFromComfyHistory, saveGallery, setGallery, cleanupGalleryState, updateGalleryJob } from './gallery-store.js';
 import { jobs, runJob } from './jobs.js';
 
 const app = express();
@@ -114,10 +114,11 @@ app.post("/api/queue/cancel", async (_req, res) => {
 
 app.post("/api/gallery/clear", (_req, res) => {
   const cleared = gallery.filter((item) => item.status === "done");
+  const files = deleteGalleryFiles(cleared);
   hideGalleryItems(cleared);
   setGallery(gallery.filter((item) => item.status !== "done"));
   saveGallery();
-  res.json({ ok: true, outputs: gallery });
+  res.json({ ok: true, files, outputs: gallery });
 });
 
 app.post("/api/gallery/errors/clear", (_req, res) => {
@@ -146,10 +147,12 @@ app.post("/api/cache/clear", async (_req, res) => {
 app.delete("/api/gallery/:id", (req, res) => {
   const id = decodeURIComponent(req.params.id);
   const before = gallery.length;
-  hideGalleryItems(gallery.filter((item) => item.id === id || item.url === id));
+  const removed = gallery.filter((item) => item.id === id || item.url === id);
+  const files = deleteGalleryFiles(removed);
+  hideGalleryItems(removed);
   setGallery(gallery.filter((item) => item.id !== id && item.url !== id));
   if (gallery.length !== before) saveGallery();
-  res.json({ ok: true, removed: before - gallery.length, outputs: gallery });
+  res.json({ ok: true, files, removed: before - gallery.length, outputs: gallery });
 });
 
 app.post("/api/open-output-folder", (req, res) => {

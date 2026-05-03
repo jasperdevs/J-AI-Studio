@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { root } from './comfy.js';
+import { comfyOutputDir, root } from './comfy.js';
 
 export const dataDir = process.env.JAI_DATA_DIR ? path.resolve(process.env.JAI_DATA_DIR) : path.join(root, "data");
 export const galleryPath = path.join(dataDir, "gallery.json");
@@ -55,6 +55,63 @@ export function isGalleryHidden(item) {
 
 export function filterVisibleGallery(items) {
   return items.filter((item) => !isGalleryHidden(item));
+}
+
+export function outputFileCandidates(item) {
+  if (!comfyOutputDir) return [];
+  const keys = [item?.url, item?.id, item?.outputName, item?.filename].filter(Boolean);
+  const candidates = [];
+  for (const key of keys) {
+    let filename = "";
+    let subfolder = "";
+    if (String(key).startsWith("/comfy/view?")) {
+      const params = new URLSearchParams(String(key).split("?")[1] || "");
+      filename = params.get("filename") || "";
+      subfolder = params.get("subfolder") || "";
+    } else if (String(key).startsWith("http")) {
+      try {
+        const parsed = new URL(String(key));
+        filename = parsed.searchParams.get("filename") || path.basename(parsed.pathname);
+        subfolder = parsed.searchParams.get("subfolder") || "";
+      } catch {
+        filename = path.basename(String(key));
+      }
+    } else {
+      filename = path.basename(String(key));
+    }
+    if (!filename || filename === "." || filename === "/") continue;
+    const base = path.resolve(comfyOutputDir);
+    const withSubfolder = subfolder && path.basename(base).toLowerCase() !== path.basename(subfolder).toLowerCase()
+      ? path.resolve(base, subfolder, filename)
+      : path.resolve(base, filename);
+    candidates.push(withSubfolder);
+  }
+  return [...new Set(candidates)];
+}
+
+export function deleteGalleryFiles(items) {
+  const base = comfyOutputDir ? path.resolve(comfyOutputDir) : "";
+  if (!base) return { deleted: 0, skipped: 0 };
+  let deleted = 0;
+  let skipped = 0;
+  for (const item of items) {
+    for (const file of outputFileCandidates(item)) {
+      const resolved = path.resolve(file);
+      if (resolved !== base && !resolved.startsWith(`${base}${path.sep}`)) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+          fs.unlinkSync(resolved);
+          deleted += 1;
+        }
+      } catch {
+        skipped += 1;
+      }
+    }
+  }
+  return { deleted, skipped };
 }
 
 export function saveGallery() {

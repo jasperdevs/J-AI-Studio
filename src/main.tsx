@@ -23,7 +23,7 @@ import {
   RotateCcw,
   Maximize2,
   Minimize2,
-  Settings2,
+  Settings,
   SlidersHorizontal,
   PanelLeft,
   Trash2,
@@ -89,6 +89,7 @@ type Preferences = {
   defaultFps: number;
   variationQueueMode: "batch" | "separate";
   zenMode: boolean;
+  confirmActions: boolean;
   mobileZenDefaulted?: boolean;
 };
 
@@ -99,7 +100,8 @@ const defaultPrefs: Preferences = {
   defaultVideoSteps: 12,
   defaultFps: 16,
   variationQueueMode: "batch",
-  zenMode: false
+  zenMode: false,
+  confirmActions: true
 };
 
 const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
@@ -794,7 +796,7 @@ function App() {
       }
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
-        if (window.confirm("Delete this generation from the gallery?")) deleteItem(activeItem, true);
+        deleteItem(activeItem);
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -848,6 +850,10 @@ function App() {
       resetViewer();
     }
     setPrefs({ zenMode: enabled });
+  }
+
+  function confirmAction(message: string) {
+    return !prefs.confirmActions || window.confirm(message);
   }
 
   function showToast(message: string, tone: "default" | "success" | "error" = "default") {
@@ -1075,28 +1081,28 @@ function App() {
 
   async function cancelJob(jobId: string | undefined) {
     if (!jobId) return;
-    if (!window.confirm("Cancel this generation?")) return;
+    if (!confirmAction("Cancel this generation?")) return;
     setGallery((current) => current.filter((item) => item.jobId !== jobId));
     await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).catch(() => null);
     setStatus("Ready");
   }
 
   async function cancelQueue() {
-    if (!window.confirm("Cancel everything currently queued or generating?")) return;
+    if (!confirmAction("Cancel everything currently queued or generating?")) return;
     setGallery((current) => current.filter((item) => item.status !== "pending" && item.status !== "canceled"));
     await fetch("/api/queue/cancel", { method: "POST" }).catch(() => null);
     setStatus("Ready");
   }
 
   async function clearGallery() {
-    if (!window.confirm("Clear finished gallery items from this app?")) return;
+    if (!confirmAction("Clear finished gallery items from this app?")) return;
     const data = await fetch("/api/gallery/clear", { method: "POST" }).then((res) => res.json()).catch(() => null);
         if (data?.outputs) setGallery(data.outputs.filter((item: GalleryItem) => item.status !== "canceled"));
     setStatus("Ready");
   }
 
   async function resetAllSettings() {
-    if (!window.confirm("Reset all saved J AI Studio settings and prompt drafts?")) return;
+    if (!confirmAction("Reset all saved J AI Studio settings and prompt drafts?")) return;
     localStorage.removeItem("j-ai-studio-draft");
     localStorage.removeItem("j-ai-studio-prefs");
     if ("caches" in window) {
@@ -1106,7 +1112,7 @@ function App() {
   }
 
   async function clearAllCache() {
-    if (!window.confirm("Clear browser cache, queued preview state, and free ComfyUI memory? Finished gallery items will stay.")) return;
+    if (!confirmAction("Clear browser cache, queued preview state, and free ComfyUI memory? Finished gallery items will stay.")) return;
     if ("caches" in window) {
       await caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).catch(() => null);
     }
@@ -1121,7 +1127,7 @@ function App() {
   }
 
   async function deleteItem(item: GalleryItem, confirmed = false) {
-    if (!confirmed && !window.confirm("Delete this generation from the gallery?")) return;
+    if (!confirmed && !confirmAction("Delete this generation from the gallery?")) return;
     setGallery((current) => current.filter((next) => next.id !== item.id));
     if (active?.id === item.id) setActive(null);
     const response = await fetch(`/api/gallery/${encodeURIComponent(item.id)}`, { method: "DELETE" }).catch(() => null);
@@ -1425,7 +1431,7 @@ function App() {
           <label className="file-pick">
             <input type="file" accept="image/*" onChange={(event) => readStartImage(event.target.files?.[0])} />
             <span>{startImageName || "Choose image"}</span>
-            {startImageName ? <Tip content="Clear start image"><button type="button" onClick={(event) => { event.preventDefault(); if (window.confirm("Clear the selected start image?")) { setStartImage(""); setStartImageName(""); } }}>Clear</button></Tip> : null}
+                  {startImageName ? <Tip content="Clear start image"><button type="button" onClick={(event) => { event.preventDefault(); if (confirmAction("Clear the selected start image?")) { setStartImage(""); setStartImageName(""); } }}>Clear</button></Tip> : null}
           </label>
           {currentProfile?.capabilities.denoise ? (
             <input type="number" min={0} max={1} step="0.01" value={denoise} onChange={(event) => setDenoise(Number(event.target.value))} placeholder="Denoise" />
@@ -1497,7 +1503,7 @@ function App() {
             </button></Tip>
           ) : null}
           <div className="zen-top-actions">
-            <Tip content="Settings"><button className="icon-button" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button></Tip>
+            <Tip content="Settings"><button className="icon-button" aria-label="Settings" onClick={() => setSettings(true)}><Settings size={15} /></button></Tip>
             <Tip content="Exit zen"><button className="icon-button" aria-label="Exit zen" onClick={() => setZenMode(false)}><Minimize2 size={15} /></button></Tip>
           </div>
 
@@ -1609,7 +1615,7 @@ function App() {
           </button></Tip>
           <div className="zen-top-actions">
             {runningCount ? <Tip content="Cancel all running and queued generations"><button className="queue-button" onClick={cancelQueue}>Cancel queue</button></Tip> : null}
-            <Tip content="Settings"><button className="icon-button" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button></Tip>
+            <Tip content="Settings"><button className="icon-button" aria-label="Settings" onClick={() => setSettings(true)}><Settings size={15} /></button></Tip>
             <Tip content="Zen mode"><button className="icon-button" aria-label="Enter zen mode" onClick={() => setZenMode(true)}><Maximize2 size={15} /></button></Tip>
           </div>
 
@@ -1714,6 +1720,13 @@ function App() {
                   </span>
                   <input type="checkbox" checked={prefs.zenMode} onChange={(event) => setZenMode(event.target.checked)} />
                 </label>
+                <label className="toggle-row">
+                  <span>
+                    <strong>Confirm actions</strong>
+                    <em>Ask before delete, cancel, reset, and cache clearing</em>
+                  </span>
+                  <input type="checkbox" checked={prefs.confirmActions} onChange={(event) => setPrefs({ confirmActions: event.target.checked })} />
+                </label>
               </section>
 
               <section>
@@ -1797,6 +1810,7 @@ function App() {
                           </div>
                         </div>
                       ) : null}
+                      <Tip content="Copy this output's full settings into the generator"><button className="copy-all-settings" onClick={() => applyAllSettings(active)}>Copy All Settings</button></Tip>
                       {generationDetailEntries(active).length ? (
                         <details className="settings-disclosure">
                           <summary>Generation settings</summary>
@@ -1809,9 +1823,6 @@ function App() {
                           </div>
                         </details>
                       ) : null}
-                    </div>
-                    <div className="viewer-side-foot">
-                      <Tip content="Copy this output's full settings into the generator"><button onClick={() => applyAllSettings(active)}>Copy All Settings</button></Tip>
                     </div>
                   </aside>
                 ) : null}

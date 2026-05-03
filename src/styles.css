@@ -506,6 +506,18 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .zen-prompt textarea::placeholder { color: hsl(var(--muted-foreground) / 0.5); }
 .zen-prompt textarea:focus { box-shadow: none; }
 
+.prompt-count {
+  justify-self: end;
+  margin-top: -6px;
+  padding-right: 4px;
+  color: hsl(var(--muted-foreground) / 0.7);
+  font-size: 11px;
+  line-height: 1;
+}
+.prompt-count.limit {
+  color: hsl(var(--destructive-foreground));
+}
+
 .negative-drawer {
   display: grid;
   gap: 4px;
@@ -1204,12 +1216,8 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   display: grid; gap: 18px;
   align-content: start;
 }
-.viewer-side-foot {
-  display: grid; grid-template-columns: 1fr; gap: 8px;
-  padding: 14px 18px;
-  border-top: 1px solid hsl(var(--border) / 0.5);
-}
-.viewer-side-foot button {
+.copy-all-settings {
+  width: 100%;
   min-height: 36px;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--secondary));
@@ -1220,7 +1228,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   cursor: pointer;
   transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out);
 }
-.viewer-side-foot button:hover { background: hsl(var(--accent)); border-color: hsl(var(--border-strong)); }
+.copy-all-settings:hover { background: hsl(var(--accent)); border-color: hsl(var(--border-strong)); }
 
 .prompt-readout { display: grid; gap: 6px; }
 .prompt-readout span,
@@ -1674,7 +1682,6 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
     box-shadow: var(--shadow-xl);
   }
   .viewer-side-body { padding: 14px; gap: 14px; }
-  .viewer-side-foot { padding: 12px; }
   .viewer-arrow { width: 34px; height: 54px; top: calc(50% - 36px); }
   .viewer-arrow.prev { left: 10px; }
   .viewer-arrow.next,

@@ -11,7 +11,8 @@ J AI Studio is a small React + Express app that sits in front of a running Comfy
 - Includes prompt, negative prompt, aspect ratio, width, height, seed, steps, CFG, and batch variation controls
 - Includes video controls for frames and FPS
 - Keeps advanced model settings available without making them the default workflow
-- Shows generated outputs in a session gallery with fullscreen preview and download controls
+- Shows generated outputs in a persistent local gallery with fullscreen preview and download controls
+- Shows queue progress, prompt labels, cancel controls, and recovered ComfyUI history
 - Runs locally; no hosted service or model files are included
 
 ## Requirements
@@ -34,7 +35,7 @@ J AI Studio does not bundle ComfyUI. Keep ComfyUI as its own install, then run J
 4. Open `http://127.0.0.1:8188/object_info` in a browser if you want to confirm ComfyUI is exposing its nodes.
 5. Start J AI Studio and open `http://127.0.0.1:8787`.
 
-The model picker is populated from ComfyUI's `/object_info` response. If a model, VAE, text encoder, sampler, scheduler, or optional reference-image path is not exposed by ComfyUI, J AI Studio will not show it.
+The model picker is populated from ComfyUI's `/object_info` response, but it only lists model families that J AI Studio has a matching workflow for. Current built-in workflows cover Z-Image/Z-Anime-style image models and Wan-style video models. Other model files stay hidden from the main picker until a matching workflow profile exists.
 
 ## Quick Start
 
@@ -119,8 +120,8 @@ If image generation fails, confirm the selected model works with the selected te
 
 If video generation is missing or fails, confirm your ComfyUI install has the Wan video latent node and video save nodes available.
 
-If outputs generate but do not preview, check that ComfyUI can serve the file from its `/view` endpoint.
+If outputs generate but do not preview, check that ComfyUI can serve the file from its `/view` endpoint. J AI Studio also recovers recent ComfyUI history into its local gallery if the app restarts.
 
 ## Notes
 
-J AI Studio does not download models, include models, or publish generated outputs. Models stay in your ComfyUI installation, and gallery items are only kept for the current browser session.
+J AI Studio does not download models, include models, or publish generated outputs. Models stay in your ComfyUI installation. Gallery metadata is stored locally in `data/gallery.json`, and generated files stay in ComfyUI's output folder.

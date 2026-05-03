@@ -11,7 +11,9 @@ const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 8787);
 const app = express();
 const jobs = new Map();
-const gallery = [];
+const dataDir = path.join(root, "data");
+const galleryPath = path.join(dataDir, "gallery.json");
+let gallery = loadGallery();
 const localHosts = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 
 app.use(express.json({ limit: "25mb" }));
@@ -33,17 +35,45 @@ function optionsFor(info, node, key) {
   return [];
 }
 
+function loadGallery() {
+  try {
+    return JSON.parse(fs.readFileSync(galleryPath, "utf8"));
+  } catch {
+    return [];
+  }
+}
+
+function saveGallery() {
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(galleryPath, JSON.stringify(gallery.slice(0, 200), null, 2));
+}
+
+function promptTitle(text = "") {
+  const oneLine = String(text).replace(/\s+/g, " ").trim();
+  return oneLine.length > 68 ? `${oneLine.slice(0, 65)}...` : oneLine || "Untitled prompt";
+}
+
+function isSupportedImageModel(name = "") {
+  return /z[-_ ]?anime|z[-_ ]?image|turbo/i.test(name);
+}
+
+function isSupportedVideoModel(name = "") {
+  return /wan/i.test(name);
+}
+
 function inferModels(info) {
   const unets = optionsFor(info, "UNETLoader", "unet_name");
   const clips = optionsFor(info, "CLIPLoader", "clip_name");
   const vaes = optionsFor(info, "VAELoader", "vae_name");
   const samplers = optionsFor(info, "KSampler", "sampler_name");
   const schedulers = optionsFor(info, "KSampler", "scheduler");
-  const imageModels = unets.filter((name) => /z[-_ ]?anime|z[-_ ]?image|turbo/i.test(name));
-  const videoModels = unets.filter((name) => /wan|hunyuan|ltxv|mochi|video/i.test(name));
+  const imageModels = unets.filter(isSupportedImageModel);
+  const videoModels = unets.filter(isSupportedVideoModel);
+  const unsupportedModels = unets.filter((name) => !isSupportedImageModel(name) && !isSupportedVideoModel(name));
   return {
-    imageModels: imageModels.length ? imageModels : unets,
+    imageModels,
     videoModels,
+    unsupportedModels,
     textEncoders: clips,
     vaes,
     samplers,
@@ -57,11 +87,15 @@ function inferModels(info) {
       videoVae: vaes.find((name) => /wan/i.test(name)) || vaes[0] || ""
     },
     capabilities: {
-      image: imageModels.length > 0 || unets.length > 0,
+      image: imageModels.length > 0,
       video: videoModels.length > 0 && Boolean(info.Wan22ImageToVideoLatent || info.WanImageToVideo),
       referenceImage: Boolean(info.LoadImage && info.VAEEncode)
     }
   };
+}
+
+function supportsReferenceImage(modelName = "") {
+  return /edit|kontext|inpaint|fill|qwen.*edit|image.?to.?image|img2img/i.test(modelName);
 }
 
 async function uploadReferenceImage(dataUrl) {
@@ -108,7 +142,7 @@ async function imageGraph(body) {
     "9": { class_type: "SaveImage", inputs: { images: ["8", 0], filename_prefix: "j-ai-studio/image" } }
   };
 
-  if (body.referenceImage) {
+  if (body.referenceImage && supportsReferenceImage(body.model)) {
     const imageName = await uploadReferenceImage(body.referenceImage);
     graph["6"] = { class_type: "LoadImage", inputs: { image: imageName } };
     graph["10"] = { class_type: "VAEEncode", inputs: { pixels: ["6", 0], vae: ["3", 0] } };
@@ -173,7 +207,113 @@ function outputsFrom(history) {
   return urls;
 }
 
+function recordsFromComfyHistory(history) {
+  const records = [];
+  for (const [promptId, item] of Object.entries(history || {})) {
+    const graph = item?.prompt?.[2] || {};
+    const prompt = graph["4"]?.inputs?.text || "";
+    const latent = graph["6"]?.inputs || {};
+    const model = graph["1"]?.inputs?.unet_name || "";
+    for (const output of outputsFrom(item)) {
+      records.push({
+        ...output,
+        id: output.url,
+        jobId: promptId,
+        status: "done",
+        prompt,
+        filename: promptTitle(prompt) || output.filename,
+        outputName: output.filename,
+        createdAt: new Date(Number(item?.prompt?.[3]?.create_time || Date.now())).toISOString(),
+        width: Number(latent.width || 0),
+        height: Number(latent.height || 0),
+        model
+      });
+    }
+  }
+  return records;
+}
+
+function makePendingItems(id, body) {
+  const count = body.kind === "image" ? Math.max(1, Math.min(8, Number(body.count || 1))) : 1;
+  const title = promptTitle(body.prompt);
+  return Array.from({ length: count }, (_, index) => ({
+    id: `${id}-${index}`,
+    jobId: id,
+    url: "",
+    filename: body.kind === "image" && count > 1 ? `${title} ${index + 1}` : title,
+    type: body.kind === "video" ? "video" : "image",
+    status: "pending",
+    prompt: body.prompt || "",
+    createdAt: new Date().toISOString(),
+    width: Number(body.width || 0),
+    height: Number(body.height || 0),
+    model: body.model || ""
+  }));
+}
+
+function replaceGalleryJob(id, outputs, body, status = "done") {
+  const title = promptTitle(body.prompt);
+  const completed = outputs.map((item, index) => ({
+    ...item,
+    id: item.url,
+    jobId: id,
+    status,
+    prompt: body.prompt || "",
+    filename: title || item.filename,
+    createdAt: new Date().toISOString(),
+    width: Number(body.width || 0),
+    height: Number(body.height || 0),
+    model: body.model || "",
+    outputName: item.filename,
+    index
+  }));
+  gallery = [...completed, ...gallery.filter((item) => item.jobId !== id && !completed.some((next) => next.id === item.id))].slice(0, 200);
+  saveGallery();
+  return completed;
+}
+
+function updateGalleryJob(id, patch) {
+  gallery = gallery.map((item) => (item.jobId === id ? { ...item, ...patch } : item));
+  saveGallery();
+}
+
+function watchProgress(id, promptId) {
+  const wsUrl = comfyUrl.replace(/^http/i, "ws");
+  let socket;
+  try {
+    socket = new WebSocket(`${wsUrl}/ws?clientId=${encodeURIComponent(id)}`);
+  } catch {
+    return null;
+  }
+  socket.addEventListener("message", (event) => {
+    try {
+      const message = JSON.parse(event.data);
+      const data = message.data || {};
+      if (data.prompt_id && data.prompt_id !== promptId) return;
+      const current = jobs.get(id) || {};
+      if (message.type === "progress") {
+        const progress = { value: Number(data.value || 0), max: Number(data.max || 0), node: data.node || "" };
+        jobs.set(id, { ...current, status: "running", progress });
+        updateGalleryJob(id, { status: "pending", progress });
+      }
+      if (message.type === "execution_interrupted") {
+        jobs.set(id, { ...current, status: "canceled" });
+        updateGalleryJob(id, { status: "canceled" });
+      }
+      if (message.type === "execution_error") {
+        const error = data.exception_message || "Generation failed";
+        jobs.set(id, { ...current, status: "error", error });
+        updateGalleryJob(id, { status: "error", filename: error });
+      }
+    } catch {
+      // Ignore malformed websocket messages from Comfy extensions.
+    }
+  });
+  return socket;
+}
+
 async function runJob(id, body) {
+  let socket = null;
   try {
     const prompt = body.kind === "video" ? videoGraph(body) : await imageGraph(body);
     const queued = await comfy("/prompt", {
@@ -181,20 +321,38 @@ async function runJob(id, body) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ prompt, client_id: id })
     });
+    if (jobs.get(id)?.status === "canceling" || jobs.get(id)?.status === "canceled") {
+      await comfy("/queue", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ delete: [queued.prompt_id] })
+      }).catch(() => null);
+      updateGalleryJob(id, { status: "canceled" });
+      jobs.set(id, { ...jobs.get(id), status: "canceled", promptId: queued.prompt_id });
+      return;
+    }
     jobs.set(id, { ...jobs.get(id), status: "running", promptId: queued.prompt_id });
+    socket = watchProgress(id, queued.prompt_id);
     while (true) {
       const history = await comfy(`/history/${queued.prompt_id}`);
       if (history[queued.prompt_id]) {
         const outputs = outputsFrom(history[queued.prompt_id]);
-        gallery.unshift(...outputs);
-        gallery.splice(100);
-        jobs.set(id, { ...jobs.get(id), status: "done", outputs });
+        const completed = replaceGalleryJob(id, outputs, body);
+        jobs.set(id, { ...jobs.get(id), status: "done", outputs: completed });
+        socket?.close();
+        return;
+      }
+      if (jobs.get(id)?.status === "canceling" || jobs.get(id)?.status === "canceled") {
+        updateGalleryJob(id, { status: "canceled" });
+        socket?.close();
         return;
       }
       await new Promise((resolve) => setTimeout(resolve, 1600));
     }
   } catch (error) {
     jobs.set(id, { ...jobs.get(id), status: "error", error: error.message });
+    updateGalleryJob(id, { status: "error", filename: error.message });
+    socket?.close();
   }
 }
 
@@ -212,19 +370,75 @@ app.get("/api/models", async (_req, res) => {
   res.json(inferModels(info));
 });
 
-app.get("/api/gallery", (_req, res) => {
+app.get("/api/gallery", async (_req, res) => {
+  if (!gallery.some((item) => item.status === "done")) {
+    const history = await comfy("/history?max_items=100").catch(() => ({}));
+    const recovered = recordsFromComfyHistory(history);
+    if (recovered.length) {
+      gallery = [...gallery.filter((item) => item.status === "pending"), ...recovered].slice(0, 200);
+      saveGallery();
+    }
+  }
   res.json({ outputs: gallery });
 });
 
 app.post("/api/generate", (req, res) => {
   const id = crypto.randomUUID();
-  jobs.set(id, { status: "queued", kind: req.body.kind, prompt: req.body.prompt, outputs: [] });
+  const items = makePendingItems(id, req.body);
+  gallery = [...items, ...gallery].slice(0, 200);
+  saveGallery();
+  jobs.set(id, { status: "queued", kind: req.body.kind, prompt: req.body.prompt, outputs: [], items });
   runJob(id, req.body);
-  res.json({ jobId: id });
+  res.json({ jobId: id, items });
 });
 
 app.get("/api/jobs/:id", (req, res) => {
   res.json(jobs.get(req.params.id) || { status: "missing" });
+});
+
+app.post("/api/jobs/:id/cancel", async (req, res) => {
+  const job = jobs.get(req.params.id);
+  if (!job) {
+    res.status(404).json({ ok: false, error: "Job not found" });
+    return;
+  }
+  jobs.set(req.params.id, { ...job, status: "canceling" });
+  updateGalleryJob(req.params.id, { status: "canceled" });
+  try {
+    if (job.promptId) {
+      await comfy("/queue", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ delete: [job.promptId] })
+      });
+      await comfy("/interrupt", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt_id: job.promptId })
+      });
+    }
+  } catch {
+    await comfy("/interrupt", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => null);
+  }
+  res.json({ ok: true });
+});
+
+app.post("/api/queue/cancel", async (_req, res) => {
+  for (const [id, job] of jobs) {
+    if (job.status === "queued" || job.status === "running" || job.status === "canceling") {
+      jobs.set(id, { ...job, status: "canceled" });
+      updateGalleryJob(id, { status: "canceled" });
+    }
+  }
+  await comfy("/queue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ clear: true }) }).catch(() => null);
+  await comfy("/interrupt", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => null);
+  res.json({ ok: true });
+});
+
+app.post("/api/gallery/clear", (_req, res) => {
+  gallery = gallery.filter((item) => item.status === "pending");
+  saveGallery();
+  res.json({ ok: true, outputs: gallery });
 });
 
 app.post("/api/shutdown", (_req, res) => {

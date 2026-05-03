@@ -18,12 +18,14 @@ import {
 import "./styles.css";
 
 type Mode = "image" | "video";
-type Output = { url: string; filename: string; type: "image" | "video" };
-type GalleryItem = Output & { id: string; status: "done" | "pending" | "error"; prompt?: string };
-type Job = { status: string; outputs: Output[]; error?: string };
+type Progress = { value: number; max: number; node?: string };
+type Output = { url: string; filename: string; type: "image" | "video"; prompt?: string; outputName?: string };
+type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; width?: number; height?: number };
+type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress };
 type Models = {
   imageModels: string[];
   videoModels: string[];
+  unsupportedModels?: string[];
   textEncoders: string[];
   vaes: string[];
   samplers: string[];
@@ -31,6 +33,7 @@ type Models = {
   defaults: Record<string, string>;
   capabilities: Record<string, boolean>;
 };
+type AspectPreset = { label: string; value: string; w: number; h: number };
 
 type Preferences = {
   defaultImageCount: number;
@@ -50,18 +53,22 @@ const defaultPrefs: Preferences = {
   autoOpenViewer: true
 };
 
-const aspectPresets = {
+const aspectPresets: Record<Mode, AspectPreset[]> = {
   image: [
-    { label: "Square 1024", value: "1024x1024", w: 1024, h: 1024 },
-    { label: "Portrait 832x1248", value: "832x1248", w: 832, h: 1248 },
-    { label: "Landscape 1248x832", value: "1248x832", w: 1248, h: 832 },
-    { label: "Small test 512", value: "512x512", w: 512, h: 512 }
+    { label: "1:1", value: "1024x1024", w: 1024, h: 1024 },
+    { label: "16:9", value: "1344x768", w: 1344, h: 768 },
+    { label: "9:16", value: "768x1344", w: 768, h: 1344 },
+    { label: "4:3", value: "1152x864", w: 1152, h: 864 },
+    { label: "3:4", value: "864x1152", w: 864, h: 1152 },
+    { label: "2.35:1", value: "1536x640", w: 1536, h: 640 }
   ],
   video: [
-    { label: "Wide 512x288", value: "512x288", w: 512, h: 288 },
-    { label: "Portrait 288x512", value: "288x512", w: 288, h: 512 },
-    { label: "Square 384", value: "384x384", w: 384, h: 384 },
-    { label: "Small test 320x192", value: "320x192", w: 320, h: 192 }
+    { label: "16:9", value: "512x288", w: 512, h: 288 },
+    { label: "9:16", value: "288x512", w: 288, h: 512 },
+    { label: "1:1", value: "384x384", w: 384, h: 384 },
+    { label: "4:3", value: "448x336", w: 448, h: 336 },
+    { label: "3:4", value: "336x448", w: 336, h: 448 },
+    { label: "2.35:1", value: "640x272", w: 640, h: 272 }
   ]
 };
 
@@ -70,6 +77,23 @@ const fallbackSchedulers = ["beta", "simple", "normal", "karras", "sgm_uniform"]
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
+}
+
+function supportsReferenceImage(modelName = "") {
+  return /edit|kontext|inpaint|fill|qwen.*edit|image.?to.?image|img2img/i.test(modelName);
+}
+
+function aspectIconStyle(option: AspectPreset): React.CSSProperties {
+  const scale = Math.min(38 / option.w, 28 / option.h);
+  return {
+    width: Math.max(13, Math.round(option.w * scale)),
+    height: Math.max(13, Math.round(option.h * scale))
+  };
+}
+
+function titleFromPrompt(text = "") {
+  const compact = text.replace(/\s+/g, " ").trim();
+  return compact.length > 76 ? `${compact.slice(0, 73)}...` : compact;
 }
 
 function loadPrefs(): Preferences {
@@ -107,6 +131,39 @@ function Select({ value, onChange, options }: { value: string; onChange: (value:
   );
 }
 
+function AspectPicker({ value, options, onChange }: { value: string; options: AspectPreset[]; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((item) => item.value === value);
+  return (
+    <div className="aspect-picker">
+      <button type="button" className="aspect-trigger" onClick={() => setOpen((next) => !next)}>
+        {selected ? <span className="aspect-shape" style={aspectIconStyle(selected)} /> : <span className="aspect-shape custom" />}
+        <span>{selected ? selected.label : "Custom"}</span>
+        <ChevronDown size={14} className={cn(open && "flip")} />
+      </button>
+      {open ? (
+        <div className="aspect-menu">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={cn("aspect-option", option.value === value && "active")}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+            >
+              <span className="aspect-shape" style={aspectIconStyle(option)} />
+              <span>{option.label}</span>
+              <em>{option.value}</em>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function App() {
   const [mode, setMode] = useState<Mode>("image");
   const [models, setModels] = useState<Models | null>(null);
@@ -136,13 +193,24 @@ function App() {
 
   useEffect(() => {
     refreshModels();
+    loadGallery();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      loadGallery();
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  function loadGallery() {
     fetch("/api/gallery")
       .then((res) => res.json())
-      .then((data: { outputs: Output[] }) => {
-        setGallery(data.outputs.map((item) => ({ ...item, id: item.url, status: "done" as const })));
+      .then((data: { outputs: GalleryItem[] }) => {
+        setGallery(data.outputs);
       })
       .catch(() => null);
-  }, []);
+  }
 
   function setPrefs(next: Partial<Preferences>) {
     const merged = { ...prefs, ...next };
@@ -201,7 +269,7 @@ function App() {
   }, [mode, models]);
 
   const aspectValue = `${width}x${height}`;
-  const canUseReference = mode === "image" && Boolean(models?.capabilities.referenceImage);
+  const canUseReference = mode === "image" && Boolean(models?.capabilities.referenceImage) && supportsReferenceImage(model);
   const runningCount = gallery.filter((item) => item.status === "pending").length;
 
   async function readReference(file: File | undefined) {
@@ -217,19 +285,7 @@ function App() {
   }
 
   async function generate() {
-    const pendingCount = mode === "image" ? count : 1;
-    const ids: string[] = Array.from({ length: pendingCount }, () => crypto.randomUUID());
-    const pending = ids.map((id, index) => ({
-      id,
-      url: "",
-      filename: mode === "image" ? `Image ${index + 1}` : "Video clip",
-      type: mode,
-      status: "pending" as const,
-      prompt
-    }));
-
-    setGallery((current) => [...pending, ...current]);
-    setStatus(mode === "image" ? `Queued ${pendingCount} image${pendingCount === 1 ? "" : "s"}` : "Queued video");
+    setStatus(mode === "image" ? `Queued ${count} image${count === 1 ? "" : "s"}` : "Queued video");
 
     const response = await fetch("/api/generate", {
       method: "POST",
@@ -254,30 +310,52 @@ function App() {
         referenceImage: canUseReference ? referenceImage : ""
       })
     });
-    const { jobId } = await response.json();
+    const { jobId, items } = await response.json();
+    if (items?.length) setGallery((current) => [...items, ...current.filter((item) => !items.some((next: GalleryItem) => next.id === item.id))]);
 
     while (true) {
       await new Promise((resolve) => setTimeout(resolve, 1600));
       const job: Job = await fetch(`/api/jobs/${jobId}`).then((res) => res.json());
       if (job.status === "done") {
-        const completed = job.outputs.map((item, index) => ({
-          ...item,
-          id: item.url,
-          status: "done" as const,
-          prompt: pending[index]?.prompt || prompt
-        }));
-        setGallery((current) => [...completed, ...current.filter((item) => !ids.includes(item.id))]);
-        if (prefs.autoOpenViewer) setActive((current) => current || completed[0] || null);
+        loadGallery();
+        if (prefs.autoOpenViewer) setActive((current) => current || job.outputs[0] || null);
         setStatus(`${job.outputs.length} output${job.outputs.length === 1 ? "" : "s"} added`);
         return;
       }
       if (job.status === "error") {
-        setGallery((current) => current.map((item) => (ids.includes(item.id) ? { ...item, status: "error" as const, filename: "Failed" } : item)));
+        loadGallery();
         setStatus(job.error || "Generation failed");
         return;
       }
-      setStatus(job.status === "queued" ? "Queued" : "Rendering on the right");
+      if (job.status === "canceled") {
+        loadGallery();
+        setStatus("Canceled");
+        return;
+      }
+      if (job.progress?.max) {
+        setStatus(`Rendering ${job.progress.value}/${job.progress.max}`);
+      } else {
+        setStatus(job.status === "queued" ? "Queued" : "Rendering on the right");
+      }
     }
+  }
+
+  async function cancelJob(jobId: string | undefined) {
+    if (!jobId) return;
+    await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).catch(() => null);
+    loadGallery();
+    setStatus("Canceled");
+  }
+
+  async function cancelQueue() {
+    await fetch("/api/queue/cancel", { method: "POST" }).catch(() => null);
+    loadGallery();
+    setStatus("Queue canceled");
+  }
+
+  async function clearGallery() {
+    const data = await fetch("/api/gallery/clear", { method: "POST" }).then((res) => res.json()).catch(() => null);
+    if (data?.outputs) setGallery(data.outputs);
   }
 
   async function shutdown() {
@@ -312,9 +390,9 @@ function App() {
 
         <section className="panel compact-panel">
           <div className="section-title">Output</div>
-          <div className="split">
+          <div className="control-grid">
             <Field label="Aspect">
-              <Select value={aspectPresets[mode].some((item) => item.value === aspectValue) ? aspectValue : "custom"} onChange={(value) => applyAspect(value)} options={[...aspectPresets[mode], { label: "Custom", value: "custom" }]} />
+              <AspectPicker value={aspectPresets[mode].some((item) => item.value === aspectValue) ? aspectValue : "custom"} onChange={(value) => applyAspect(value)} options={aspectPresets[mode]} />
             </Field>
             {mode === "image" ? (
               <Field label="Variations">
@@ -326,11 +404,18 @@ function App() {
               </Field>
             )}
           </div>
-          <div className="split">
+          <div className="control-grid">
             <Field label="Width"><input type="number" value={width} step={mode === "video" ? 32 : 64} onChange={(event) => setWidth(Number(event.target.value))} /></Field>
             <Field label="Height"><input type="number" value={height} step={mode === "video" ? 32 : 64} onChange={(event) => setHeight(Number(event.target.value))} /></Field>
           </div>
-          {mode === "video" ? <Field label="FPS"><input type="number" min={1} value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field> : null}
+          <div className="control-grid">
+            <Field label="Steps"><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></Field>
+            {mode === "video" ? (
+              <Field label="FPS"><input type="number" min={1} value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field>
+            ) : (
+              <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field>
+            )}
+          </div>
         </section>
 
         {canUseReference ? (
@@ -353,11 +438,10 @@ function App() {
             <div className="advanced-grid">
               <Field label="Text encoder"><Select value={textEncoder} onChange={setTextEncoder} options={models?.textEncoders || []} /></Field>
               <Field label="VAE"><Select value={vae} onChange={setVae} options={models?.vaes || []} /></Field>
-              <Field label="Steps"><input type="number" value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></Field>
               <Field label="CFG"><input type="number" value={cfg} step="0.1" onChange={(event) => setCfg(Number(event.target.value))} /></Field>
               <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
               <Field label="Scheduler"><Select value={scheduler} onChange={setScheduler} options={models?.schedulers?.length ? models.schedulers : fallbackSchedulers} /></Field>
-              <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field>
+              {mode === "video" ? <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field> : null}
             </div>
           ) : null}
         </section>
@@ -375,6 +459,7 @@ function App() {
           <div className="status-pill">ComfyUI</div>
           <div className="status-pill">{mode === "image" ? `${count} variation${count === 1 ? "" : "s"}` : `${frames} frames`}</div>
           <div className="status-pill">{runningCount} running</div>
+          {runningCount ? <button className="queue-button" onClick={cancelQueue}>Cancel queue</button> : null}
           <button className="icon-button" title="Refresh models" onClick={refreshModels}><RefreshCw size={15} /></button>
           <button className="icon-button" title="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
         </div>
@@ -382,8 +467,15 @@ function App() {
         <section className="gallery">
           {gallery.length ? gallery.map((item) => (
             <button key={item.id} className={cn("tile", item.status)} onClick={() => item.status === "done" && setActive(item)}>
-              {item.status === "pending" ? <div className="generating"><Loader2 size={18} className="spin" /><span>Generating</span></div> : <Media item={item} muted />}
-              <span>{item.status === "done" ? item.type : item.filename}</span>
+              {item.status === "pending" ? (
+                <div className="generating">
+                  <div className="pulse-mark"><Loader2 size={16} className="spin" /></div>
+                  <span>{item.progress?.max ? `${item.progress.value}/${item.progress.max}` : "Queued"}</span>
+                </div>
+              ) : item.status === "done" ? <Media item={item} muted /> : <div className="generating stopped"><span>{item.status === "canceled" ? "Canceled" : "Failed"}</span></div>}
+              <span className="tile-title">{titleFromPrompt(item.prompt || item.filename)}</span>
+              <small>{item.status === "done" ? item.outputName || item.type : item.status}</small>
+              {item.status === "pending" ? <span className="tile-action" onClick={(event) => { event.stopPropagation(); cancelJob(item.jobId); }}>Cancel</span> : null}
             </button>
           )) : (
             <div className="empty">
@@ -418,7 +510,8 @@ function App() {
                 <h3>Installed</h3>
                 <div className="setting-row"><span>Image models</span><strong>{models?.imageModels.length || 0}</strong></div>
                 <div className="setting-row"><span>Video models</span><strong>{models?.videoModels.length || 0}</strong></div>
-                <div className="setting-row"><span>Reference image</span><strong>{models?.capabilities.referenceImage ? "Available" : "Unavailable"}</strong></div>
+                <div className="setting-row"><span>Unsupported</span><strong>{models?.unsupportedModels?.length || 0}</strong></div>
+                <div className="setting-row"><span>Reference image</span><strong>{canUseReference ? "Available" : "Hidden for this model"}</strong></div>
               </section>
 
               <section>
@@ -438,7 +531,7 @@ function App() {
               <section>
                 <h3>Gallery</h3>
                 <div className="setting-row"><span>Visible items</span><strong>{gallery.length}</strong></div>
-                <button className="wide-button" onClick={() => setGallery([])}>Clear local gallery view</button>
+                <button className="wide-button" onClick={clearGallery}>Clear finished gallery</button>
               </section>
 
               <section>

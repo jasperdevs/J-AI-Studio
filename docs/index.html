@@ -12,6 +12,12 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <svg class="sprite" aria-hidden="true">
+      <symbol id="github" viewBox="0 0 24 24">
+        <path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.4-4-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.3 11.3 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.4 5.9.4.4.8 1.1.8 2.2v3.1c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
+      </symbol>
+    </svg>
+
     <header class="site-header">
       <a class="brand" href="#top" aria-label="J AI Studio home">
         <span class="brand-mark" aria-hidden="true"><img src="./j-ai-logo.png" alt="" /></span>
@@ -21,16 +27,12 @@
         <a href="#features">Features</a>
         <a href="#faq">FAQ</a>
         <a class="with-icon" href="https://github.com/jasperdevs/J-AI-Studio">
-          <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.4-4-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.3 11.3 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.4 5.9.4.4.8 1.1.8 2.2v3.1c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
-          </svg>
+          <svg class="github-icon" aria-hidden="true"><use href="#github" /></svg>
           <span>GitHub</span>
         </a>
         <a class="star-link" href="https://github.com/jasperdevs/J-AI-Studio/stargazers">
-          <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.4-4-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.3 11.3 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.4 5.9.4.4.8 1.1.8 2.2v3.1c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
-          </svg>
-          <span aria-hidden="true">Star</span>
+          <svg class="github-icon" aria-hidden="true"><use href="#github" /></svg>
+          <span>Star</span>
           <strong id="stars">GitHub</strong>
         </a>
       </nav>
@@ -41,18 +43,16 @@
         <div class="hero-copy">
           <p class="eyebrow">Image and video generation</p>
           <h1>A cleaner UI for image generation.</h1>
-          <p class="lead">Run ComfyUI, open J AI Studio, and generate from a simpler page: prompt, model controls, live progress, and a gallery.</p>
+          <p class="lead">Run ComfyUI, open J AI Studio, and generate from a simpler page.</p>
           <div class="actions">
             <a class="button primary" href="https://github.com/jasperdevs/J-AI-Studio">
-              <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.4-4-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.3 11.3 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.4 5.9.4.4.8 1.1.8 2.2v3.1c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
-              </svg>
+              <svg class="github-icon" aria-hidden="true"><use href="#github" /></svg>
               <span>View on GitHub</span>
             </a>
-            <a class="button secondary" href="https://github.com/jasperdevs/J-AI-Studio#quick-start">Read setup</a>
+            <a class="button text-link" href="https://github.com/jasperdevs/J-AI-Studio#quick-start">Read setup</a>
           </div>
         </div>
-        <figure class="hero-frame">
+        <figure class="hero-plate">
           <img src="./screenshots/hero.jpg" alt="J AI Studio gallery and controls" />
           <figcaption>A smaller front end for a local ComfyUI setup.</figcaption>
         </figure>
@@ -61,66 +61,94 @@
       <section class="feature-band" id="features" aria-labelledby="features-title">
         <div class="section-heading">
           <p class="eyebrow">ComfyUI front end</p>
-          <h2 id="features-title">Generate from a simple page, keep graph work in ComfyUI.</h2>
+          <h2 id="features-title">Generate from a simple page. Keep graph work in ComfyUI.</h2>
         </div>
-        <div class="feature-grid">
-          <article>
-            <span>01</span>
-            <h3>Prompt-first workspace</h3>
-            <p>Write the prompt first, then adjust model, size, steps, seed, sampler, and other useful controls.</p>
-          </article>
-          <article>
-            <span>02</span>
-            <h3>Live queue previews</h3>
-            <p>See queue status, progress, previews, and cancel controls while ComfyUI is running the job.</p>
-          </article>
-          <article>
-            <span>03</span>
-            <h3>Zen mode</h3>
-            <p>Use a fullscreen prompt and output view when you do not need the full controls panel.</p>
-          </article>
-          <article>
-            <span>04</span>
-            <h3>Workflow templates</h3>
-            <p>Use built-in image and video paths, or import ComfyUI API workflows for custom setups.</p>
-          </article>
+        <div class="feature-layout">
+          <div class="plate-stack" aria-label="J AI Studio screenshots">
+            <figure class="stack-plate top">
+              <img src="./screenshots/zen.jpg" alt="Zen mode prompt and output view" />
+            </figure>
+            <figure class="stack-plate middle">
+              <img src="./screenshots/fullscreen.jpg" alt="Fullscreen output details" />
+            </figure>
+            <figure class="stack-plate bottom">
+              <img src="./screenshots/hero.jpg" alt="Gallery view with generated images" />
+            </figure>
+          </div>
+          <div class="feature-list">
+            <article>
+              <span>01</span>
+              <div>
+                <h3>Prompt first</h3>
+                <p>Write the prompt, then adjust model, size, steps, seed, sampler, and the useful generation controls.</p>
+              </div>
+            </article>
+            <article>
+              <span>02</span>
+              <div>
+                <h3>Model-aware controls</h3>
+                <p>Controls change with the selected model and workflow, so incompatible settings stay out of the way.</p>
+              </div>
+            </article>
+            <article>
+              <span>03</span>
+              <div>
+                <h3>Live previews</h3>
+                <p>See queue status, progress, previews, and cancel controls while ComfyUI is running the job.</p>
+              </div>
+            </article>
+            <article>
+              <span>04</span>
+              <div>
+                <h3>Zen mode</h3>
+                <p>Use a fullscreen prompt and output view when you do not need the full controls panel.</p>
+              </div>
+            </article>
+          </div>
         </div>
-      </section>
-
-      <section class="showcase" aria-label="Preview screenshots">
-        <img src="./screenshots/zen.jpg" alt="Zen mode in J AI Studio" />
-        <img src="./screenshots/fullscreen.jpg" alt="Fullscreen output details in J AI Studio" />
       </section>
 
       <section class="faq" id="faq" aria-labelledby="faq-title">
-        <div class="section-heading">
-          <p class="eyebrow">FAQ</p>
-          <h2 id="faq-title">Useful answers before you run it.</h2>
+        <div class="faq-intro">
+          <p class="eyebrow">J AI Studio - FAQ</p>
+          <h2 id="faq-title">Before you run it</h2>
+          <p>Answers to the practical setup questions.</p>
+          <div class="code-card" aria-label="Setup commands">
+            <span>&gt; .env</span>
+            <code>COMFY_URL=http://127.0.0.1:8188</code>
+            <code>&gt; npm run build</code>
+          </div>
         </div>
         <div class="faq-list">
           <article>
+            <span>[01]</span>
             <h3>What is it?</h3>
-            <p>J AI Studio is a simple browser UI for ComfyUI. It is for generating and reviewing outputs, not editing node graphs.</p>
+            <p>A simple browser UI for ComfyUI. It is for generating and reviewing outputs, not editing node graphs.</p>
           </article>
           <article>
+            <span>[02]</span>
             <h3>What do I need installed?</h3>
-            <p>Node.js 20 or newer, plus a working ComfyUI install. By default it looks for ComfyUI at http://127.0.0.1:8188.</p>
+            <p>Node.js 20 or newer, plus a working ComfyUI install. The default ComfyUI URL is http://127.0.0.1:8188.</p>
           </article>
           <article>
+            <span>[03]</span>
             <h3>Where do files go?</h3>
-            <p>Generated media stays in your local ComfyUI output setup. J AI Studio keeps gallery metadata in its own data folder.</p>
+            <p>Generated media stays in your local ComfyUI output setup. Gallery metadata lives in J AI Studio's data folder.</p>
           </article>
           <article>
+            <span>[04]</span>
             <h3>Does video work?</h3>
             <p>Yes, if your ComfyUI setup has compatible video nodes and workflows installed.</p>
           </article>
           <article>
+            <span>[05]</span>
             <h3>Can I use my own workflow?</h3>
             <p>Yes. Export a ComfyUI API workflow, add the J AI Studio control mapping, then import it from Settings.</p>
           </article>
           <article>
+            <span>[06]</span>
             <h3>How do updates work?</h3>
-            <p>Use Settings -> Update in a Git checkout. The manual path is git pull, npm install, npm run build, then restart.</p>
+            <p>Use Settings -> Update in a Git checkout. Manual update is git pull, npm install, npm run build, then restart.</p>
           </article>
         </div>
       </section>
@@ -130,22 +158,24 @@
         <h2>Use ComfyUI without living in the graph.</h2>
         <p>Keep the node editor for setup. Use J AI Studio for the daily generation loop.</p>
         <a class="button primary" href="https://github.com/jasperdevs/J-AI-Studio">
-          <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.4-4-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.3 11.3 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.4 5.9.4.4.8 1.1.8 2.2v3.1c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
-          </svg>
+          <svg class="github-icon" aria-hidden="true"><use href="#github" /></svg>
           <span>Get the source</span>
         </a>
+        <div class="contact-sheet" aria-hidden="true">
+          <img src="./screenshots/hero.jpg" alt="" />
+          <img src="./screenshots/fullscreen.jpg" alt="" />
+          <img src="./screenshots/zen.jpg" alt="" />
+        </div>
       </section>
     </main>
 
     <footer>
       <span>J AI Studio</span>
       <a class="with-icon" href="https://github.com/jasperdevs/J-AI-Studio">
-        <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.4-4-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.3 11.3 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.4 5.9.4.4.8 1.1.8 2.2v3.1c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
-        </svg>
+        <svg class="github-icon" aria-hidden="true"><use href="#github" /></svg>
         <span>GitHub</span>
       </a>
+      <a href="#top">Website</a>
       <span>MIT License</span>
     </footer>
 

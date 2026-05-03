@@ -439,6 +439,37 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .zen-control-button:hover { border-color: hsl(var(--border-strong)); background: hsl(var(--accent)); transform: translateY(-1px); }
 
+.zen-zoom-dock {
+  position: fixed;
+  bottom: 18px;
+  left: 64px;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 2px);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: var(--shadow);
+  transition: left 220ms var(--spring);
+}
+.zen-zoom-dock.with-side { left: calc(min(360px, 100vw - 24px) + 24px); }
+.zen-zoom-dock .icon-button { width: 30px; height: 30px; }
+.zen-zoom-dock .viewer-zoom {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-width: 48px; height: 30px; padding: 0 8px;
+  border: 0; background: transparent;
+  color: hsl(var(--foreground));
+  font-size: 12px; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+  transition: background 120ms var(--ease-out);
+}
+.zen-zoom-dock .viewer-zoom:hover { background: hsl(var(--accent)); }
+
 .zen-gallery-restore {
   position: fixed; top: 12px; left: 12px; z-index: 12;
   width: 38px; height: 38px;
@@ -1601,6 +1632,8 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   .zen-control-button { top: auto; bottom: calc(204px + env(safe-area-inset-bottom)); left: 10px; }
   .zen-gallery-restore { top: 10px; left: 10px; }
   .zen-top-actions { top: auto; bottom: calc(204px + env(safe-area-inset-bottom)); right: 10px; }
+  .zen-zoom-dock { bottom: calc(204px + env(safe-area-inset-bottom)); left: 56px; }
+  .zen-zoom-dock.with-side { display: none; }
   .zen-controls {
     left: 10px;
     right: 10px;

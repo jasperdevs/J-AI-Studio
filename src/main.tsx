@@ -1497,6 +1497,13 @@ function App() {
           <Tip content="Controls"><button className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
             <PanelLeft size={16} />
           </button></Tip>
+          {zenItem ? (
+            <div className={cn("zen-zoom-dock", zenControls && "with-side")}>
+              <Tip content="Zoom out (-)"><button className="icon-button" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)} disabled={viewerZoom <= 0.5}><ZoomOut size={15} /></button></Tip>
+              <Tip content="Reset zoom (0)"><button className="text-button viewer-zoom" onClick={resetViewer}>{viewerZoom !== 1 ? <RotateCcw size={13} /> : null} {Math.round(viewerZoom * 100)}%</button></Tip>
+              <Tip content="Zoom in (+)"><button className="icon-button" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)} disabled={viewerZoom >= 6}><ZoomIn size={15} /></button></Tip>
+            </div>
+          ) : null}
           {doneGallery.length && !zenGalleryOpen ? (
             <Tip content="Show gallery"><button className="zen-gallery-restore" aria-label="Show gallery" onClick={() => setZenGalleryOpen(true)}>
               <ChevronDown size={16} />

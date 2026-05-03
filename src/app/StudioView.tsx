@@ -1,9 +1,13 @@
 import React from 'react';
 import { Toaster } from 'sonner';
+import { RowsPhotoAlbum } from 'react-photo-album';
+import 'react-photo-album/rows.css';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, Github, Maximize2, Minimize2, PanelLeft, RotateCcw, Settings, SlidersHorizontal, Trash2, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { githubUrl } from './constants';
 import { cn } from './format';
+import { galleryPhoto, type GalleryPhoto } from './gallery';
 import { AspectPicker, Field, GallerySkeleton, Media, ModelPicker, NumberPicker, Skeleton, StudioSelect as Select, Tip } from './components';
+import { GalleryTile } from './GalleryTile';
 import type { GalleryItem } from './types';
 export function StudioView({ view }: { view: Record<string, any> }) {
   const { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, characterMeta, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, zenGallery, formatElapsed, gallery, galleryColumnCount, galleryColumns, galleryLoaded, galleryStageRef, generate, generationDetailEntries, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, settings, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, steps, stepsMeta, stopViewerDrag, submitZenPrompt, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, titleFromPrompt, zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, setPrefs } = view;
@@ -158,52 +162,21 @@ export function StudioView({ view }: { view: Record<string, any> }) {
         <>
           <main ref={galleryStageRef} className="stage-gallery" onScroll={onGalleryScroll}>
             <section className="gallery" style={{ "--gallery-columns": galleryColumnCount } as React.CSSProperties}>
-          {!galleryLoaded ? <GallerySkeleton columns={galleryColumnCount} /> : visibleGallery.length ? galleryColumns.map((column: GalleryItem[], columnIndex: number) => (
-            <div className="gallery-column" key={`gallery-column-${columnIndex}`}>
-              {column.map((item: GalleryItem) => {
-            const ratio = item.progress?.max ? Math.min(1, Math.max(0, item.progress.value / item.progress.max)) : 0;
-            const indeterminate = !item.progress?.max;
-            return (
-            <button key={item.id} className={cn("tile", item.status)} style={{ "--tile-ratio": `${item.width || 1} / ${item.height || 1}` } as React.CSSProperties} onClick={() => item.status !== "pending" && openItem(item)}>
-              {item.status === "pending" ? (
-                <div className={cn("generating", item.preview && "has-preview")} style={{ "--progress-ratio": ratio } as React.CSSProperties}>
-                  {item.preview ? <img className="generate-preview" src={item.preview} alt="" draggable={false} /> : null}
-                  {!item.preview ? <div className="noise-layer" /> : null}
-                  <div className="generate-overlay">
-                    <span className="generate-step">
-                      {item.progress?.max ? (
-                        <>
-                          <span className="generate-step-label">Step</span>
-                          <span className="generate-step-count">{item.progress.value}<i>/</i>{item.progress.max}</span>
-                        </>
-                      ) : (
-                        <span className="generate-step-label is-queued">{item.progress?.node === "running" ? "Rendering" : "Queued"}</span>
-                      )}
-                    </span>
-                    <span className="generate-elapsed">{formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString()))}</span>
-                  </div>
-                  <div className={cn("generate-bar", indeterminate && "is-indeterminate")}>
-                    <div className="generate-bar-fill" />
-                  </div>
-                </div>
-              ) : item.status === "done" ? <Media item={item} muted /> : <div className="generating stopped"><span>{titleFromPrompt(item.filename || "Failed")}</span></div>}
-              <span className="tile-caption">
-                <strong>{titleFromPrompt(item.prompt || item.filename)}</strong>
-                <em>{item.status === "pending" ? formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString())) : item.durationMs ? formatElapsed(item.durationMs) : item.outputName || item.type}</em>
-              </span>
-              {item.status === "pending" ? <Tip content="Cancel generation"><span className="tile-action" onClick={(event) => { event.stopPropagation(); cancelJob(item.jobId); }}>Cancel</span></Tip> : null}
-              {item.status !== "pending" ? (
-                <span className="tile-hover-actions">
-                  {item.url ? <Tip content="Download" side="left"><a className="tile-icon" aria-label="Download" href={item.url} download onClick={(event) => event.stopPropagation()}><Download size={13} /></a></Tip> : null}
-                  {item.status === "done" ? <Tip content="Copy" side="left"><span className="tile-icon" role="button" aria-label="Copy" onClick={(event) => { event.stopPropagation(); copyImageAndToast(item); }}><Copy size={14} /></span></Tip> : null}
-                  <Tip content="Delete from gallery" side="left"><span className="tile-delete" role="button" aria-label="Delete from gallery" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={14} /></span></Tip>
-                </span>
-              ) : null}
-            </button>
-            );
-          })}
-            </div>
-          )) : (
+          {!galleryLoaded ? <GallerySkeleton columns={galleryColumnCount} /> : visibleGallery.length ? (
+            <RowsPhotoAlbum<GalleryPhoto>
+              photos={visibleGallery.map(galleryPhoto)}
+              spacing={7}
+              padding={0}
+              targetRowHeight={(containerWidth) => containerWidth < 700 ? 150 : 236}
+              rowConstraints={{ singleRowMaxHeight: 260 }}
+              render={{
+                photo: (_, { photo, width: photoWidth, height: photoHeight }) => {
+                  const item = photo.item;
+                  return <GalleryTile key={item.id} cancelJob={cancelJob} copyImageAndToast={copyImageAndToast} deleteItem={deleteItem} formatElapsed={formatElapsed} height={photoHeight} item={item} now={now} openItem={openItem} titleFromPrompt={titleFromPrompt} width={photoWidth} />;
+                }
+              }}
+            />
+          ) : (
             <div className="empty">
               <img src="/j-ai-logo.png" alt="" />
               <h2>No outputs yet</h2>

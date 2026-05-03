@@ -1,8 +1,5 @@
 .gallery {
-  display: grid;
-  grid-template-columns: repeat(var(--gallery-columns, 4), minmax(0, 1fr));
-  align-items: start;
-  gap: 8px;
+  display: block;
   min-height: 0;
   line-height: 0;
 }
@@ -11,6 +8,12 @@
   min-width: 0;
   flex-direction: column;
   gap: 6px;
+}
+.react-photo-album {
+  width: 100%;
+}
+.react-photo-album--track {
+  align-items: flex-start;
 }
 .gallery-load-more {
   display: flex;
@@ -55,7 +58,9 @@
 }
 .tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .tile img, .tile video, .generating {
-  width: 100%; aspect-ratio: var(--tile-ratio, 1);
+  width: 100%;
+  height: 100%;
+  aspect-ratio: var(--tile-ratio, auto);
   object-fit: cover;
   border-radius: var(--radius);
   display: grid; place-items: center;

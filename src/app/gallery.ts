@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react';
 import type React from 'react';
 import type { GalleryItem } from './types';
 
+export type GalleryPhoto = {
+  src: string;
+  width: number;
+  height: number;
+  key: string;
+  item: GalleryItem;
+};
+
 export function dedupeGalleryItems(items: GalleryItem[]) {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -58,11 +66,27 @@ export function distributeGalleryColumns(items: GalleryItem[], count: number) {
   return columns;
 }
 
-function estimatedTileHeight(item: GalleryItem) {
+export function galleryTileRatio(item: GalleryItem) {
   const width = Number(item.width || 1);
   const height = Number(item.height || 1);
-  const ratio = width > 0 && height > 0 ? height / width : 1;
-  return Math.max(0.35, Math.min(2.4, ratio));
+  const ratio = width > 0 && height > 0 ? width / height : 1;
+  return Math.max(0.42, Math.min(2.4, ratio));
+}
+
+export function galleryPhoto(item: GalleryItem): GalleryPhoto {
+  const width = Math.max(1, Number(item.width || 1));
+  const height = Math.max(1, Number(item.height || 1));
+  return {
+    src: item.url || item.preview || "/j-ai-logo.png",
+    width,
+    height,
+    key: item.id,
+    item
+  };
+}
+
+function estimatedTileHeight(item: GalleryItem) {
+  return 1 / galleryTileRatio(item);
 }
 
 export function touchDistance(touches: React.TouchList) {

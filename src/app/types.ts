@@ -6,7 +6,6 @@ export type GalleryItem = Output & { id: string; jobId?: string; status: "done" 
 export type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress; preview?: string };
 export type TouchGesture = { mode: "pan"; id: number; x: number; y: number; panX: number; panY: number; moved: boolean } | { mode: "pinch"; distance: number; zoom: number; panX: number; panY: number; centerX: number; centerY: number; moved: boolean };
 export type SelectOption = { label: string; value: string };
-export type Provider = { id: string; name: string; logoUrl?: string; source?: string };
 export type Profile = {
   id: string;
   kind: Mode;
@@ -16,7 +15,6 @@ export type Profile = {
   model: string;
   workflow: string;
   family: string;
-  provider?: Provider;
   defaults: Record<string, string | number>;
   aspectPresets: AspectPreset[];
   constraints?: Record<string, { min?: number; max?: number; step?: number; default?: number }>;

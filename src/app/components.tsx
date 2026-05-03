@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Minus, Plus } from 'lucide-react';
 import { Select as FluidSelect, SelectContent as FluidSelectContent, SelectItem as FluidSelectItem, SelectTrigger as FluidSelectTrigger } from '@/components/ui/select';
 import { Tooltip as FluidTooltip } from '@/components/ui/tooltip';
-import type { AspectPreset, Output, Profile, Provider } from './types';
+import type { AspectPreset, Output, Profile } from './types';
 import { aspectIconStyle, cn, titleFromPrompt } from './format';
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -286,24 +286,6 @@ export function familyLabel(profile: Profile | null) {
   return profile.family;
 }
 
-export function providerInitials(name = "AI") {
-  return name
-    .split(/\s|-/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "AI";
-}
-
-export function ProviderLogo({ provider, compact = false }: { provider?: Provider; compact?: boolean }) {
-  const label = provider?.name || "Local model";
-  return (
-    <span className={cn("provider-logo", compact && "is-compact")} aria-label={label} title={label}>
-      {provider?.logoUrl ? <img src={provider.logoUrl} alt="" loading="lazy" /> : <span>{providerInitials(label)}</span>}
-    </span>
-  );
-}
-
 export function ModelPicker({ value, profiles, onChange, compact = false }: { value: string; profiles: Profile[]; onChange: (value: string) => void; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
@@ -319,7 +301,6 @@ export function ModelPicker({ value, profiles, onChange, compact = false }: { va
   return (
     <div className={cn("model-picker", compact && "is-compact")} ref={pickerRef} data-open-surface={open || undefined}>
       <Tip content="Choose model"><button type="button" data-open-trigger className="model-trigger" onClick={() => setOpen((next) => !next)}>
-          <ProviderLogo provider={selected?.provider} compact={compact} />
           {compact ? (
             <span className="model-copy"><strong>{selected?.displayName || selected?.label || "No model"}</strong></span>
           ) : (
@@ -341,10 +322,9 @@ export function ModelPicker({ value, profiles, onChange, compact = false }: { va
                   setOpen(false);
                 }}
               >
-                <ProviderLogo provider={profile.provider} />
                 <span className="model-copy">
                   <strong>{profile.displayName || profile.label}</strong>
-                  <em>{profile.provider?.name || profile.description || familyLabel(profile)}</em>
+                  <em>{profile.description || familyLabel(profile)}</em>
                 </span>
                 <span className="model-badge">{familyLabel(profile)}</span>
               </button></Tip>

@@ -41,7 +41,7 @@ function useIconLibrary() {
 
 /**
  * Returns a single icon component for the given name.
- * Falls back to Lucide if no provider is present.
+ * Falls back to Lucide outside the icon context.
  */
 function useIcon(name: IconName): IconComponent {
   const ctx = useContext(IconContext);
@@ -51,7 +51,7 @@ function useIcon(name: IconName): IconComponent {
 
 /**
  * Returns the full icon map for the current library.
- * Falls back to Lucide if no provider is present.
+ * Falls back to Lucide outside the icon context.
  */
 function useIcons(): Record<IconName, IconComponent> {
   const ctx = useContext(IconContext);

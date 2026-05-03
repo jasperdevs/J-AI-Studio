@@ -11,6 +11,8 @@
   ·
   <a href="#ai-install-prompt">AI install prompt</a>
   ·
+  <a href="#update">Update</a>
+  ·
   <a href="#features">Features</a>
   ·
   <a href="#comfyui">ComfyUI</a>
@@ -97,6 +99,21 @@ Keep everything local. Do not expose HOST=0.0.0.0 unless I ask for phone or LAN 
 - Node.js 20 or newer
 - A running ComfyUI server
 - Local ComfyUI model files
+
+## Update
+
+```bash
+git pull
+npm install
+npm run build
+npm start
+```
+
+To check dependency updates:
+
+```bash
+npm run check:updates
+```
 
 ## ComfyUI
 

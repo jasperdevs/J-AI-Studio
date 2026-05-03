@@ -45,55 +45,6 @@ export function isWanVideoModel(name = "") {
   return /wan/i.test(name);
 }
 
-export function providerForModel(name = "", family = "") {
-  const value = `${name} ${family}`.toLowerCase();
-  if (/z[-_ ]?anime|seesee21/.test(value)) {
-    return {
-      id: "seesee21",
-      name: "SeeSee21",
-      logoUrl: "/providers/seesee21.png",
-      source: "huggingface-profile"
-    };
-  }
-  if (/z[-_ ]?image|tongyi|qwen|wan/.test(value)) {
-    return {
-      id: "tongyi-mai",
-      name: "Tongyi-MAI",
-      logoUrl: "/providers/tongyi-mai.jpeg",
-      source: "huggingface-profile"
-    };
-  }
-  if (/flux|black[-_ ]?forest|bfl/.test(value)) {
-    return { id: "black-forest-labs", name: "Black Forest Labs", source: "filename" };
-  }
-  if (/sdxl|sd3|stable[-_ ]?diffusion|stability/.test(value)) {
-    return { id: "stability-ai", name: "Stability AI", source: "filename" };
-  }
-  if (/hunyuan|tencent/.test(value)) {
-    return { id: "tencent", name: "Tencent", source: "filename" };
-  }
-  if (/cosmos|nvidia/.test(value)) {
-    return { id: "nvidia", name: "NVIDIA", source: "filename" };
-  }
-  if (/mochi|genmo/.test(value)) {
-    return { id: "genmo", name: "Genmo", source: "filename" };
-  }
-  if (/ltxv|lightricks/.test(value)) {
-    return { id: "lightricks", name: "Lightricks", source: "filename" };
-  }
-  if (/pixart/.test(value)) {
-    return { id: "pixart", name: "PixArt", source: "filename" };
-  }
-  if (/hidream/.test(value)) {
-    return { id: "hidream", name: "HiDream", source: "filename" };
-  }
-  return {
-    id: "local",
-    name: "Local model",
-    source: "comfy-filename"
-  };
-}
-
 export function snapDimension(value, meta = {}) {
   const step = Number(meta.step || 1) || 1;
   const min = Number(meta.min || step) || step;
@@ -131,7 +82,6 @@ export function buildProfile({ id, kind, label, displayName, description, model,
     model,
     workflow,
     family,
-    provider: providerForModel(model, family),
     defaults,
     aspectPresets: aspects,
     options,

@@ -356,7 +356,7 @@ function App() {
   const [scheduler, setScheduler] = useState(String(initialDraft.scheduler || "beta"));
   const [advanced, setAdvanced] = useState(false);
   const [settings, setSettings] = useState(false);
-  const [zenControls, setZenControls] = useState(true);
+  const [zenControls, setZenControls] = useState(false);
   const [zenSelectedId, setZenSelectedId] = useState("");
   const [status, setStatus] = useState("Ready");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
@@ -370,6 +370,10 @@ function App() {
   const [startImageName, setStartImageName] = useState("");
   const generatePostingRef = useRef(false);
   const viewerDragRef = useRef<{ id: number; x: number; y: number; panX: number; panY: number } | null>(null);
+  const zenPromptRef = useRef<HTMLTextAreaElement | null>(null);
+  const zenStripRef = useRef<HTMLDivElement | null>(null);
+  const zenStripDragRef = useRef<{ id: number; x: number; scrollLeft: number } | null>(null);
+  const latestZenIdRef = useRef("");
 
   useEffect(() => {
     refreshModels();
@@ -383,6 +387,11 @@ function App() {
     }, 2500);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!prefs.zenMode || active || settings || zenControls) return;
+    window.setTimeout(() => zenPromptRef.current?.focus(), 0);
+  }, [prefs.zenMode, active, settings, zenControls]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -510,6 +519,11 @@ function App() {
       .then((res) => res.json())
       .then((data: { outputs: GalleryItem[] }) => {
         setGallery(data.outputs);
+        const latest = data.outputs.find((item) => item.type === mode && item.status === "done");
+        if (prefs.zenMode && latest && (!zenSelectedId || (latestZenIdRef.current && latest.id !== latestZenIdRef.current))) {
+          setZenSelectedId(latest.id);
+        }
+        if (latest) latestZenIdRef.current = latest.id;
       })
       .catch(() => null);
   }
@@ -679,6 +693,14 @@ function App() {
         }
       }));
       loadGallery();
+      if (prefs.zenMode) {
+        const data = await fetch("/api/gallery").then((res) => res.json()).catch(() => null);
+        const latest = data?.outputs?.find((item: GalleryItem) => item.type === mode && item.status === "done");
+        if (latest) {
+          setGallery(data.outputs);
+          setZenSelectedId(latest.id);
+        }
+      }
       setStatus("Outputs updated");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Generation failed");
@@ -744,6 +766,33 @@ function App() {
     if (currentIndex < 0 || doneItems.length < 2) return;
     resetViewer();
     setActive(doneItems[(currentIndex + direction + doneItems.length) % doneItems.length]);
+  }
+
+  function goLatestZen() {
+    const latest = doneGallery[0];
+    if (latest) setZenSelectedId(latest.id);
+  }
+
+  function submitZenPrompt(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey) return;
+    event.preventDefault();
+    if (!generateDisabled) generate();
+  }
+
+  function startZenStripDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (!zenStripRef.current) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    zenStripDragRef.current = { id: event.pointerId, x: event.clientX, scrollLeft: zenStripRef.current.scrollLeft };
+  }
+
+  function dragZenStrip(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = zenStripDragRef.current;
+    if (!drag || drag.id !== event.pointerId || !zenStripRef.current) return;
+    zenStripRef.current.scrollLeft = drag.scrollLeft - (event.clientX - drag.x);
+  }
+
+  function stopZenStripDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (zenStripDragRef.current?.id === event.pointerId) zenStripDragRef.current = null;
   }
 
   function zoomViewer(nextZoom: number) {
@@ -847,6 +896,10 @@ function App() {
                 <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field>
               )}
             </div>
+            <Field label="Negative prompt">
+              <textarea maxLength={negativeLimit} className="short" value={negative} onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
+              <span className="field-meta">{negative.length}/{negativeLimit} characters</span>
+            </Field>
             <button className="advanced-toggle" onClick={() => setAdvanced((value) => !value)}>
               <span>Advanced</span>
               <ChevronDown size={14} className={cn(advanced && "flip")} />
@@ -864,7 +917,11 @@ function App() {
           </aside>
 
           <section className="zen-prompt">
-            <textarea maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
+            <div className="zen-inline-settings">
+              <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
+              <label><span>Steps</span><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></label>
+            </div>
+            <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
             <div className="zen-prompt-actions">
               <button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />
@@ -874,17 +931,22 @@ function App() {
             </div>
           </section>
 
-          <section className="zen-negative">
-            <span>Negative {negative.length}/{negativeLimit}</span>
-            <textarea maxLength={negativeLimit} value={negative} placeholder="Things to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
-          </section>
-
-          <div className="zen-gallery-strip">
-            {doneGallery.slice(0, 10).map((item) => (
+          <div className="zen-gallery-wrap">
+            <button className="zen-latest" onClick={goLatestZen}>Latest</button>
+            <div
+              ref={zenStripRef}
+              className="zen-gallery-strip"
+              onPointerDown={startZenStripDrag}
+              onPointerMove={dragZenStrip}
+              onPointerUp={stopZenStripDrag}
+              onPointerCancel={stopZenStripDrag}
+            >
+            {doneGallery.map((item) => (
               <button key={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={() => setZenSelectedId(item.id)}>
                 <Media item={item} muted />
               </button>
             ))}
+            </div>
           </div>
         </>
       ) : (

@@ -8,7 +8,6 @@ import {
   Copy,
   Download,
   Power,
-  RefreshCw,
   RotateCcw,
   Settings2,
   SlidersHorizontal,
@@ -72,6 +71,7 @@ type Preferences = {
   defaultVideoFrames: number;
   defaultVideoSteps: number;
   defaultFps: number;
+  variationQueueMode: "batch" | "separate";
 };
 
 const defaultPrefs: Preferences = {
@@ -79,7 +79,8 @@ const defaultPrefs: Preferences = {
   defaultImageSteps: 8,
   defaultVideoFrames: 33,
   defaultVideoSteps: 12,
-  defaultFps: 16
+  defaultFps: 16,
+  variationQueueMode: "batch"
 };
 
 const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
@@ -532,12 +533,12 @@ function App() {
   async function generate() {
     if (generatePostingRef.current) return;
     generatePostingRef.current = true;
-    setStatus(mode === "image" ? `Queued ${count} image${count === 1 ? "" : "s"}` : "Queued video");
+    try {
+      const imageRuns = mode === "image" && prefs.variationQueueMode === "separate" ? count : 1;
+      const requestCount = mode === "image" && prefs.variationQueueMode === "separate" ? 1 : count;
+      setStatus(mode === "image" ? `Queued ${count} image${count === 1 ? "" : "s"}` : "Queued video");
 
-    const { jobId, items } = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+      const requestBody = {
         kind: mode,
         prompt,
         negative,
@@ -559,35 +560,37 @@ function App() {
         frames,
         fps,
         startImage: canUseStartImage ? startImage : ""
-      })
-    }).then((response) => response.json()).finally(() => {
+      };
+      const queuedJobs: string[] = [];
+      for (let index = 0; index < imageRuns; index += 1) {
+        const { jobId, items } = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...requestBody, count: requestCount })
+        }).then((response) => response.json());
+        queuedJobs.push(jobId);
+        if (items?.length) setGallery((current) => dedupeGalleryItems([...items, ...current]));
+      }
       generatePostingRef.current = false;
-    });
-    if (items?.length) setGallery((current) => dedupeGalleryItems([...items, ...current]));
 
-    while (true) {
-      await new Promise((resolve) => setTimeout(resolve, 1600));
-      const job: Job = await fetch(`/api/jobs/${jobId}`).then((res) => res.json());
-      if (job.status === "done") {
-        loadGallery();
-        setStatus(`${job.outputs.length} output${job.outputs.length === 1 ? "" : "s"} added`);
-        return;
-      }
-      if (job.status === "error") {
-        loadGallery();
-        setStatus(job.error || "Generation failed");
-        return;
-      }
-      if (job.status === "canceled") {
-        loadGallery();
-        setStatus("Canceled");
-        return;
-      }
-      if (job.progress?.max) {
-        setStatus(`Rendering ${job.progress.value}/${job.progress.max}`);
-      } else {
-        setStatus(job.status === "queued" ? "Queued" : "Rendering on the right");
-      }
+      await Promise.all(queuedJobs.map(async (jobId) => {
+        while (true) {
+          await new Promise((resolve) => setTimeout(resolve, 1600));
+          const job: Job = await fetch(`/api/jobs/${jobId}`).then((res) => res.json());
+          if (job.status === "done" || job.status === "error" || job.status === "canceled") return job;
+          if (job.progress?.max) {
+            setStatus(`Rendering ${job.progress.value}/${job.progress.max}`);
+          } else {
+            setStatus(job.status === "queued" ? "Queued" : "Rendering on the right");
+          }
+        }
+      }));
+      loadGallery();
+      setStatus("Outputs updated");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Generation failed");
+    } finally {
+      generatePostingRef.current = false;
     }
   }
 
@@ -742,7 +745,6 @@ function App() {
           <div className="status-pill">{mode === "image" ? `${count} variation${count === 1 ? "" : "s"}` : `${frames} frames`}</div>
           <div className="status-pill">{runningCount} running</div>
           {runningCount ? <button className="queue-button" onClick={cancelQueue}>Cancel queue</button> : null}
-          <button className="icon-button" title="Refresh models" onClick={refreshModels}><RefreshCw size={15} /></button>
           <button className="icon-button" title="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
         </div>
 
@@ -813,6 +815,16 @@ function App() {
                   <Field label="Video steps"><input type="number" min={1} value={prefs.defaultVideoSteps} onChange={(event) => setPrefs({ defaultVideoSteps: Number(event.target.value) })} /></Field>
                 </div>
                 <Field label="Video FPS"><input type="number" min={1} value={prefs.defaultFps} onChange={(event) => setPrefs({ defaultFps: Number(event.target.value) })} /></Field>
+                <Field label="Variations">
+                  <Select
+                    value={prefs.variationQueueMode}
+                    onChange={(value) => setPrefs({ variationQueueMode: value === "separate" ? "separate" : "batch" })}
+                    options={[
+                      { label: "One batch", value: "batch" },
+                      { label: "Separate queue", value: "separate" }
+                    ]}
+                  />
+                </Field>
               </section>
 
               <section>

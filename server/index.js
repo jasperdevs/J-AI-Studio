@@ -521,6 +521,7 @@ function replaceGalleryJob(id, outputs, body, status = "done") {
   const title = promptTitle(body.prompt);
   const job = jobs.get(id) || {};
   const durationMs = job.startedAt ? Date.now() - job.startedAt : 0;
+  const existing = gallery.filter((item) => item.jobId === id);
   const completed = outputs.map((item, index) => ({
     ...item,
     id: item.url,
@@ -529,7 +530,7 @@ function replaceGalleryJob(id, outputs, body, status = "done") {
     prompt: body.prompt || "",
     negative: body.negative || "",
     filename: title || item.filename,
-    createdAt: new Date().toISOString(),
+    createdAt: existing[index]?.createdAt || new Date().toISOString(),
     durationMs,
     width: Number(body.width || 0),
     height: Number(body.height || 0),
@@ -538,7 +539,17 @@ function replaceGalleryJob(id, outputs, body, status = "done") {
     outputName: item.filename,
     index
   }));
-  gallery = dedupeGallery([...completed, ...gallery.filter((item) => item.jobId !== id && !completed.some((next) => next.id === item.id))]).slice(0, 200);
+  let nextIndex = 0;
+  const replaced = [];
+  gallery.forEach((item) => {
+    if (item.jobId !== id) {
+      replaced.push(item);
+      return;
+    }
+    if (completed[nextIndex]) replaced.push(completed[nextIndex++]);
+  });
+  while (completed[nextIndex]) replaced.unshift(completed[nextIndex++]);
+  gallery = dedupeGallery(replaced).slice(0, 200);
   saveGallery();
   return completed;
 }

@@ -22,12 +22,36 @@ type Progress = { value: number; max: number; node?: string };
 type Output = { url: string; filename: string; type: "image" | "video"; prompt?: string; outputName?: string };
 type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; width?: number; height?: number };
 type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress };
+type SelectOption = { label: string; value: string };
+type Profile = {
+  id: string;
+  kind: Mode;
+  label: string;
+  model: string;
+  workflow: string;
+  family: string;
+  defaults: Record<string, string | number>;
+  aspectPresets: AspectPreset[];
+  constraints?: Record<string, { min?: number; max?: number; step?: number; default?: number }>;
+  options?: {
+    textEncoders?: string[];
+    vaes?: string[];
+    clipTypes?: string[];
+    weightDtypes?: string[];
+    samplers?: string[];
+    schedulers?: string[];
+  };
+  capabilities: Record<string, boolean>;
+};
 type Models = {
-  imageModels: string[];
-  videoModels: string[];
+  imageModels: SelectOption[];
+  videoModels: SelectOption[];
+  profiles: Profile[];
   unsupportedModels?: string[];
   textEncoders: string[];
   vaes: string[];
+  clipTypes?: string[];
+  weightDtypes?: string[];
   samplers: string[];
   schedulers: string[];
   defaults: Record<string, string>;
@@ -53,7 +77,7 @@ const defaultPrefs: Preferences = {
   autoOpenViewer: true
 };
 
-const aspectPresets: Record<Mode, AspectPreset[]> = {
+const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
   image: [
     { label: "1:1", value: "1024x1024", w: 1024, h: 1024 },
     { label: "16:9", value: "1344x768", w: 1344, h: 768 },
@@ -77,10 +101,6 @@ const fallbackSchedulers = ["beta", "simple", "normal", "karras", "sgm_uniform"]
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
-}
-
-function supportsReferenceImage(modelName = "") {
-  return /edit|kontext|inpaint|fill|qwen.*edit|image.?to.?image|img2img/i.test(modelName);
 }
 
 function aspectIconStyle(option: AspectPreset): React.CSSProperties {
@@ -173,10 +193,13 @@ function App() {
   const [model, setModel] = useState("");
   const [textEncoder, setTextEncoder] = useState("");
   const [vae, setVae] = useState("");
+  const [clipType, setClipType] = useState("");
+  const [weightDtype, setWeightDtype] = useState("default");
   const [width, setWidth] = useState(1024);
   const [height, setHeight] = useState(1024);
   const [steps, setSteps] = useState(prefs.defaultImageSteps);
   const [cfg, setCfg] = useState(1);
+  const [denoise, setDenoise] = useState(0.65);
   const [seed, setSeed] = useState("");
   const [count, setCount] = useState(prefs.defaultImageCount);
   const [frames, setFrames] = useState(prefs.defaultVideoFrames);
@@ -188,8 +211,8 @@ function App() {
   const [status, setStatus] = useState("Ready");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [active, setActive] = useState<GalleryItem | null>(null);
-  const [referenceImage, setReferenceImage] = useState("");
-  const [referenceName, setReferenceName] = useState("");
+  const [startImage, setStartImage] = useState("");
+  const [startImageName, setStartImageName] = useState("");
 
   useEffect(() => {
     refreshModels();
@@ -223,41 +246,49 @@ function App() {
       .then((res) => res.json())
       .then((data: Models) => {
         setModels(data);
-        setModel((current) => current || data.defaults.imageModel || "");
-        setTextEncoder((current) => current || data.defaults.imageTextEncoder || "");
-        setVae((current) => current || data.defaults.imageVae || "");
+        const profileId = model || data.defaults.imageModel || "";
+        const profile = data.profiles.find((item) => item.id === profileId);
+        if (!model && profileId) setModel(profileId);
+        if (profile) applyProfile(profile, false);
       })
       .catch((error) => setStatus(error.message));
+  }
+
+  function applyProfile(profile: Profile, setModelId = true) {
+    if (setModelId) setModel(profile.id);
+    setTextEncoder(String(profile.defaults.textEncoder || ""));
+    setVae(String(profile.defaults.vae || ""));
+    setClipType(String(profile.defaults.clipType || ""));
+    setWeightDtype(String(profile.defaults.weightDtype || "default"));
+    setWidth(Number(profile.defaults.width || 1024));
+    setHeight(Number(profile.defaults.height || 1024));
+    setSteps(Number(profile.defaults.steps || (profile.kind === "video" ? prefs.defaultVideoSteps : prefs.defaultImageSteps)));
+    setCfg(Number(profile.defaults.cfg || 1));
+    setSampler(String(profile.defaults.sampler || "euler_ancestral"));
+    setScheduler(String(profile.defaults.scheduler || "beta"));
+    setDenoise(Number(profile.defaults.denoise || 0.65));
+    if (profile.kind === "video") {
+      setFrames(Number(profile.defaults.frames || prefs.defaultVideoFrames));
+      setFps(Number(profile.defaults.fps || prefs.defaultFps));
+    }
+    setStartImage("");
+    setStartImageName("");
   }
 
   function changeMode(next: Mode) {
     setMode(next);
     if (!models) return;
     if (next === "image") {
-      setModel(models.defaults.imageModel || "");
-      setTextEncoder(models.defaults.imageTextEncoder || "");
-      setVae(models.defaults.imageVae || "");
-      applyAspect("1024x1024", next);
-      setSteps(prefs.defaultImageSteps);
-      setCfg(1);
-      setSampler("euler_ancestral");
-      setScheduler("beta");
+      const profile = models.profiles.find((item) => item.id === models.defaults.imageModel);
+      if (profile) applyProfile(profile);
     } else {
-      setModel(models.defaults.videoModel || "");
-      setTextEncoder(models.defaults.videoTextEncoder || "");
-      setVae(models.defaults.videoVae || "");
-      applyAspect("512x288", next);
-      setSteps(prefs.defaultVideoSteps);
-      setCfg(5);
-      setFrames(prefs.defaultVideoFrames);
-      setFps(prefs.defaultFps);
-      setSampler("uni_pc");
-      setScheduler("simple");
+      const profile = models.profiles.find((item) => item.id === models.defaults.videoModel);
+      if (profile) applyProfile(profile);
     }
   }
 
   function applyAspect(value: string, targetMode = mode) {
-    const preset = aspectPresets[targetMode].find((item) => item.value === value);
+    const preset = aspectOptions.find((item) => item.value === value) || fallbackAspectPresets[targetMode].find((item) => item.value === value);
     if (!preset) return;
     setWidth(preset.w);
     setHeight(preset.h);
@@ -268,11 +299,23 @@ function App() {
     return mode === "image" ? models.imageModels : models.videoModels;
   }, [mode, models]);
 
+  const currentProfile = useMemo(() => models?.profiles.find((profile) => profile.id === model) || null, [model, models]);
+  const aspectOptions = currentProfile?.aspectPresets?.length ? currentProfile.aspectPresets : fallbackAspectPresets[mode];
+  const canUseStartImage = mode === "image" && Boolean(currentProfile?.capabilities.startImage);
+  const widthMeta = currentProfile?.constraints?.width || {};
+  const heightMeta = currentProfile?.constraints?.height || {};
+  const frameMeta = currentProfile?.constraints?.frames || {};
+  const profileOptions = currentProfile?.options || {};
   const aspectValue = `${width}x${height}`;
-  const canUseReference = mode === "image" && Boolean(models?.capabilities.referenceImage) && supportsReferenceImage(model);
   const runningCount = gallery.filter((item) => item.status === "pending").length;
 
-  async function readReference(file: File | undefined) {
+  function chooseModel(profileId: string) {
+    const profile = models?.profiles.find((item) => item.id === profileId);
+    if (profile) applyProfile(profile);
+    else setModel(profileId);
+  }
+
+  async function readStartImage(file: File | undefined) {
     if (!file) return;
     const data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -280,8 +323,8 @@ function App() {
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(file);
     });
-    setReferenceImage(data);
-    setReferenceName(file.name);
+    setStartImage(data);
+    setStartImageName(file.name);
   }
 
   async function generate() {
@@ -294,20 +337,24 @@ function App() {
         kind: mode,
         prompt,
         negative,
-        model,
+        model: currentProfile?.model || model,
+        workflow: currentProfile?.workflow || "",
         textEncoder,
         vae,
+        clipType,
+        weightDtype,
         width,
         height,
         steps,
         cfg,
+        denoise,
         sampler,
         scheduler,
         seed,
         count,
         frames,
         fps,
-        referenceImage: canUseReference ? referenceImage : ""
+        startImage: canUseStartImage ? startImage : ""
       })
     });
     const { jobId, items } = await response.json();
@@ -378,7 +425,7 @@ function App() {
 
         <section className="panel">
           <Field label={mode === "image" ? "Image model" : "Video model"}>
-            <Select value={model} onChange={setModel} options={modelOptions} />
+            <Select value={model} onChange={chooseModel} options={modelOptions} />
           </Field>
           <Field label="Prompt">
             <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />
@@ -392,7 +439,7 @@ function App() {
           <div className="section-title">Output</div>
           <div className="control-grid">
             <Field label="Aspect">
-              <AspectPicker value={aspectPresets[mode].some((item) => item.value === aspectValue) ? aspectValue : "custom"} onChange={(value) => applyAspect(value)} options={aspectPresets[mode]} />
+              <AspectPicker value={aspectOptions.some((item) => item.value === aspectValue) ? aspectValue : "custom"} onChange={(value) => applyAspect(value)} options={aspectOptions} />
             </Field>
             {mode === "image" ? (
               <Field label="Variations">
@@ -400,13 +447,13 @@ function App() {
               </Field>
             ) : (
               <Field label="Frames">
-                <input type="number" min={5} value={frames} step={4} onChange={(event) => setFrames(Number(event.target.value))} />
+                <input type="number" min={frameMeta.min || 1} max={frameMeta.max} value={frames} step={frameMeta.step || 4} onChange={(event) => setFrames(Number(event.target.value))} />
               </Field>
             )}
           </div>
           <div className="control-grid">
-            <Field label="Width"><input type="number" value={width} step={mode === "video" ? 32 : 64} onChange={(event) => setWidth(Number(event.target.value))} /></Field>
-            <Field label="Height"><input type="number" value={height} step={mode === "video" ? 32 : 64} onChange={(event) => setHeight(Number(event.target.value))} /></Field>
+            <Field label="Width"><input type="number" min={widthMeta.min} max={widthMeta.max} value={width} step={widthMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setWidth(Number(event.target.value))} /></Field>
+            <Field label="Height"><input type="number" min={heightMeta.min} max={heightMeta.max} value={height} step={heightMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setHeight(Number(event.target.value))} /></Field>
           </div>
           <div className="control-grid">
             <Field label="Steps"><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></Field>
@@ -418,14 +465,19 @@ function App() {
           </div>
         </section>
 
-        {canUseReference ? (
+        {canUseStartImage ? (
           <section className="panel compact-panel">
-            <div className="section-title">Reference image</div>
+            <div className="section-title">Start image</div>
             <label className="file-pick">
-              <input type="file" accept="image/*" onChange={(event) => readReference(event.target.files?.[0])} />
-              <span>{referenceName || "Choose image"}</span>
-              {referenceName ? <button type="button" onClick={(event) => { event.preventDefault(); setReferenceImage(""); setReferenceName(""); }}>Clear</button> : null}
+              <input type="file" accept="image/*" onChange={(event) => readStartImage(event.target.files?.[0])} />
+              <span>{startImageName || "Choose image"}</span>
+              {startImageName ? <button type="button" onClick={(event) => { event.preventDefault(); setStartImage(""); setStartImageName(""); }}>Clear</button> : null}
             </label>
+            {currentProfile?.capabilities.denoise ? (
+              <Field label="Denoise">
+                <input type="number" min={0} max={1} step="0.01" value={denoise} onChange={(event) => setDenoise(Number(event.target.value))} />
+              </Field>
+            ) : null}
           </section>
         ) : null}
 
@@ -436,17 +488,19 @@ function App() {
           </button>
           {advanced ? (
             <div className="advanced-grid">
-              <Field label="Text encoder"><Select value={textEncoder} onChange={setTextEncoder} options={models?.textEncoders || []} /></Field>
-              <Field label="VAE"><Select value={vae} onChange={setVae} options={models?.vaes || []} /></Field>
+              {currentProfile?.capabilities.textEncoder ? <Field label="Text encoder"><Select value={textEncoder} onChange={setTextEncoder} options={profileOptions.textEncoders || models?.textEncoders || []} /></Field> : null}
+              {currentProfile?.capabilities.vae ? <Field label="VAE"><Select value={vae} onChange={setVae} options={profileOptions.vaes || models?.vaes || []} /></Field> : null}
+              {currentProfile?.capabilities.clipType ? <Field label="CLIP type"><Select value={clipType} onChange={setClipType} options={profileOptions.clipTypes || models?.clipTypes || []} /></Field> : null}
+              {currentProfile?.capabilities.weightDtype ? <Field label="Weight dtype"><Select value={weightDtype} onChange={setWeightDtype} options={profileOptions.weightDtypes || models?.weightDtypes || []} /></Field> : null}
               <Field label="CFG"><input type="number" value={cfg} step="0.1" onChange={(event) => setCfg(Number(event.target.value))} /></Field>
-              <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
-              <Field label="Scheduler"><Select value={scheduler} onChange={setScheduler} options={models?.schedulers?.length ? models.schedulers : fallbackSchedulers} /></Field>
+              <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={profileOptions.samplers?.length ? profileOptions.samplers : models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
+              <Field label="Scheduler"><Select value={scheduler} onChange={setScheduler} options={profileOptions.schedulers?.length ? profileOptions.schedulers : models?.schedulers?.length ? models.schedulers : fallbackSchedulers} /></Field>
               {mode === "video" ? <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field> : null}
             </div>
           ) : null}
         </section>
 
-        <button className="generate" onClick={generate} disabled={!model || !textEncoder || !vae}>
+        <button className="generate" onClick={generate} disabled={!currentProfile || (currentProfile.capabilities.textEncoder && !textEncoder) || (currentProfile.capabilities.vae && !vae)}>
           <Wand2 size={15} />
           {mode === "image" ? `Generate ${count}` : "Generate video"}
         </button>
@@ -511,7 +565,8 @@ function App() {
                 <div className="setting-row"><span>Image models</span><strong>{models?.imageModels.length || 0}</strong></div>
                 <div className="setting-row"><span>Video models</span><strong>{models?.videoModels.length || 0}</strong></div>
                 <div className="setting-row"><span>Unsupported</span><strong>{models?.unsupportedModels?.length || 0}</strong></div>
-                <div className="setting-row"><span>Reference image</span><strong>{canUseReference ? "Available" : "Hidden for this model"}</strong></div>
+                <div className="setting-row"><span>Workflow</span><strong>{currentProfile?.family || "None"}</strong></div>
+                <div className="setting-row"><span>Start image</span><strong>{canUseStartImage ? "Available" : "Hidden for this model"}</strong></div>
               </section>
 
               <section>

@@ -7,9 +7,11 @@ J AI Studio is a small React + Express app that sits in front of a running Comfy
 ## What It Does
 
 - Generates images and videos from one interface
-- Shows installed ComfyUI image models, video models, text encoders, VAEs, samplers, and schedulers
+- Detects supported ComfyUI workflow profiles from installed nodes and model files
+- Shows installed image models, video models, text encoders, VAEs, CLIP types, weight dtypes, samplers, and schedulers when the selected workflow uses them
 - Includes prompt, negative prompt, aspect ratio, width, height, seed, steps, CFG, and batch variation controls
 - Includes video controls for frames and FPS
+- Shows start-image and denoise controls only for workflows that can actually use them
 - Keeps advanced model settings available without making them the default workflow
 - Shows generated outputs in a persistent local gallery with fullscreen preview and download controls
 - Shows queue progress, prompt labels, cancel controls, and recovered ComfyUI history
@@ -21,7 +23,10 @@ J AI Studio is a small React + Express app that sits in front of a running Comfy
 - A running ComfyUI server
 - ComfyUI models installed locally
 
-For image generation, the current workflow expects ComfyUI nodes for `UNETLoader`, `CLIPLoader`, `VAELoader`, `EmptySD3LatentImage`, `KSampler`, `VAEDecode`, and `SaveImage`.
+For image generation, the profile system supports:
+
+- Z-Image/Z-Anime-style UNET workflows through `UNETLoader`, `CLIPLoader`, `VAELoader`, `EmptySD3LatentImage`, `KSampler`, `VAEDecode`, and `SaveImage`
+- Checkpoint workflows through `CheckpointLoaderSimple`, `EmptyLatentImage`, `KSampler`, `VAEDecode`, and `SaveImage`
 
 For video generation, it expects Wan-style video support through `Wan22ImageToVideoLatent` plus ComfyUI's `CreateVideo` and `SaveVideo` nodes.
 
@@ -35,7 +40,7 @@ J AI Studio does not bundle ComfyUI. Keep ComfyUI as its own install, then run J
 4. Open `http://127.0.0.1:8188/object_info` in a browser if you want to confirm ComfyUI is exposing its nodes.
 5. Start J AI Studio and open `http://127.0.0.1:8787`.
 
-The model picker is populated from ComfyUI's `/object_info` response, but it only lists model families that J AI Studio has a matching workflow for. Current built-in workflows cover Z-Image/Z-Anime-style image models and Wan-style video models. Other model files stay hidden from the main picker until a matching workflow profile exists.
+The model picker is populated from ComfyUI's `/object_info` response, but it now lists workflow profiles rather than raw filenames. Each profile decides which controls should appear: text encoder, VAE, CLIP type, weight dtype, start image, denoise, video frames, FPS, and aspect presets. Other model files stay hidden from the main picker until a matching workflow profile exists.
 
 ## Quick Start
 

@@ -53,49 +53,207 @@ function promptTitle(text = "") {
   return oneLine.length > 68 ? `${oneLine.slice(0, 65)}...` : oneLine || "Untitled prompt";
 }
 
-function isSupportedImageModel(name = "") {
+function isZImageModel(name = "") {
   return /z[-_ ]?anime|z[-_ ]?image|turbo/i.test(name);
 }
 
-function isSupportedVideoModel(name = "") {
+function isWanVideoModel(name = "") {
   return /wan/i.test(name);
 }
 
-function inferModels(info) {
-  const unets = optionsFor(info, "UNETLoader", "unet_name");
-  const clips = optionsFor(info, "CLIPLoader", "clip_name");
-  const vaes = optionsFor(info, "VAELoader", "vae_name");
-  const samplers = optionsFor(info, "KSampler", "sampler_name");
-  const schedulers = optionsFor(info, "KSampler", "scheduler");
-  const imageModels = unets.filter(isSupportedImageModel);
-  const videoModels = unets.filter(isSupportedVideoModel);
-  const unsupportedModels = unets.filter((name) => !isSupportedImageModel(name) && !isSupportedVideoModel(name));
+function nodeRange(info, node, key, fallback = {}) {
+  const meta = info?.[node]?.input?.required?.[key]?.[1];
+  return typeof meta === "object" && !Array.isArray(meta) ? { ...fallback, ...meta } : fallback;
+}
+
+function aspectSet(defaults, ratios) {
+  return ratios.map(([label, w, h]) => ({ label, value: `${w}x${h}`, w, h, default: w === defaults.width && h === defaults.height }));
+}
+
+function buildProfile({ id, kind, label, model, workflow, family, defaults, aspects, options = {}, capabilities = {}, constraints = {} }) {
   return {
-    imageModels,
-    videoModels,
-    unsupportedModels,
-    textEncoders: clips,
-    vaes,
-    samplers,
-    schedulers,
-    defaults: {
-      imageModel: imageModels.find((name) => /anime/i.test(name)) || imageModels[0] || unets[0] || "",
-      imageTextEncoder: clips.find((name) => /qwen/i.test(name)) || clips[0] || "",
-      imageVae: vaes.find((name) => /ae\.safetensors|flux/i.test(name)) || vaes[0] || "",
-      videoModel: videoModels.find((name) => /wan2\.2.*5b|wan/i.test(name)) || videoModels[0] || "",
-      videoTextEncoder: clips.find((name) => /umt5/i.test(name)) || clips[0] || "",
-      videoVae: vaes.find((name) => /wan/i.test(name)) || vaes[0] || ""
-    },
+    id,
+    kind,
+    label,
+    model,
+    workflow,
+    family,
+    defaults,
+    aspectPresets: aspects,
+    options,
+    constraints,
     capabilities: {
-      image: imageModels.length > 0,
-      video: videoModels.length > 0 && Boolean(info.Wan22ImageToVideoLatent || info.WanImageToVideo),
-      referenceImage: Boolean(info.LoadImage && info.VAEEncode)
+      prompt: true,
+      negativePrompt: kind === "image",
+      steps: true,
+      seed: true,
+      cfg: true,
+      sampler: true,
+      scheduler: true,
+      variations: kind === "image",
+      frames: kind === "video",
+      fps: kind === "video",
+      textEncoder: false,
+      vae: false,
+      clipType: false,
+      weightDtype: false,
+      startImage: false,
+      denoise: false,
+      ...capabilities
     }
   };
 }
 
-function supportsReferenceImage(modelName = "") {
-  return /edit|kontext|inpaint|fill|qwen.*edit|image.?to.?image|img2img/i.test(modelName);
+function inferModels(info) {
+  const unets = optionsFor(info, "UNETLoader", "unet_name");
+  const checkpoints = optionsFor(info, "CheckpointLoaderSimple", "ckpt_name");
+  const clips = optionsFor(info, "CLIPLoader", "clip_name");
+  const clipTypes = optionsFor(info, "CLIPLoader", "type");
+  const vaes = optionsFor(info, "VAELoader", "vae_name");
+  const samplers = optionsFor(info, "KSampler", "sampler_name");
+  const schedulers = optionsFor(info, "KSampler", "scheduler");
+  const weightDtypes = optionsFor(info, "UNETLoader", "weight_dtype");
+  const profiles = [];
+  const sd3Range = {
+    width: nodeRange(info, "EmptySD3LatentImage", "width", { default: 1024, min: 16, max: 16384, step: 16 }),
+    height: nodeRange(info, "EmptySD3LatentImage", "height", { default: 1024, min: 16, max: 16384, step: 16 })
+  };
+  const imageRange = {
+    width: nodeRange(info, "EmptyLatentImage", "width", { default: 512, min: 16, max: 16384, step: 8 }),
+    height: nodeRange(info, "EmptyLatentImage", "height", { default: 512, min: 16, max: 16384, step: 8 })
+  };
+  const wanRange = {
+    width: nodeRange(info, "Wan22ImageToVideoLatent", "width", { default: 512, min: 32, max: 16384, step: 32 }),
+    height: nodeRange(info, "Wan22ImageToVideoLatent", "height", { default: 288, min: 32, max: 16384, step: 32 }),
+    frames: nodeRange(info, "Wan22ImageToVideoLatent", "length", { default: 49, min: 1, max: 16384, step: 4 })
+  };
+
+  for (const name of unets.filter(isZImageModel)) {
+    profiles.push(buildProfile({
+      id: `image:unet-z:${name}`,
+      kind: "image",
+      label: `${name} · Z image`,
+      model: name,
+      workflow: "unet-image",
+      family: "z-image",
+      defaults: {
+        width: 1024,
+        height: 1024,
+        steps: 8,
+        cfg: 1,
+        sampler: "euler_ancestral",
+        scheduler: "beta",
+        textEncoder: clips.find((clip) => /qwen/i.test(clip)) || clips[0] || "",
+        vae: vaes.find((vae) => /ae\.safetensors|flux/i.test(vae)) || vaes[0] || "",
+        clipType: clipTypes.includes("qwen_image") ? "qwen_image" : "wan",
+        weightDtype: weightDtypes.includes("default") ? "default" : weightDtypes[0] || "default"
+      },
+      aspects: aspectSet({ width: 1024, height: 1024 }, [
+        ["1:1", 1024, 1024],
+        ["16:9", 1344, 768],
+        ["9:16", 768, 1344],
+        ["4:3", 1152, 864],
+        ["3:4", 864, 1152],
+        ["2.35:1", 1536, 640]
+      ]),
+      options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
+      constraints: { width: sd3Range.width, height: sd3Range.height },
+      capabilities: { textEncoder: true, vae: true, clipType: true, weightDtype: true }
+    }));
+  }
+
+  for (const name of checkpoints) {
+    profiles.push(buildProfile({
+      id: `image:checkpoint:${name}`,
+      kind: "image",
+      label: `${name} · checkpoint`,
+      model: name,
+      workflow: "checkpoint-image",
+      family: "checkpoint",
+      defaults: {
+        width: 1024,
+        height: 1024,
+        steps: 20,
+        cfg: 7,
+        sampler: samplers.includes("dpmpp_2m") ? "dpmpp_2m" : samplers[0] || "euler",
+        scheduler: schedulers.includes("karras") ? "karras" : schedulers[0] || "normal",
+        denoise: 0.65
+      },
+      aspects: aspectSet({ width: 1024, height: 1024 }, [
+        ["1:1", 1024, 1024],
+        ["16:9", 1344, 768],
+        ["9:16", 768, 1344],
+        ["4:3", 1152, 864],
+        ["3:4", 864, 1152],
+        ["2.35:1", 1536, 640]
+      ]),
+      options: { samplers, schedulers },
+      constraints: { width: imageRange.width, height: imageRange.height },
+      capabilities: { startImage: Boolean(info.LoadImage && info.VAEEncode), denoise: Boolean(info.LoadImage && info.VAEEncode) }
+    }));
+  }
+
+  for (const name of unets.filter(isWanVideoModel)) {
+    profiles.push(buildProfile({
+      id: `video:wan:${name}`,
+      kind: "video",
+      label: `${name} · Wan video`,
+      model: name,
+      workflow: "wan-video",
+      family: "wan",
+      defaults: {
+        width: 512,
+        height: 288,
+        frames: 33,
+        fps: 16,
+        steps: 12,
+        cfg: 5,
+        sampler: samplers.includes("uni_pc") ? "uni_pc" : samplers[0] || "euler",
+        scheduler: schedulers.includes("simple") ? "simple" : schedulers[0] || "normal",
+        textEncoder: clips.find((clip) => /umt5/i.test(clip)) || clips[0] || "",
+        vae: vaes.find((vae) => /wan/i.test(vae)) || vaes[0] || "",
+        clipType: clipTypes.includes("wan") ? "wan" : clipTypes[0] || "wan",
+        weightDtype: weightDtypes.includes("default") ? "default" : weightDtypes[0] || "default"
+      },
+      aspects: aspectSet({ width: 512, height: 288 }, [
+        ["16:9", 512, 288],
+        ["9:16", 288, 512],
+        ["1:1", 384, 384],
+        ["4:3", 448, 336],
+        ["3:4", 336, 448],
+        ["2.35:1", 640, 272]
+      ]),
+      options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
+      constraints: { width: wanRange.width, height: wanRange.height, frames: wanRange.frames },
+      capabilities: { negativePrompt: true, textEncoder: true, vae: true, clipType: true, weightDtype: true }
+    }));
+  }
+
+  const imageProfiles = profiles.filter((profile) => profile.kind === "image");
+  const videoProfiles = profiles.filter((profile) => profile.kind === "video");
+  const profiled = new Set(profiles.map((profile) => profile.model));
+  const unsupportedModels = [...new Set([...unets, ...checkpoints].filter((name) => !profiled.has(name)))];
+  return {
+    imageModels: imageProfiles.map((profile) => ({ label: profile.label, value: profile.id })),
+    videoModels: videoProfiles.map((profile) => ({ label: profile.label, value: profile.id })),
+    profiles,
+    unsupportedModels,
+    textEncoders: clips,
+    vaes,
+    clipTypes,
+    weightDtypes,
+    samplers,
+    schedulers,
+    defaults: {
+      imageModel: imageProfiles.find((profile) => /anime/i.test(profile.model))?.id || imageProfiles[0]?.id || "",
+      videoModel: videoProfiles.find((profile) => /wan2\.2.*5b|wan/i.test(profile.model))?.id || videoProfiles[0]?.id || ""
+    },
+    capabilities: {
+      image: imageProfiles.length > 0,
+      video: videoProfiles.length > 0 && Boolean(info.Wan22ImageToVideoLatent || info.WanImageToVideo),
+      startImage: profiles.some((profile) => profile.capabilities.startImage)
+    }
+  };
 }
 
 async function uploadReferenceImage(dataUrl) {
@@ -114,9 +272,14 @@ async function uploadReferenceImage(dataUrl) {
 }
 
 async function imageGraph(body) {
+  if (body.workflow === "checkpoint-image") return checkpointImageGraph(body);
+  return unetImageGraph(body);
+}
+
+async function unetImageGraph(body) {
   const seed = Number(body.seed || crypto.randomInt(1, 2 ** 31));
   const count = Math.max(1, Math.min(8, Number(body.count || 1)));
-  const graph = {
+  return {
     "1": { class_type: "UNETLoader", inputs: { unet_name: body.model, weight_dtype: body.weightDtype || "default" } },
     "2": { class_type: "CLIPLoader", inputs: { clip_name: body.textEncoder, type: body.clipType || "wan", device: body.clipDevice || "default" } },
     "3": { class_type: "VAELoader", inputs: { vae_name: body.vae } },
@@ -141,13 +304,44 @@ async function imageGraph(body) {
     "8": { class_type: "VAEDecode", inputs: { samples: ["7", 0], vae: ["3", 0] } },
     "9": { class_type: "SaveImage", inputs: { images: ["8", 0], filename_prefix: "j-ai-studio/image" } }
   };
+}
 
-  if (body.referenceImage && supportsReferenceImage(body.model)) {
-    const imageName = await uploadReferenceImage(body.referenceImage);
+async function checkpointImageGraph(body) {
+  const seed = Number(body.seed || crypto.randomInt(1, 2 ** 31));
+  const count = Math.max(1, Math.min(8, Number(body.count || 1)));
+  const graph = {
+    "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: body.model } },
+    "2": { class_type: "CLIPTextEncode", inputs: { text: body.prompt || "", clip: ["1", 1] } },
+    "3": { class_type: "CLIPTextEncode", inputs: { text: body.negative || "", clip: ["1", 1] } },
+    "4": { class_type: "EmptyLatentImage", inputs: { width: Number(body.width || 1024), height: Number(body.height || 1024), batch_size: count } },
+    "5": {
+      class_type: "KSampler",
+      inputs: {
+        model: ["1", 0],
+        seed,
+        steps: Number(body.steps || 20),
+        cfg: Number(body.cfg || 7),
+        sampler_name: body.sampler || "dpmpp_2m",
+        scheduler: body.scheduler || "karras",
+        positive: ["2", 0],
+        negative: ["3", 0],
+        latent_image: ["4", 0],
+        denoise: Number(body.denoise || 1)
+      }
+    },
+    "6": { class_type: "VAEDecode", inputs: { samples: ["5", 0], vae: ["1", 2] } },
+    "7": { class_type: "SaveImage", inputs: { images: ["6", 0], filename_prefix: "j-ai-studio/image" } }
+  };
+
+  if (body.startImage) {
+    const imageName = await uploadReferenceImage(body.startImage);
     graph["6"] = { class_type: "LoadImage", inputs: { image: imageName } };
-    graph["10"] = { class_type: "VAEEncode", inputs: { pixels: ["6", 0], vae: ["3", 0] } };
-    graph["7"].inputs.latent_image = ["10", 0];
-    graph["7"].inputs.denoise = Number(body.denoise || 0.65);
+    graph["8"] = { class_type: "VAEEncode", inputs: { pixels: ["6", 0], vae: ["1", 2] } };
+    graph["5"].inputs.latent_image = ["8", 0];
+    graph["5"].inputs.denoise = Number(body.denoise || 0.65);
+    graph["9"] = graph["7"];
+    graph["7"] = { class_type: "VAEDecode", inputs: { samples: ["5", 0], vae: ["1", 2] } };
+    graph["9"].inputs.images = ["7", 0];
   }
 
   return graph;

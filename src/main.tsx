@@ -4,21 +4,14 @@ import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-500.css";
 import "@fontsource/inter/latin-600.css";
 import {
-  Aperture,
   ChevronDown,
-  Clapperboard,
   Copy,
   Download,
-  GalleryHorizontal,
-  Image as ImageIcon,
-  ImagePlus,
   Loader2,
-  Monitor,
   Power,
   RefreshCw,
   Settings2,
   SlidersHorizontal,
-  Sparkles,
   Wand2,
   X
 } from "lucide-react";
@@ -39,18 +32,36 @@ type Models = {
   capabilities: Record<string, boolean>;
 };
 
+type Preferences = {
+  defaultImageCount: number;
+  defaultImageSteps: number;
+  defaultVideoFrames: number;
+  defaultVideoSteps: number;
+  defaultFps: number;
+  autoOpenViewer: boolean;
+};
+
+const defaultPrefs: Preferences = {
+  defaultImageCount: 1,
+  defaultImageSteps: 8,
+  defaultVideoFrames: 33,
+  defaultVideoSteps: 12,
+  defaultFps: 16,
+  autoOpenViewer: true
+};
+
 const aspectPresets = {
   image: [
-    { label: "Square", value: "1024x1024", w: 1024, h: 1024 },
-    { label: "Portrait", value: "832x1248", w: 832, h: 1248 },
-    { label: "Landscape", value: "1248x832", w: 1248, h: 832 },
-    { label: "Small test", value: "512x512", w: 512, h: 512 }
+    { label: "Square 1024", value: "1024x1024", w: 1024, h: 1024 },
+    { label: "Portrait 832x1248", value: "832x1248", w: 832, h: 1248 },
+    { label: "Landscape 1248x832", value: "1248x832", w: 1248, h: 832 },
+    { label: "Small test 512", value: "512x512", w: 512, h: 512 }
   ],
   video: [
-    { label: "Wide", value: "512x288", w: 512, h: 288 },
-    { label: "Portrait", value: "288x512", w: 288, h: 512 },
-    { label: "Square", value: "384x384", w: 384, h: 384 },
-    { label: "Small test", value: "320x192", w: 320, h: 192 }
+    { label: "Wide 512x288", value: "512x288", w: 512, h: 288 },
+    { label: "Portrait 288x512", value: "288x512", w: 288, h: 512 },
+    { label: "Square 384", value: "384x384", w: 384, h: 384 },
+    { label: "Small test 320x192", value: "320x192", w: 320, h: 192 }
   ]
 };
 
@@ -59,6 +70,14 @@ const fallbackSchedulers = ["beta", "simple", "normal", "karras", "sgm_uniform"]
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
+}
+
+function loadPrefs(): Preferences {
+  try {
+    return { ...defaultPrefs, ...JSON.parse(localStorage.getItem("j-ai-studio-prefs") || "{}") };
+  } catch {
+    return defaultPrefs;
+  }
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -70,28 +89,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Select({ value, onChange, options, icon: Icon }: { value: string; onChange: (value: string) => void; options: string[]; icon?: React.ComponentType<{ size?: number }> }) {
+function Select({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: Array<string | { label: string; value: string }> }) {
   return (
     <div className="select">
-      {Icon ? <Icon size={14} /> : null}
       <select value={value} onChange={(event) => onChange(event.target.value)}>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
+        {options.map((option) => {
+          const item = typeof option === "string" ? { label: option, value: option } : option;
+          return (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          );
+        })}
       </select>
       <ChevronDown size={14} />
-    </div>
-  );
-}
-
-function Stat({ icon: Icon, label, value }: { icon: React.ComponentType<{ size?: number }>; label: string; value: string }) {
-  return (
-    <div className="stat">
-      <Icon size={14} />
-      <span>{label}</span>
-      <strong>{value}</strong>
     </div>
   );
 }
@@ -99,6 +110,7 @@ function Stat({ icon: Icon, label, value }: { icon: React.ComponentType<{ size?:
 function App() {
   const [mode, setMode] = useState<Mode>("image");
   const [models, setModels] = useState<Models | null>(null);
+  const [prefs, setPrefsState] = useState<Preferences>(() => loadPrefs());
   const [prompt, setPrompt] = useState("anime portrait, silver hair, golden eyes, clean linework, soft warm lighting");
   const [negative, setNegative] = useState("low quality, blurry, bad anatomy, text, watermark");
   const [model, setModel] = useState("");
@@ -106,12 +118,12 @@ function App() {
   const [vae, setVae] = useState("");
   const [width, setWidth] = useState(1024);
   const [height, setHeight] = useState(1024);
-  const [steps, setSteps] = useState(8);
+  const [steps, setSteps] = useState(prefs.defaultImageSteps);
   const [cfg, setCfg] = useState(1);
   const [seed, setSeed] = useState("");
-  const [count, setCount] = useState(1);
-  const [frames, setFrames] = useState(33);
-  const [fps, setFps] = useState(16);
+  const [count, setCount] = useState(prefs.defaultImageCount);
+  const [frames, setFrames] = useState(prefs.defaultVideoFrames);
+  const [fps, setFps] = useState(prefs.defaultFps);
   const [sampler, setSampler] = useState("euler_ancestral");
   const [scheduler, setScheduler] = useState("beta");
   const [advanced, setAdvanced] = useState(false);
@@ -131,6 +143,12 @@ function App() {
       })
       .catch(() => null);
   }, []);
+
+  function setPrefs(next: Partial<Preferences>) {
+    const merged = { ...prefs, ...next };
+    setPrefsState(merged);
+    localStorage.setItem("j-ai-studio-prefs", JSON.stringify(merged));
+  }
 
   function refreshModels() {
     fetch("/api/models")
@@ -152,7 +170,7 @@ function App() {
       setTextEncoder(models.defaults.imageTextEncoder || "");
       setVae(models.defaults.imageVae || "");
       applyAspect("1024x1024", next);
-      setSteps(8);
+      setSteps(prefs.defaultImageSteps);
       setCfg(1);
       setSampler("euler_ancestral");
       setScheduler("beta");
@@ -161,8 +179,10 @@ function App() {
       setTextEncoder(models.defaults.videoTextEncoder || "");
       setVae(models.defaults.videoVae || "");
       applyAspect("512x288", next);
-      setSteps(12);
+      setSteps(prefs.defaultVideoSteps);
       setCfg(5);
+      setFrames(prefs.defaultVideoFrames);
+      setFps(prefs.defaultFps);
       setSampler("uni_pc");
       setScheduler("simple");
     }
@@ -247,7 +267,7 @@ function App() {
           prompt: pending[index]?.prompt || prompt
         }));
         setGallery((current) => [...completed, ...current.filter((item) => !ids.includes(item.id))]);
-        setActive((current) => current || completed[0] || null);
+        if (prefs.autoOpenViewer) setActive((current) => current || completed[0] || null);
         setStatus(`${job.outputs.length} output${job.outputs.length === 1 ? "" : "s"} added`);
         return;
       }
@@ -269,7 +289,6 @@ function App() {
     <div className="app-shell">
       <aside className="left-panel">
         <header className="brand">
-          <div className="mark"><Aperture size={17} /></div>
           <div>
             <h1>J AI Studio</h1>
             <p>Local Comfy, simple prompts.</p>
@@ -277,13 +296,13 @@ function App() {
         </header>
 
         <div className="mode-tabs" role="tablist" aria-label="Generation mode">
-          <button className={cn(mode === "image" && "active")} onClick={() => changeMode("image")}><ImageIcon size={15} /> Image</button>
-          <button className={cn(mode === "video" && "active")} onClick={() => changeMode("video")}><Clapperboard size={15} /> Video</button>
+          <button className={cn(mode === "image" && "active")} onClick={() => changeMode("image")}>Image</button>
+          <button className={cn(mode === "video" && "active")} onClick={() => changeMode("video")}>Video</button>
         </div>
 
         <section className="panel">
           <Field label={mode === "image" ? "Image model" : "Video model"}>
-            <Select value={model} onChange={setModel} options={modelOptions} icon={Sparkles} />
+            <Select value={model} onChange={setModel} options={modelOptions} />
           </Field>
           <Field label="Prompt">
             <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />
@@ -294,10 +313,10 @@ function App() {
         </section>
 
         <section className="panel compact-panel">
-          <div className="section-title">{mode === "image" ? <ImageIcon size={14} /> : <Clapperboard size={14} />} Output</div>
+          <div className="section-title">Output</div>
           <div className="split">
             <Field label="Aspect">
-              <Select value={aspectPresets[mode].some((item) => item.value === aspectValue) ? aspectValue : "custom"} onChange={(value) => applyAspect(value)} options={[...aspectPresets[mode].map((item) => item.value), "custom"]} />
+              <Select value={aspectPresets[mode].some((item) => item.value === aspectValue) ? aspectValue : "custom"} onChange={(value) => applyAspect(value)} options={[...aspectPresets[mode], { label: "Custom", value: "custom" }]} />
             </Field>
             {mode === "image" ? (
               <Field label="Variations">
@@ -318,7 +337,7 @@ function App() {
 
         {canUseReference ? (
           <section className="panel compact-panel">
-            <div className="section-title"><ImagePlus size={14} /> Reference image</div>
+            <div className="section-title">Reference image</div>
             <label className="file-pick">
               <input type="file" accept="image/*" onChange={(event) => readReference(event.target.files?.[0])} />
               <span>{referenceName || "Choose image"}</span>
@@ -329,7 +348,8 @@ function App() {
 
         <section className="panel compact-panel">
           <button className="advanced-toggle" onClick={() => setAdvanced((value) => !value)}>
-            <SlidersHorizontal size={14} /> Advanced <ChevronDown size={14} className={cn(advanced && "flip")} />
+            <span>Advanced</span>
+            <ChevronDown size={14} className={cn(advanced && "flip")} />
           </button>
           {advanced ? (
             <div className="advanced-grid">
@@ -345,20 +365,18 @@ function App() {
         </section>
 
         <button className="generate" onClick={generate} disabled={!model || !textEncoder || !vae}>
-          <Wand2 size={16} />
+          <Wand2 size={15} />
           {mode === "image" ? `Generate ${count}` : "Generate video"}
         </button>
 
-        <div className="status-row">
-          <span>{status}</span>
-        </div>
+        <div className="status-row">{status}</div>
       </aside>
 
       <main className="workspace">
         <div className="topbar">
-          <Stat icon={Monitor} label="Backend" value="ComfyUI" />
-          <Stat icon={mode === "image" ? ImageIcon : Clapperboard} label="Mode" value={mode === "image" ? `${count} variation${count === 1 ? "" : "s"}` : `${frames} frames`} />
-          <Stat icon={GalleryHorizontal} label="Running" value={`${runningCount}`} />
+          <div className="status-pill">ComfyUI</div>
+          <div className="status-pill">{mode === "image" ? `${count} variation${count === 1 ? "" : "s"}` : `${frames} frames`}</div>
+          <div className="status-pill">{runningCount} running</div>
           <button className="icon-button" title="Refresh models" onClick={refreshModels}><RefreshCw size={15} /></button>
           <button className="icon-button" title="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
         </div>
@@ -371,7 +389,6 @@ function App() {
             </button>
           )) : (
             <div className="empty">
-              <Sparkles size={22} />
               <h2>No outputs yet</h2>
               <p>Start a batch and each pending result appears here while Comfy renders.</p>
             </div>
@@ -383,11 +400,57 @@ function App() {
         <div className="viewer" onClick={() => setSettings(false)}>
           <div className="settings-card" onClick={(event) => event.stopPropagation()}>
             <header>
-              <h2>Settings</h2>
+              <div>
+                <h2>Settings</h2>
+                <p>Local server and generation defaults.</p>
+              </div>
               <button className="icon-button" onClick={() => setSettings(false)}><X size={15} /></button>
             </header>
-            <p>J AI Studio is served locally on this computer. Closing localhost stops this app server; ComfyUI can stay running for the next launch.</p>
-            <button className="danger-button" onClick={shutdown}><Power size={15} /> Close localhost</button>
+
+            <div className="settings-grid">
+              <section>
+                <h3>Connection</h3>
+                <div className="setting-row"><span>App</span><strong>http://127.0.0.1:8787</strong></div>
+                <div className="setting-row"><span>ComfyUI</span><strong>http://127.0.0.1:8188</strong></div>
+                <div className="setting-actions">
+                  <button onClick={refreshModels}>Refresh models</button>
+                  <button onClick={() => window.open("http://127.0.0.1:8188", "_blank")}>Open ComfyUI</button>
+                </div>
+              </section>
+
+              <section>
+                <h3>Installed</h3>
+                <div className="setting-row"><span>Image models</span><strong>{models?.imageModels.length || 0}</strong></div>
+                <div className="setting-row"><span>Video models</span><strong>{models?.videoModels.length || 0}</strong></div>
+                <div className="setting-row"><span>Reference image</span><strong>{models?.capabilities.referenceImage ? "Available" : "Unavailable"}</strong></div>
+              </section>
+
+              <section>
+                <h3>Defaults</h3>
+                <div className="split">
+                  <Field label="Image variations"><input type="number" min={1} max={8} value={prefs.defaultImageCount} onChange={(event) => setPrefs({ defaultImageCount: Number(event.target.value) })} /></Field>
+                  <Field label="Image steps"><input type="number" min={1} value={prefs.defaultImageSteps} onChange={(event) => setPrefs({ defaultImageSteps: Number(event.target.value) })} /></Field>
+                </div>
+                <div className="split">
+                  <Field label="Video frames"><input type="number" min={5} value={prefs.defaultVideoFrames} onChange={(event) => setPrefs({ defaultVideoFrames: Number(event.target.value) })} /></Field>
+                  <Field label="Video steps"><input type="number" min={1} value={prefs.defaultVideoSteps} onChange={(event) => setPrefs({ defaultVideoSteps: Number(event.target.value) })} /></Field>
+                </div>
+                <Field label="Video FPS"><input type="number" min={1} value={prefs.defaultFps} onChange={(event) => setPrefs({ defaultFps: Number(event.target.value) })} /></Field>
+                <label className="check-row"><input type="checkbox" checked={prefs.autoOpenViewer} onChange={(event) => setPrefs({ autoOpenViewer: event.target.checked })} /> Open viewer when a job finishes</label>
+              </section>
+
+              <section>
+                <h3>Gallery</h3>
+                <div className="setting-row"><span>Visible items</span><strong>{gallery.length}</strong></div>
+                <button className="wide-button" onClick={() => setGallery([])}>Clear local gallery view</button>
+              </section>
+
+              <section>
+                <h3>Localhost</h3>
+                <p>Stops J AI Studio. ComfyUI can keep running for the next launch.</p>
+                <button className="danger-button" onClick={shutdown}><Power size={15} /> Close localhost</button>
+              </section>
+            </div>
           </div>
         </div>
       ) : null}

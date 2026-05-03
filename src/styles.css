@@ -25,7 +25,6 @@ button { color: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .brand h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: 0; }
 .brand p { margin: 1px 0 0; color: var(--muted); font-size: 12px; }
-.mark { width: 32px; height: 32px; border: 1px solid var(--line-strong); display: grid; place-items: center; border-radius: 7px; background: #f4f4f4; color: #050505; }
 
 .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: #070707; margin-bottom: 10px; }
 .mode-tabs button, .advanced-toggle, .generate, .icon-button, .tile, .danger-button { border: 1px solid transparent; background: transparent; cursor: pointer; transition: border-color 140ms ease, background 140ms ease, opacity 140ms ease; }
@@ -62,9 +61,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--soft); }
 .status-row { color: var(--muted); font-size: 12px; padding: 10px 2px 0; min-height: 28px; }
 
 .topbar { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
-.stat, .icon-button { border: 1px solid var(--line); background: #090909; border-radius: 7px; min-height: 34px; display: flex; align-items: center; gap: 7px; padding: 0 9px; color: var(--muted); }
-.stat { font-size: 12px; }
-.stat strong { color: var(--text); font-weight: 500; }
+.status-pill, .icon-button { border: 1px solid var(--line); background: #090909; border-radius: 7px; min-height: 34px; display: flex; align-items: center; gap: 7px; padding: 0 9px; color: var(--muted); }
+.status-pill { font-size: 12px; }
 .icon-button { width: 34px; justify-content: center; text-decoration: none; }
 
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; align-content: start; min-height: 0; overflow: auto; }
@@ -87,10 +85,20 @@ input:focus, textarea:focus, select:focus { border-color: var(--soft); }
 .viewer { position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 20; display: grid; place-items: center; padding: 22px; }
 .viewer-bar { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; }
 .viewer-media img, .viewer-media video { max-width: 92vw; max-height: 88vh; object-fit: contain; border-radius: 8px; }
-.settings-card { width: min(440px, 92vw); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 14px; }
+.settings-card { width: min(720px, 94vw); max-height: 86vh; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 14px; }
 .settings-card header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .settings-card h2 { margin: 0; font-size: 16px; font-weight: 600; }
-.settings-card p { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.settings-card h3 { margin: 0 0 9px; font-size: 13px; font-weight: 600; }
+.settings-card p { color: var(--muted); font-size: 13px; line-height: 1.45; margin: 4px 0 12px; }
+.settings-grid { display: grid; gap: 12px; margin-top: 14px; }
+.settings-grid section { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #0c0c0c; }
+.setting-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; padding: 5px 0; }
+.setting-row strong { color: var(--text); font-weight: 500; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setting-actions { display: flex; gap: 8px; margin-top: 10px; }
+.setting-actions button, .wide-button { border: 1px solid var(--line); border-radius: 7px; background: #090909; color: var(--soft); min-height: 34px; padding: 0 10px; cursor: pointer; }
+.wide-button { width: 100%; }
+.check-row { display: flex; align-items: center; gap: 8px; color: var(--soft); font-size: 13px; margin-top: 8px; }
+.check-row input { width: auto; min-height: 0; }
 .danger-button { width: 100%; min-height: 38px; border-color: var(--line-strong); border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #f4f4f4; color: #050505; font-weight: 600; }
 
 @media (max-width: 980px) {

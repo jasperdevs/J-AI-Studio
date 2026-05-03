@@ -79,6 +79,7 @@ type Models = {
   capabilities: Record<string, boolean>;
 };
 type Paths = { outputDir?: string; galleryDir?: string };
+type Health = { ok: boolean; comfyUrl?: string; error?: string };
 type AspectPreset = { label: string; value: string; w: number; h: number };
 
 type Preferences = {
@@ -90,6 +91,9 @@ type Preferences = {
   variationQueueMode: "batch" | "separate";
   zenMode: boolean;
   confirmActions: boolean;
+  enterToGenerate: boolean;
+  followLatest: boolean;
+  showFailedItems: boolean;
   mobileZenDefaulted?: boolean;
 };
 
@@ -101,7 +105,10 @@ const defaultPrefs: Preferences = {
   defaultFps: 16,
   variationQueueMode: "batch",
   zenMode: false,
-  confirmActions: true
+  confirmActions: true,
+  enterToGenerate: true,
+  followLatest: true,
+  showFailedItems: true
 };
 
 const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
@@ -126,7 +133,6 @@ const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
 const fallbackSamplers = ["euler_ancestral", "euler", "uni_pc", "dpmpp_2m", "dpmpp_sde"];
 const fallbackSchedulers = ["beta", "simple", "normal", "karras", "sgm_uniform"];
 const githubUrl = "https://github.com/jasperdevs/J-AI-Studio";
-const promptLimit = 1800;
 const negativeLimit = 1200;
 const visiblePromptLimit = 1200;
 
@@ -263,6 +269,16 @@ async function copyImage(item: GalleryItem) {
   } catch {
     return copyText(item.url);
   }
+}
+
+async function apiJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = typeof data?.error === "string" ? data.error : response.statusText || "Request failed";
+    throw new Error(message);
+  }
+  return data as T;
 }
 
 function loadPrefs(): Preferences {
@@ -595,6 +611,7 @@ function App() {
   const initialDraft = useMemo(() => loadDraft(), []);
   const [mode, setMode] = useState<Mode>(initialDraft.mode === "video" ? "video" : "image");
   const [models, setModels] = useState<Models | null>(null);
+  const [health, setHealth] = useState<Health | null>(null);
   const [prefs, setPrefsState] = useState<Preferences>(() => loadPrefs());
   const [prompt, setPrompt] = useState(String(initialDraft.prompt || ""));
   const [negative, setNegative] = useState(String(initialDraft.negative || ""));
@@ -644,6 +661,7 @@ function App() {
   const promptRemaining = Math.max(0, visiblePromptLimit - prompt.length);
 
   useEffect(() => {
+    refreshHealth();
     refreshModels(false);
     refreshPaths();
     loadGallery();
@@ -688,6 +706,20 @@ function App() {
       document.body.style.overflow = previous;
     };
   }, [active, settings]);
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest("[data-open-trigger], [data-open-surface], [data-radix-popper-content-wrapper], [role='listbox'], [role='tooltip']")) return;
+      if (zenControls) setZenControls(false);
+      if (showNegativePrompt) setShowNegativePrompt(false);
+      if (prefs.zenMode && zenGalleryOpen) setZenGalleryOpen(false);
+      if (active && showDetails) setShowDetails(false);
+    }
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => window.removeEventListener("pointerdown", onPointerDown, true);
+  }, [active, prefs.zenMode, showDetails, showNegativePrompt, zenControls, zenGalleryOpen]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -829,7 +861,7 @@ function App() {
         const outputs = data.outputs.filter((item) => item.status !== "canceled");
         setGallery(outputs);
         const latest = outputs.find((item) => item.type === mode && item.status === "done");
-        if (prefs.zenMode && latest && (!zenSelectedId || (latestZenIdRef.current && latest.id !== latestZenIdRef.current))) {
+        if (prefs.zenMode && prefs.followLatest && latest && (!zenSelectedId || (latestZenIdRef.current && latest.id !== latestZenIdRef.current))) {
           setZenSelectedId(latest.id);
         }
         if (latest) latestZenIdRef.current = latest.id;
@@ -840,7 +872,11 @@ function App() {
   function setPrefs(next: Partial<Preferences>) {
     const merged = { ...prefs, ...next };
     setPrefsState(merged);
-    localStorage.setItem("j-ai-studio-prefs", JSON.stringify(merged));
+    try {
+      localStorage.setItem("j-ai-studio-prefs", JSON.stringify(merged));
+    } catch {
+      showToast("Could not save settings", "error");
+    }
   }
 
   function setZenMode(enabled: boolean) {
@@ -877,8 +913,7 @@ function App() {
   }
 
   function refreshModels(notify = true) {
-    fetch("/api/models")
-      .then((res) => res.json())
+    apiJson<Models>("/api/models")
       .then((data: Models) => {
         setModels(data);
         const profileId = model || "";
@@ -894,9 +929,14 @@ function App() {
       });
   }
 
+  function refreshHealth() {
+    apiJson<Health>("/api/health")
+      .then(setHealth)
+      .catch((error) => setHealth({ ok: false, error: error instanceof Error ? error.message : "Connection failed" }));
+  }
+
   function refreshPaths() {
-    fetch("/api/paths")
-      .then((res) => res.json())
+    apiJson<Paths>("/api/paths")
       .then(setPaths)
       .catch(() => null);
   }
@@ -961,7 +1001,7 @@ function App() {
   const profileOptions = currentProfile?.options || {};
   const aspectValue = `${width}x${height}`;
   const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "custom" : aspectValue;
-  const visibleGallery = useMemo(() => sortGalleryItems(gallery.filter((item) => item.type === mode && item.status !== "canceled")), [gallery, mode]);
+  const visibleGallery = useMemo(() => sortGalleryItems(gallery.filter((item) => item.type === mode && item.status !== "canceled" && (prefs.showFailedItems || item.status !== "error"))), [gallery, mode, prefs.showFailedItems]);
   const galleryColumnCount = useGalleryColumnCount();
   const galleryColumns = useMemo(() => distributeGalleryColumns(visibleGallery, galleryColumnCount), [visibleGallery, galleryColumnCount]);
   const runningCount = visibleGallery.filter((item) => item.status === "pending").length;
@@ -989,6 +1029,18 @@ function App() {
 
   async function generate() {
     if (generatePostingRef.current) return;
+    if (!prompt.trim()) {
+      showToast("Prompt is required", "error");
+      return;
+    }
+    if (!currentProfile) {
+      showToast("Choose a supported model first", "error");
+      return;
+    }
+    if (generateDisabled) {
+      showToast("Model setup is missing required files", "error");
+      return;
+    }
     generatePostingRef.current = true;
     try {
       const imageRuns = mode === "image" && prefs.variationQueueMode === "separate" ? count : 1;
@@ -1026,11 +1078,11 @@ function App() {
       };
       const queuedJobs: string[] = [];
       for (let index = 0; index < imageRuns; index += 1) {
-        const { jobId, items } = await fetch("/api/generate", {
+        const { jobId, items } = await apiJson<{ jobId: string; items: GalleryItem[] }>("/api/generate", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ ...requestBody, count: requestCount })
-        }).then((response) => response.json());
+        });
         queuedJobs.push(jobId);
         if (items?.length) setGallery((current) => dedupeGalleryItems([...items, ...current]));
       }
@@ -1039,7 +1091,7 @@ function App() {
       await Promise.all(queuedJobs.map(async (jobId) => {
         while (true) {
           await new Promise((resolve) => setTimeout(resolve, 1600));
-          const job: Job = await fetch(`/api/jobs/${jobId}`).then((res) => res.json());
+          const job: Job = await apiJson<Job>(`/api/jobs/${jobId}`);
           if (job.status === "missing") {
             setGallery((current) => current.map((item) => item.jobId === jobId ? { ...item, status: "error", filename: "Generation interrupted" } : item));
             return job;
@@ -1061,8 +1113,8 @@ function App() {
         }
       }));
       loadGallery();
-      if (prefs.zenMode) {
-        const data = await fetch("/api/gallery").then((res) => res.json()).catch(() => null);
+      if (prefs.zenMode && prefs.followLatest) {
+        const data = await apiJson<{ outputs: GalleryItem[] }>("/api/gallery").catch(() => null);
         const outputs = data?.outputs?.filter((item: GalleryItem) => item.status !== "canceled") || [];
         const latest = outputs.find((item: GalleryItem) => item.type === mode && item.status === "done");
         if (latest) {
@@ -1072,8 +1124,9 @@ function App() {
       }
       setStatus("Ready");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Generation failed");
-      showToast("Generation failed", "error");
+      const message = error instanceof Error ? error.message : "Generation failed";
+      setStatus(message);
+      showToast(message, "error");
     } finally {
       generatePostingRef.current = false;
     }
@@ -1096,8 +1149,15 @@ function App() {
 
   async function clearGallery() {
     if (!confirmAction("Clear finished gallery items from this app?")) return;
-    const data = await fetch("/api/gallery/clear", { method: "POST" }).then((res) => res.json()).catch(() => null);
-        if (data?.outputs) setGallery(data.outputs.filter((item: GalleryItem) => item.status !== "canceled"));
+    const data = await apiJson<{ outputs: GalleryItem[] }>("/api/gallery/clear", { method: "POST" }).catch(() => null);
+    if (data?.outputs) setGallery(data.outputs.filter((item: GalleryItem) => item.status !== "canceled"));
+    setStatus("Ready");
+  }
+
+  async function clearFailedItems() {
+    if (!confirmAction("Clear failed and interrupted generations from this gallery?")) return;
+    const data = await apiJson<{ outputs: GalleryItem[] }>("/api/gallery/errors/clear", { method: "POST" }).catch(() => null);
+    if (data?.outputs) setGallery(data.outputs.filter((item: GalleryItem) => item.status !== "canceled"));
     setStatus("Ready");
   }
 
@@ -1153,7 +1213,7 @@ function App() {
     const matchingAspects = matchingProfile?.aspectPresets?.length ? matchingProfile.aspectPresets : fallbackAspectPresets[nextMode];
     setMode(nextMode);
     if (matchingProfile) setModel(matchingProfile.id);
-    setPrompt((item.prompt || "").slice(0, promptLimit));
+    setPrompt((item.prompt || "").slice(0, visiblePromptLimit));
     setNegative((item.negative || "").slice(0, negativeLimit));
     setWidth(Number(item.width || itemSettings.width || width));
     setHeight(Number(item.height || itemSettings.height || height));
@@ -1198,7 +1258,7 @@ function App() {
   }
 
   function submitZenPrompt(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Enter" || event.shiftKey) return;
+    if (!prefs.enterToGenerate || event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     if (!generateDisabled) generate();
   }
@@ -1453,7 +1513,7 @@ function App() {
   );
 
   return (
-    <div className={prefs.zenMode ? "zen-shell" : "app-shell"}>
+    <div className={cn(prefs.zenMode ? "zen-shell" : "app-shell", showNegativePrompt && "negative-open")}>
       {prefs.zenMode ? (
         <>
           <div className="zen-stage">
@@ -1494,7 +1554,7 @@ function App() {
             </div>
           ) : null}
 
-          <Tip content="Controls"><button className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
+          <Tip content="Controls"><button data-open-trigger className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
             <PanelLeft size={16} />
           </button></Tip>
           {zenItem ? (
@@ -1505,7 +1565,7 @@ function App() {
             </div>
           ) : null}
           {doneGallery.length && !zenGalleryOpen ? (
-            <Tip content="Show gallery"><button className="zen-gallery-restore" aria-label="Show gallery" onClick={() => setZenGalleryOpen(true)}>
+            <Tip content="Show gallery"><button data-open-trigger className="zen-gallery-restore" aria-label="Show gallery" onClick={() => setZenGalleryOpen(true)}>
               <ChevronDown size={16} />
             </button></Tip>
           ) : null}
@@ -1515,14 +1575,14 @@ function App() {
           </div>
 
           {zenControls ? <button className="sidebar-dismiss" aria-label="Close controls" onClick={() => setZenControls(false)} /> : null}
-          <aside className={cn("zen-controls", zenControls && "open")}>
+          <aside data-open-surface className={cn("zen-controls", zenControls && "open")}>
             {sidebarControls}
           </aside>
 
           <section className="zen-prompt">
             <textarea ref={zenPromptRef} maxLength={visiblePromptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, visiblePromptLimit))} />
             <span className={cn("prompt-count", promptRemaining <= 0 && "limit")}>{characterMeta(prompt.length, visiblePromptLimit)}</span>
-            <div className={cn("negative-drawer", showNegativePrompt && "open")}>
+            <div data-open-surface className={cn("negative-drawer", showNegativePrompt && "open")}>
               <label className="negative-drawer-label">Negative prompt</label>
               <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
               <span>{characterMeta(negative.length, negativeLimit)}</span>
@@ -1530,7 +1590,7 @@ function App() {
             <div className="zen-prompt-actions">
               <Tip content="Current status"><span className="zen-status">{status}</span></Tip>
               <div className="zen-inline-settings">
-                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
+                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative
                 </button></Tip>
@@ -1545,7 +1605,7 @@ function App() {
           </section>
 
           {doneGallery.length && zenGalleryOpen ? (
-            <div className="zen-gallery-wrap">
+            <div data-open-surface className="zen-gallery-wrap">
               <Tip content="Hide gallery"><button className="zen-gallery-toggle" aria-label="Hide gallery" onClick={() => setZenGalleryOpen(false)}><ChevronUp size={16} /></button></Tip>
               {doneGallery[0]?.id !== zenItem?.id ? <Tip content="Jump to latest output"><button className="zen-latest" onClick={goLatestZen}>Latest</button></Tip> : null}
               <div
@@ -1617,7 +1677,7 @@ function App() {
             <div className="bottom-fade" />
           </main>
 
-          <Tip content="Controls"><button className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
+          <Tip content="Controls"><button data-open-trigger className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
             <PanelLeft size={16} />
           </button></Tip>
           <div className="zen-top-actions">
@@ -1627,14 +1687,14 @@ function App() {
           </div>
 
           {zenControls ? <button className="sidebar-dismiss" aria-label="Close controls" onClick={() => setZenControls(false)} /> : null}
-          <aside className={cn("zen-controls", zenControls && "open")}>
+          <aside data-open-surface className={cn("zen-controls", zenControls && "open")}>
             {sidebarControls}
           </aside>
 
           <section className="zen-prompt">
             <textarea ref={zenPromptRef} maxLength={visiblePromptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, visiblePromptLimit))} />
             <span className={cn("prompt-count", promptRemaining <= 0 && "limit")}>{characterMeta(prompt.length, visiblePromptLimit)}</span>
-            <div className={cn("negative-drawer", showNegativePrompt && "open")}>
+            <div data-open-surface className={cn("negative-drawer", showNegativePrompt && "open")}>
               <label className="negative-drawer-label">Negative prompt</label>
               <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
               <span>{characterMeta(negative.length, negativeLimit)}</span>
@@ -1642,7 +1702,7 @@ function App() {
             <div className="zen-prompt-actions">
               <Tip content="Current status"><span className="zen-status">{status}</span></Tip>
               <div className="zen-inline-settings">
-                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
+                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative
                 </button></Tip>
@@ -1660,7 +1720,7 @@ function App() {
 
       {settings ? (
         <div className="scrim modal-scrim" onClick={() => setSettings(false)}>
-          <div className="settings-card" onClick={(event) => event.stopPropagation()}>
+          <div data-open-surface className="settings-card" onClick={(event) => event.stopPropagation()}>
             <header>
               <div className="settings-brand">
                 <img src="/j-ai-logo.png" alt="" />
@@ -1686,11 +1746,13 @@ function App() {
 
               <section>
                 <h3>Connection</h3>
-                <div className="setting-row"><span>Studio</span><strong>127.0.0.1:8787</strong></div>
-                <div className="setting-row"><span>ComfyUI</span><strong>127.0.0.1:8188</strong></div>
+                <div className="setting-row"><span>Studio</span><strong>{window.location.host || "Localhost"}</strong></div>
+                <div className="setting-row"><span>ComfyUI</span><strong>{health?.comfyUrl || "Not connected"}</strong></div>
+                <div className="setting-row"><span>Status</span><strong>{health?.ok ? "Connected" : health?.error || "Checking..."}</strong></div>
                 <div className="setting-actions">
+                  <Tip content="Check the local ComfyUI connection"><button onClick={refreshHealth}>Check connection</button></Tip>
                   <Tip content="Rescan local models"><button onClick={() => refreshModels()}>Refresh models</button></Tip>
-                  <Tip content="Open ComfyUI in a new tab"><button onClick={() => { window.open("http://127.0.0.1:8188", "_blank"); }}>Open ComfyUI</button></Tip>
+                  <Tip content="Open ComfyUI in a new tab"><button onClick={() => { window.open(health?.comfyUrl || "http://127.0.0.1:8188", "_blank"); }}>Open ComfyUI</button></Tip>
                 </div>
               </section>
 
@@ -1716,6 +1778,13 @@ function App() {
                   />
                   <span className="field-meta">{prefs.variationQueueMode === "batch" ? "Faster overall, but you can only cancel the whole batch." : "Each image is its own job, so you can cancel them individually."}</span>
                 </Field>
+                <label className="toggle-row">
+                  <span>
+                    <strong>Enter to generate</strong>
+                    <em>Press Enter to submit, Shift+Enter for a new line</em>
+                  </span>
+                  <input type="checkbox" checked={prefs.enterToGenerate} onChange={(event) => setPrefs({ enterToGenerate: event.target.checked })} />
+                </label>
               </section>
 
               <section>
@@ -1734,6 +1803,13 @@ function App() {
                   </span>
                   <input type="checkbox" checked={prefs.confirmActions} onChange={(event) => setPrefs({ confirmActions: event.target.checked })} />
                 </label>
+                <label className="toggle-row">
+                  <span>
+                    <strong>Follow latest output</strong>
+                    <em>Jump to the newest finished item while generating</em>
+                  </span>
+                  <input type="checkbox" checked={prefs.followLatest} onChange={(event) => setPrefs({ followLatest: event.target.checked })} />
+                </label>
               </section>
 
               <section>
@@ -1741,11 +1817,28 @@ function App() {
                 <div className="setting-row"><span>Total items</span><strong>{gallery.length}</strong></div>
                 <div className="setting-row"><span>Current tab</span><strong>{visibleGallery.length} {mode === "image" ? "images" : "videos"}</strong></div>
                 <div className="setting-row"><span>Outputs</span><strong>{paths.outputDir || "Not configured"}</strong></div>
+                <label className="toggle-row">
+                  <span>
+                    <strong>Show failed items</strong>
+                    <em>Keep interrupted or failed generations visible in the gallery</em>
+                  </span>
+                  <input type="checkbox" checked={prefs.showFailedItems} onChange={(event) => setPrefs({ showFailedItems: event.target.checked })} />
+                </label>
+                <label className="toggle-row">
+                  <span>
+                    <strong>Zen gallery strip</strong>
+                    <em>Show the small gallery across the top in zen mode</em>
+                  </span>
+                  <input type="checkbox" checked={zenGalleryOpen} onChange={(event) => setZenGalleryOpen(event.target.checked)} />
+                </label>
                 <div className="setting-actions">
                   <Tip content="Copy the output folder path"><button onClick={() => copyAndToast(paths.outputDir || "", "Output path copied")}>Copy output path</button></Tip>
                   <Tip content="Open the output folder"><button onClick={openOutputFolder} disabled={!paths.outputDir}>Open output folder</button></Tip>
                 </div>
-                <Tip content="Remove finished items from this gallery"><button className="wide-button subtle-danger" onClick={clearGallery}>Clear finished gallery</button></Tip>
+                <div className="setting-actions">
+                  <Tip content="Remove failed and interrupted cards"><button onClick={clearFailedItems}>Clear failed items</button></Tip>
+                  <Tip content="Remove finished items from this gallery"><button className="subtle-danger" onClick={clearGallery}>Clear finished gallery</button></Tip>
+                </div>
               </section>
 
               <section>
@@ -1796,7 +1889,7 @@ function App() {
                   </>
                 ) : null}
                 {showDetails ? (
-                  <aside className="viewer-side" onWheel={(event) => event.stopPropagation()}>
+                  <aside data-open-surface className="viewer-side" onWheel={(event) => event.stopPropagation()}>
                     <div className="viewer-side-head">
                       <h3>Details</h3>
                     </div>
@@ -1833,7 +1926,7 @@ function App() {
                     </div>
                   </aside>
                 ) : null}
-                <div className={cn("viewer-dock", showDetails && "with-side")}>
+                <div data-open-trigger className={cn("viewer-dock", showDetails && "with-side")}>
                   <Tip content="Zoom out (-)"><button className="icon-button" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)} disabled={viewerZoom <= 0.5}><ZoomOut size={15} /></button></Tip>
                   <Tip content="Reset zoom (0)"><button className="text-button viewer-zoom" onClick={resetViewer}>{viewerZoom > 1 ? <RotateCcw size={13} /> : null} {Math.round(viewerZoom * 100)}%</button></Tip>
                   <Tip content="Zoom in (+)"><button className="icon-button" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)} disabled={viewerZoom >= 6}><ZoomIn size={15} /></button></Tip>

@@ -376,6 +376,15 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!active && !settings) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [active, settings]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       if (settings) {
@@ -704,7 +713,7 @@ function App() {
   function openItem(item: GalleryItem) {
     resetViewer();
     setZenSelectedId(item.id);
-    setShowDetails(false);
+    setShowDetails(true);
     setActive(item);
   }
 
@@ -730,6 +739,7 @@ function App() {
 
   function wheelViewer(event: React.WheelEvent) {
     event.preventDefault();
+    event.stopPropagation();
     zoomViewer(viewerZoom + (event.deltaY < 0 ? 0.18 : -0.18));
   }
 
@@ -1088,7 +1098,7 @@ function App() {
       ) : null}
 
       {active ? (
-        <div className="viewer" onClick={() => setActive(null)}>
+        <div className="viewer" onClick={() => setActive(null)} onWheel={(event) => event.preventDefault()}>
           <button className="viewer-close has-tip" data-tip="Close" aria-label="Close" onClick={(event) => { event.stopPropagation(); setActive(null); }}><X size={16} /></button>
           {visibleGallery.filter((item) => item.status === "done").length > 1 ? (
             <div className="viewer-arrows" onClick={(event) => event.stopPropagation()}>
@@ -1118,7 +1128,7 @@ function App() {
               <Media item={active} />
             </div>
             {showDetails ? (
-              <aside className="viewer-details">
+              <aside className="viewer-details" onWheel={(event) => event.stopPropagation()}>
                 <div className="detail-copy-row">
                   <button onClick={() => copyText(active.prompt || "")}>Copy prompt</button>
                   <button onClick={() => copyText(fullGenerationText(active))}>Copy full</button>

@@ -1042,15 +1042,16 @@ function App() {
                   <Field label="Video steps"><input type="number" min={1} value={prefs.defaultVideoSteps} onChange={(event) => setPrefs({ defaultVideoSteps: Number(event.target.value) })} /></Field>
                 </div>
                 <Field label="Video FPS"><input type="number" min={1} value={prefs.defaultFps} onChange={(event) => setPrefs({ defaultFps: Number(event.target.value) })} /></Field>
-                <Field label="Variations">
+                <Field label="Multi-image queueing">
                   <Select
                     value={prefs.variationQueueMode}
                     onChange={(value) => setPrefs({ variationQueueMode: value === "separate" ? "separate" : "batch" })}
                     options={[
-                      { label: "One batch", value: "batch" },
-                      { label: "Separate queue", value: "separate" }
+                      { label: "One job, multiple images", value: "batch" },
+                      { label: "Separate jobs", value: "separate" }
                     ]}
                   />
+                  <span className="field-meta">{prefs.variationQueueMode === "batch" ? "Fastest. One Comfy job makes all variations together." : "Queues each variation as its own cancelable job."}</span>
                 </Field>
               </section>
 

@@ -24,27 +24,16 @@
 
 | Fullscreen details | Realtime generation |
 | --- | --- |
-| <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="520" /> | <video src="./docs/screenshots/realtime-generation.mp4" width="520" autoplay loop muted playsinline controls></video> |
+| <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="520" /> | <a href="./docs/screenshots/realtime-generation.mp4"><img src="./docs/screenshots/realtime-generation-poster.jpg" alt="Realtime generation preview" width="520" /></a> |
 
 ## Features
 
-<table>
-  <tr>
-    <td width="45%" valign="top">
-      <ul>
-        <li>Prompt-first image and video generation</li>
-        <li>Model-aware controls from ComfyUI node metadata</li>
-        <li>Image and video galleries kept separate by mode</li>
-        <li>Zen mode for a cleaner fullscreen workflow</li>
-        <li>Live queue/progress cards with cancel controls</li>
-        <li>Persistent local gallery metadata</li>
-      </ul>
-    </td>
-    <td width="55%" valign="top">
-      <img src="./docs/screenshots/features-placeholder.svg" alt="Feature screenshot" width="620" />
-    </td>
-  </tr>
-</table>
+- Prompt-first image and video generation
+- Model-aware controls from ComfyUI node metadata
+- Image and video galleries kept separate by mode
+- Zen mode for a cleaner fullscreen workflow
+- Live queue/progress cards with cancel controls
+- Persistent local gallery metadata
 
 ## Quick Start
 

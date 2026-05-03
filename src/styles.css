@@ -392,14 +392,21 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 
 .status-row { color: hsl(var(--muted-foreground)); font-size: 12px; padding: 12px 2px 0; min-height: 28px; }
 
-.zen-shell { position: fixed; inset: 0; overflow: hidden; background: hsl(var(--background)); color: hsl(var(--foreground)); }
-.zen-stage { position: absolute; inset: 0; display: grid; place-items: center; background: hsl(var(--background)); }
+.zen-shell {
+  position: fixed; inset: 0; overflow: hidden;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.zen-stage {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: hsl(var(--background));
+}
 .zen-output {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   border: 0;
   padding: 12px 12px 110px;
-  background: hsl(var(--background));
+  background: transparent;
   cursor: zoom-in;
   overflow: hidden;
   touch-action: none;
@@ -433,7 +440,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .zen-control-button:hover { border-color: hsl(var(--border-strong)); background: hsl(var(--accent)); transform: translateY(-1px); }
 
 .zen-gallery-restore {
-  position: fixed; top: 16px; left: 196px; z-index: 12;
+  position: fixed; top: 12px; left: 12px; z-index: 12;
   width: 38px; height: 38px;
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
@@ -463,6 +470,15 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .zen-controls.open { opacity: 1; transform: translateX(0); pointer-events: auto; }
 
+.sidebar-dismiss {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
 .zen-prompt {
   position: fixed; left: 50%; bottom: 18px; z-index: 10;
   width: min(820px, calc(100vw - 420px));
@@ -476,8 +492,8 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   box-shadow: var(--shadow-xl);
 }
 .zen-prompt textarea {
-  height: 44px;
-  max-height: 120px;
+  min-height: 44px;
+  max-height: 128px;
   border: 0; background: transparent; padding: 10px 4px 4px;
   color: hsl(var(--foreground));
   font-size: 14px;
@@ -486,44 +502,49 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   resize: none; text-align: left;
   overflow-y: auto;
   font-weight: 400;
-  min-height: 0;
 }
 .zen-prompt textarea::placeholder { color: hsl(var(--muted-foreground) / 0.5); }
 .zen-prompt textarea:focus { box-shadow: none; }
 
 .negative-drawer {
   display: grid;
+  gap: 4px;
   max-height: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-height 220ms var(--ease-out), opacity 180ms var(--ease-out), margin 180ms var(--ease-out);
-  margin-top: -6px;
+  transition: max-height 220ms var(--ease-out), opacity 180ms var(--ease-out), margin 180ms var(--ease-out), padding 180ms var(--ease-out);
+  padding: 0 4px;
+  margin-top: 0;
+  border-top: 1px solid hsl(var(--border) / 0);
 }
 .negative-drawer.open {
-  max-height: 132px;
+  max-height: 140px;
   opacity: 1;
-  margin-top: 0;
+  padding: 10px 4px 4px;
+  margin-top: 8px;
+  border-top-color: hsl(var(--border));
 }
 .negative-drawer-label {
   font-size: 11px;
   font-weight: 500;
   color: hsl(var(--muted-foreground));
-  padding: 8px 4px 0;
-  border-top: 1px solid hsl(var(--border));
+  letter-spacing: -0.005em;
 }
 .negative-drawer textarea {
   min-height: 0;
-  height: 60px;
-  padding: 4px 4px 4px;
+  height: 56px;
+  padding: 0;
   border: 0;
+  background: transparent;
   font-size: 13px;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground));
+  line-height: 1.45;
 }
+.negative-drawer textarea::placeholder { color: hsl(var(--muted-foreground) / 0.55); }
+.negative-drawer textarea:focus { box-shadow: none; border: 0; }
 .negative-drawer span {
   justify-self: end;
-  margin-top: -4px;
-  padding-right: 4px;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.7);
   font-size: 11px;
 }
 
@@ -839,10 +860,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .generating .noise-layer {
   position: absolute; inset: 0; z-index: 0;
-  background:
-    linear-gradient(120deg, transparent 0%, hsl(var(--foreground) / 0.04) 45%, hsl(var(--foreground) / 0.08) 50%, hsl(var(--foreground) / 0.04) 55%, transparent 100%) 0 0 / 220% 100%,
-    hsl(var(--card));
-  animation: shimmerSlide 2.6s var(--ease-soft) infinite;
+  background: hsl(var(--card));
   pointer-events: none;
 }
 .generating.has-preview .noise-layer { display: none; }
@@ -868,37 +886,35 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .generate-step {
   display: inline-flex; align-items: baseline; gap: 6px;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 6px rgb(0 0 0 / 0.7);
 }
 .generate-step-label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.005em;
   color: hsl(var(--muted-foreground));
 }
 .generate-step-label.is-queued {
-  color: hsl(var(--foreground));
-  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
 }
 .generate-step-count {
   color: hsl(var(--foreground));
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: -0.01em;
 }
 .generate-step-count i {
   font-style: normal;
   color: hsl(var(--muted-foreground));
-  font-weight: 500;
+  font-weight: 400;
   margin: 0 2px;
 }
 .generate-elapsed {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: hsl(var(--muted-foreground));
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
 }
 
 .generate-bar {
@@ -925,10 +941,6 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   0% { left: -35%; }
   100% { left: 100%; }
 }
-@keyframes shimmerSlide {
-  0% { background-position: -110% 0, 0 0; }
-  100% { background-position: 110% 0, 0 0; }
-}
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pop {
@@ -951,11 +963,15 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 
 .scrim {
   position: fixed; inset: 0;
-  background: hsl(var(--background));
+  background: hsl(var(--background) / 0.55);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
   z-index: 20;
   overflow: hidden;
   overscroll-behavior: contain;
+  animation: scrimFade 180ms var(--ease-out);
 }
+@keyframes scrimFade { from { opacity: 0; } to { opacity: 1; } }
 
 .modal-scrim {
   display: grid; place-items: center;
@@ -1019,9 +1035,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   display: flex; align-items: center; gap: 4px;
   padding: 6px;
   border: 1px solid hsl(var(--border));
-  background: hsl(var(--card) / 0.92);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  backdrop-filter: blur(14px) saturate(140%);
+  background: hsl(var(--card));
   border-radius: calc(var(--radius) + 6px);
   box-shadow: var(--shadow-lg);
   transition: left 220ms var(--ease-out);
@@ -1464,7 +1478,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   .setting-row strong { text-align: left; white-space: normal; }
   .setting-actions { grid-template-columns: 1fr; }
   .zen-control-button { top: auto; bottom: calc(204px + env(safe-area-inset-bottom)); left: 10px; }
-  .zen-gallery-restore { top: 10px; left: 56px; }
+  .zen-gallery-restore { top: 10px; left: 10px; }
   .zen-top-actions { top: auto; bottom: calc(204px + env(safe-area-inset-bottom)); right: 10px; }
   .zen-controls {
     left: 10px;
@@ -1483,7 +1497,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
     padding: 10px;
     gap: 5px;
   }
-  .zen-prompt textarea { min-height: 44px; height: 44px; font-size: 16px; padding-top: 7px; }
+  .zen-prompt textarea { min-height: 44px; max-height: 112px; font-size: 16px; padding-top: 7px; }
   .negative-drawer.open { max-height: 82px; }
   .negative-drawer textarea { height: 56px; font-size: 14px; }
   .zen-prompt-actions {

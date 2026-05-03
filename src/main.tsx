@@ -192,6 +192,13 @@ function generationDetailEntries(item: GalleryItem) {
     if (value === "" || value === undefined || value === null || value === 0 || value === false) return;
     rows.push([label, String(value)]);
   };
+  add("Aspect", `${item.width || "?"}x${item.height || "?"}`);
+  add("Model", item.model);
+  add("Output", item.outputName || item.filename);
+  add("Generated", formatGeneratedAt(item.createdAt));
+  add("Time", item.durationMs ? formatElapsed(item.durationMs) : "");
+  add("Type", item.type);
+  add("Workflow", settings.workflow);
   add("Steps", settings.steps);
   add("CFG", settings.cfg);
   add("Sampler", settings.sampler);
@@ -207,6 +214,11 @@ function generationDetailEntries(item: GalleryItem) {
     add("Frames", settings.frames);
     add("FPS", settings.fps);
   }
+  add("Denoise", settings.denoise);
+  add("Text encoder", settings.textEncoder);
+  add("VAE", settings.vae);
+  add("CLIP type", settings.clipType);
+  add("Weight dtype", settings.weightDtype);
   return rows;
 }
 
@@ -529,6 +541,13 @@ function App() {
   }, [prefs.zenMode, active, settings, zenControls]);
 
   useEffect(() => {
+    const textarea = zenPromptRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(128, Math.max(44, textarea.scrollHeight))}px`;
+  }, [prompt, prefs.zenMode]);
+
+  useEffect(() => {
     if (prefs.zenMode) return;
     setZenControls(false);
     setActive(null);
@@ -570,6 +589,19 @@ function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [settings, active, zenControls]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (settings || active) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key.length !== 1 && event.key !== "Backspace") return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, button, a, [contenteditable='true'], [role='dialog'], [role='listbox'], [data-radix-popper-content-wrapper]")) return;
+      zenPromptRef.current?.focus();
+    }
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, [settings, active]);
 
   useEffect(() => {
     const draft = {
@@ -1037,7 +1069,13 @@ function App() {
   }
 
   function stopZenStripDrag(event: React.PointerEvent<HTMLDivElement>) {
-    if (zenStripDragRef.current?.id === event.pointerId) {
+    const drag = zenStripDragRef.current;
+    if (drag?.id === event.pointerId) {
+      if (!drag.moved) {
+        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-zen-id]") as HTMLElement | null;
+        const itemId = target?.dataset.zenId;
+        if (itemId) setZenSelectedId(itemId);
+      }
       window.setTimeout(() => {
         zenStripDragRef.current = null;
       }, 0);
@@ -1090,10 +1128,6 @@ function App() {
   function clickViewer(event: React.MouseEvent) {
     event.stopPropagation();
     if (Date.now() - viewerDragEndRef.current < 220) return;
-    if (event.target === event.currentTarget) {
-      setActive(null);
-      return;
-    }
     if (viewerDragRef.current?.moved) return;
     if (viewerZoom > 1) {
       zoomViewer(1);
@@ -1104,7 +1138,6 @@ function App() {
 
   function startViewerDrag(event: React.PointerEvent) {
     if (event.pointerType === "touch") return;
-    if (viewerZoom <= 1) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     viewerDragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, panX: viewerPan.x, panY: viewerPan.y, moved: false };
     setIsDraggingViewer(true);
@@ -1117,7 +1150,7 @@ function App() {
     const dx = event.clientX - drag.x;
     const dy = event.clientY - drag.y;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
-    setViewerPan({ x: drag.panX + dx, y: drag.panY + dy });
+    if (viewerZoom > 1) setViewerPan({ x: drag.panX + dx, y: drag.panY + dy });
   }
 
   function stopViewerDrag(event: React.PointerEvent) {
@@ -1316,6 +1349,7 @@ function App() {
             <Tip content="Exit zen"><button className="icon-button" aria-label="Exit zen" onClick={() => setZenMode(false)}><Minimize2 size={15} /></button></Tip>
           </div>
 
+          {zenControls ? <button className="sidebar-dismiss" aria-label="Close controls" onClick={() => setZenControls(false)} /> : null}
           <aside className={cn("zen-controls", zenControls && "open")}>
             {sidebarControls}
           </aside>
@@ -1360,7 +1394,7 @@ function App() {
                 onPointerCancel={stopZenStripDrag}
               >
                 {doneGallery.map((item) => (
-                  <Tip key={item.id} content={titleFromPrompt(item.prompt || item.filename)}><button className={cn(item.id === zenItem?.id && "active")} onClick={(event) => { event.stopPropagation(); setZenSelectedId(item.id); }} onDragStart={(event) => event.preventDefault()}>
+                  <Tip key={item.id} content={titleFromPrompt(item.prompt || item.filename)}><button data-zen-id={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={(event) => { event.stopPropagation(); selectZenItem(item.id); }} onDragStart={(event) => event.preventDefault()}>
                     <Media item={item} muted />
                   </button></Tip>
                 ))}
@@ -1429,6 +1463,7 @@ function App() {
             <Tip content="Zen mode"><button className="icon-button" aria-label="Enter zen mode" onClick={() => setZenMode(true)}><Maximize2 size={15} /></button></Tip>
           </div>
 
+          {zenControls ? <button className="sidebar-dismiss" aria-label="Close controls" onClick={() => setZenControls(false)} /> : null}
           <aside className={cn("zen-controls", zenControls && "open")}>
             {sidebarControls}
           </aside>
@@ -1495,16 +1530,16 @@ function App() {
 
               <section>
                 <h3>Generation</h3>
-                <Field label="Variation mode">
+                <Field label="When generating multiple images">
                   <Select
                     value={prefs.variationQueueMode}
                     onChange={(value) => setPrefs({ variationQueueMode: value === "separate" ? "separate" : "batch" })}
                     options={[
-                      { label: "Together in one run", value: "batch" },
-                      { label: "Start each image now", value: "separate" }
+                      { label: "Run them all in one batch", value: "batch" },
+                      { label: "Queue them as separate jobs", value: "separate" }
                     ]}
                   />
-                  <span className="field-meta">{prefs.variationQueueMode === "batch" ? "One generation produces all variations together." : "Creates one generation per image immediately, so each card can be canceled separately."}</span>
+                  <span className="field-meta">{prefs.variationQueueMode === "batch" ? "Faster overall, but you can only cancel the whole batch." : "Each image is its own job, so you can cancel them individually."}</span>
                 </Field>
               </section>
 
@@ -1592,13 +1627,6 @@ function App() {
                           </div>
                         </div>
                       ) : null}
-                      <div className="detail-grid">
-                        <span>Aspect</span><strong>{active.width || "?"}x{active.height || "?"}</strong>
-                        <span>Model</span><strong>{active.model || "-"}</strong>
-                        <span>Output</span><strong>{active.outputName || active.filename}</strong>
-                        {active.createdAt ? <><span>Generated</span><strong>{formatGeneratedAt(active.createdAt)}</strong></> : null}
-                        {active.durationMs ? <><span>Time</span><strong>{formatElapsed(active.durationMs)}</strong></> : null}
-                      </div>
                       {generationDetailEntries(active).length ? (
                         <details className="settings-disclosure">
                           <summary>Generation settings</summary>

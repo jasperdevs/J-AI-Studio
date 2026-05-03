@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Toaster, toast } from "sonner";
+import {
+  Select as FluidSelect,
+  SelectContent as FluidSelectContent,
+  SelectItem as FluidSelectItem,
+  SelectTrigger as FluidSelectTrigger
+} from "@/components/ui/select";
+import { Tooltip as FluidTooltip } from "@/components/ui/tooltip";
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-500.css";
 import "@fontsource/inter/latin-600.css";
@@ -11,7 +18,6 @@ import {
   ChevronUp,
   Copy,
   Download,
-  Power,
   RotateCcw,
   Maximize2,
   Minimize2,
@@ -31,7 +37,7 @@ type Progress = { value: number; max: number; node?: string };
 type Output = { url: string; filename: string; type: "image" | "video"; prompt?: string; negative?: string; outputName?: string };
 type GenerationSettings = Record<string, string | number | boolean | null | undefined>;
 type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; preview?: string; width?: number; height?: number; createdAt?: string; durationMs?: number; model?: string; settings?: GenerationSettings; index?: number; referenceImage?: string; referenceImageName?: string };
-type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress };
+type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress; preview?: string };
 type TouchGesture = { mode: "pan"; id: number; x: number; y: number; panX: number; panY: number; moved: boolean } | { mode: "pinch"; distance: number; zoom: number; panX: number; panY: number; centerX: number; centerY: number; moved: boolean };
 type SelectOption = { label: string; value: string };
 type Profile = {
@@ -186,7 +192,6 @@ function generationDetailEntries(item: GalleryItem) {
     if (value === "" || value === undefined || value === null || value === 0 || value === false) return;
     rows.push([label, String(value)]);
   };
-  add("Workflow", settings.workflow);
   add("Steps", settings.steps);
   add("CFG", settings.cfg);
   add("Sampler", settings.sampler);
@@ -202,10 +207,6 @@ function generationDetailEntries(item: GalleryItem) {
     add("Frames", settings.frames);
     add("FPS", settings.fps);
   }
-  add("Text encoder", settings.textEncoder);
-  add("VAE", settings.vae);
-  add("CLIP type", settings.clipType);
-  add("Weight dtype", settings.weightDtype);
   return rows;
 }
 
@@ -345,20 +346,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function Select({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: Array<string | { label: string; value: string }> }) {
+  const normalized = options.map((option) => typeof option === "string" ? { label: option, value: option } : option);
   return (
-    <div className="select">
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
-        {options.map((option) => {
-          const item = typeof option === "string" ? { label: option, value: option } : option;
-          return (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          );
-        })}
-      </select>
-      <ChevronDown size={14} />
-    </div>
+    <FluidSelect value={value} onValueChange={onChange}>
+      <FluidSelectTrigger className="fluid-select-trigger" placeholder="Select" />
+      <FluidSelectContent className="fluid-select-content">
+        {normalized.map((item, index) => (
+          <FluidSelectItem key={item.value} index={index} value={item.value}>
+            {item.label}
+          </FluidSelectItem>
+        ))}
+      </FluidSelectContent>
+    </FluidSelect>
+  );
+}
+
+function Tip({ content, side = "bottom", children }: { content: React.ReactNode; side?: "top" | "right" | "bottom" | "left"; children: React.ReactElement }) {
+  return (
+    <FluidTooltip content={content} side={side} sideOffset={10}>
+      {children}
+    </FluidTooltip>
   );
 }
 
@@ -367,40 +374,39 @@ function AspectPicker({ value, options, onChange }: { value: string; options: As
   const selected = options.find((item) => item.value === value);
   return (
     <div className="aspect-picker">
-      <button type="button" className="aspect-trigger" onClick={() => setOpen((next) => !next)}>
-        {selected ? <span className="aspect-shape" style={aspectIconStyle(selected)} /> : <span className="aspect-shape custom" />}
-        <span>{selected ? selected.label : "Custom"}</span>
-        <ChevronDown size={14} className={cn(open && "flip")} />
-      </button>
+      <Tip content="Aspect ratio"><button type="button" className="aspect-trigger" onClick={() => setOpen((next) => !next)}>
+          {selected ? <span className="aspect-shape" style={aspectIconStyle(selected)} /> : <span className="aspect-shape custom" />}
+          <span>{selected ? selected.label : "Custom"}</span>
+          <ChevronDown size={14} className={cn(open && "flip")} />
+        </button></Tip>
       {open ? (
         <div className="aspect-menu">
           {options.map((option) => (
-            <button
-              key={option.value}
+            <Tip key={option.value} content={`${option.label} ${option.value}`}><button
+                type="button"
+                className={cn("aspect-option", option.value === value && "active")}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+              >
+                <span className="aspect-shape" style={aspectIconStyle(option)} />
+                <span>{option.label}</span>
+                <em>{option.value}</em>
+              </button></Tip>
+          ))}
+          <Tip content="Custom width and height"><button
               type="button"
-              className={cn("aspect-option", option.value === value && "active")}
+              className={cn("aspect-option", value === "custom" && "active")}
               onClick={() => {
-                onChange(option.value);
+                onChange("custom");
                 setOpen(false);
               }}
             >
-              <span className="aspect-shape" style={aspectIconStyle(option)} />
-              <span>{option.label}</span>
-              <em>{option.value}</em>
-            </button>
-          ))}
-          <button
-            type="button"
-            className={cn("aspect-option", value === "custom" && "active")}
-            onClick={() => {
-              onChange("custom");
-              setOpen(false);
-            }}
-          >
-            <span className="aspect-shape custom" />
-            <span>Custom</span>
-            <em>Width x height</em>
-          </button>
+              <span className="aspect-shape custom" />
+              <span>Custom</span>
+              <em>Width x height</em>
+            </button></Tip>
         </div>
       ) : null}
     </div>
@@ -420,33 +426,32 @@ function ModelPicker({ value, profiles, onChange }: { value: string; profiles: P
   const selected = profiles.find((profile) => profile.id === value) || profiles[0] || null;
   return (
     <div className="model-picker">
-      <button type="button" className="model-trigger" onClick={() => setOpen((next) => !next)}>
-        <span className="model-glyph">{selected?.kind === "video" ? "V" : "I"}</span>
-        <span className="model-copy">
-          <strong>{selected?.displayName || selected?.label || "No model"}</strong>
-          <em>{selected ? familyLabel(selected) : "No supported workflow"}</em>
-        </span>
-        <ChevronDown size={14} className={cn(open && "flip")} />
-      </button>
+      <Tip content="Choose model"><button type="button" className="model-trigger" onClick={() => setOpen((next) => !next)}>
+          <span className="model-glyph">{selected?.kind === "video" ? "V" : "I"}</span>
+          <span className="model-copy">
+            <strong>{selected?.displayName || selected?.label || "No model"}</strong>
+            <em>{selected ? familyLabel(selected) : "No supported workflow"}</em>
+          </span>
+          <ChevronDown size={14} className={cn(open && "flip")} />
+        </button></Tip>
       {open ? (
         <div className="model-menu">
           {profiles.map((profile) => (
-            <button
-              key={profile.id}
-              type="button"
-              className={cn("model-option", profile.id === value && "active")}
-              onClick={() => {
-                onChange(profile.id);
-                setOpen(false);
-              }}
-            >
-              <span className="model-glyph">{profile.kind === "video" ? "V" : "I"}</span>
-              <span className="model-copy">
-                <strong>{profile.displayName || profile.label}</strong>
-                <em>{profile.description || familyLabel(profile)}</em>
-              </span>
-              <span className="model-badge">{familyLabel(profile)}</span>
-            </button>
+            <Tip key={profile.id} content={profile.displayName || profile.label}><button
+                type="button"
+                className={cn("model-option", profile.id === value && "active")}
+                onClick={() => {
+                  onChange(profile.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="model-glyph">{profile.kind === "video" ? "V" : "I"}</span>
+                <span className="model-copy">
+                  <strong>{profile.displayName || profile.label}</strong>
+                  <em>{profile.description || familyLabel(profile)}</em>
+                </span>
+                <span className="model-badge">{familyLabel(profile)}</span>
+              </button></Tip>
           ))}
         </div>
       ) : null}
@@ -478,9 +483,10 @@ function App() {
   const [fps, setFps] = useState(Number(initialDraft.fps || prefs.defaultFps));
   const [sampler, setSampler] = useState(String(initialDraft.sampler || "euler_ancestral"));
   const [scheduler, setScheduler] = useState(String(initialDraft.scheduler || "beta"));
-  const [advanced, setAdvanced] = useState(Boolean(initialDraft.advanced));
+  const advanced = true;
   const [settings, setSettings] = useState(false);
   const [zenControls, setZenControls] = useState(false);
+  const [showNegativePrompt, setShowNegativePrompt] = useState(Boolean(initialDraft.showNegativePrompt));
   const [zenGalleryOpen, setZenGalleryOpen] = useState(initialDraft.zenGalleryOpen !== false);
   const [zenSelectedId, setZenSelectedId] = useState("");
   const [status, setStatus] = useState("Ready");
@@ -591,6 +597,7 @@ function App() {
       startImageName,
       advanced,
       showDetails,
+      showNegativePrompt,
       zenGalleryOpen
     };
     try {
@@ -598,7 +605,7 @@ function App() {
     } catch {
       localStorage.setItem("j-ai-studio-draft", JSON.stringify({ ...draft, startImage: "" }));
     }
-  }, [mode, prompt, negative, model, textEncoder, vae, clipType, weightDtype, width, height, steps, cfg, denoise, seed, count, frames, fps, sampler, scheduler, customSize, startImage, startImageName, advanced, showDetails, zenGalleryOpen]);
+  }, [mode, prompt, negative, model, textEncoder, vae, clipType, weightDtype, width, height, steps, cfg, denoise, seed, count, frames, fps, sampler, scheduler, customSize, startImage, startImageName, advanced, showDetails, showNegativePrompt, zenGalleryOpen]);
 
   useEffect(() => {
     if (!active) return;
@@ -664,8 +671,9 @@ function App() {
     fetch("/api/gallery")
       .then((res) => res.json())
       .then((data: { outputs: GalleryItem[] }) => {
-        setGallery(data.outputs);
-        const latest = data.outputs.find((item) => item.type === mode && item.status === "done");
+        const outputs = data.outputs.filter((item) => item.status !== "canceled");
+        setGallery(outputs);
+        const latest = outputs.find((item) => item.type === mode && item.status === "done");
         if (prefs.zenMode && latest && (!zenSelectedId || (latestZenIdRef.current && latest.id !== latestZenIdRef.current))) {
           setZenSelectedId(latest.id);
         }
@@ -875,6 +883,14 @@ function App() {
           await new Promise((resolve) => setTimeout(resolve, 1600));
           const job: Job = await fetch(`/api/jobs/${jobId}`).then((res) => res.json());
           if (job.status === "done" || job.status === "error" || job.status === "canceled") return job;
+          if (job.preview || job.progress?.max) {
+            setGallery((current) => current.map((item) => item.jobId === jobId ? {
+              ...item,
+              preview: job.preview || item.preview,
+              progress: job.progress || item.progress,
+              status: item.status === "pending" ? "pending" : item.status
+            } : item));
+          }
           if (job.progress?.max) {
             setStatus(`Rendering ${job.progress.value}/${job.progress.max}`);
           } else {
@@ -885,9 +901,10 @@ function App() {
       loadGallery();
       if (prefs.zenMode) {
         const data = await fetch("/api/gallery").then((res) => res.json()).catch(() => null);
-        const latest = data?.outputs?.find((item: GalleryItem) => item.type === mode && item.status === "done");
+        const outputs = data?.outputs?.filter((item: GalleryItem) => item.status !== "canceled") || [];
+        const latest = outputs.find((item: GalleryItem) => item.type === mode && item.status === "done");
         if (latest) {
-          setGallery(data.outputs);
+          setGallery(outputs);
           setZenSelectedId(latest.id);
         }
       }
@@ -905,7 +922,7 @@ function App() {
     if (!window.confirm("Cancel this generation?")) return;
     setGallery((current) => current.filter((item) => item.jobId !== jobId));
     await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).catch(() => null);
-    setStatus("Canceled");
+    setStatus("Ready");
     showToast("Generation canceled");
   }
 
@@ -920,7 +937,7 @@ function App() {
   async function clearGallery() {
     if (!window.confirm("Clear finished gallery items from this app?")) return;
     const data = await fetch("/api/gallery/clear", { method: "POST" }).then((res) => res.json()).catch(() => null);
-    if (data?.outputs) setGallery(data.outputs);
+        if (data?.outputs) setGallery(data.outputs.filter((item: GalleryItem) => item.status !== "canceled"));
     showToast("Gallery cleared");
   }
 
@@ -1187,11 +1204,62 @@ function App() {
     touchGestureRef.current = null;
   }
 
-  async function shutdown() {
-    if (!window.confirm("Close the local J AI Studio server?")) return;
-    setStatus("Closing localhost...");
-    await fetch("/api/shutdown", { method: "POST" }).catch(() => null);
-  }
+  const sidebarControls = (
+    <>
+      <div className="mode-tabs" role="tablist" aria-label="Generation mode">
+        <Tip content="Image generation"><button className={cn(mode === "image" && "active")} onClick={() => changeMode("image")}>Image</button></Tip>
+        <Tip content="Video generation"><button className={cn(mode === "video" && "active")} onClick={() => changeMode("video")}>Video</button></Tip>
+      </div>
+      <Field label={mode === "image" ? "Image model" : "Video model"}>
+        <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} />
+      </Field>
+      <div className="control-grid">
+        {mode === "image" ? (
+          <Field label="Variations">
+            <input type="number" min={1} max={8} value={count} onChange={(event) => setCount(Math.max(1, Math.min(8, Number(event.target.value))))} />
+          </Field>
+        ) : (
+          <Field label="Frames">
+            <input type="number" min={frameMeta.min || 1} max={frameMeta.max} value={frames} step={frameMeta.step || 4} onChange={(event) => setFrames(Number(event.target.value))} />
+          </Field>
+        )}
+        {mode === "video" ? (
+          <Field label="FPS"><input type="number" min={1} value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field>
+        ) : (
+          <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field>
+        )}
+      </div>
+      {customSize ? (
+        <div className="control-grid">
+          <Field label="Width"><input type="number" min={widthMeta.min} max={widthMeta.max} value={width} step={widthMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setWidth(Number(event.target.value))} /></Field>
+          <Field label="Height"><input type="number" min={heightMeta.min} max={heightMeta.max} value={height} step={heightMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setHeight(Number(event.target.value))} /></Field>
+        </div>
+      ) : null}
+      {canUseStartImage ? (
+        <Field label="Start image">
+          <label className="file-pick">
+            <input type="file" accept="image/*" onChange={(event) => readStartImage(event.target.files?.[0])} />
+            <span>{startImageName || "Choose image"}</span>
+            {startImageName ? <Tip content="Clear start image"><button type="button" onClick={(event) => { event.preventDefault(); if (window.confirm("Clear the selected start image?")) { setStartImage(""); setStartImageName(""); } }}>Clear</button></Tip> : null}
+          </label>
+          {currentProfile?.capabilities.denoise ? (
+            <input type="number" min={0} max={1} step="0.01" value={denoise} onChange={(event) => setDenoise(Number(event.target.value))} placeholder="Denoise" />
+          ) : null}
+        </Field>
+      ) : null}
+      <div className="sidebar-section">
+        <div className="section-title">Advanced</div>
+        <div className="advanced-grid">
+          {currentProfile?.capabilities.textEncoder ? <Field label="Text encoder"><Select value={textEncoder} onChange={setTextEncoder} options={profileOptions.textEncoders || models?.textEncoders || []} /></Field> : null}
+          {currentProfile?.capabilities.vae ? <Field label="VAE"><Select value={vae} onChange={setVae} options={profileOptions.vaes || models?.vaes || []} /></Field> : null}
+          {currentProfile?.capabilities.weightDtype ? <Field label="Weight dtype"><Select value={weightDtype} onChange={setWeightDtype} options={profileOptions.weightDtypes || models?.weightDtypes || []} /></Field> : null}
+          <Field label="CFG"><input type="number" value={cfg} step="0.1" onChange={(event) => setCfg(Number(event.target.value))} /></Field>
+          <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={profileOptions.samplers?.length ? profileOptions.samplers : models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
+          <Field label="Scheduler"><Select value={scheduler} onChange={setScheduler} options={profileOptions.schedulers?.length ? profileOptions.schedulers : models?.schedulers?.length ? models.schedulers : fallbackSchedulers} /></Field>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div className={prefs.zenMode ? "zen-shell" : "app-shell"}>
@@ -1230,107 +1298,58 @@ function App() {
 
           {doneGallery.length > 1 ? (
             <div className="zen-arrows">
-              <button aria-label="Previous output" onClick={() => moveZen(-1)}><ChevronLeft size={22} /></button>
-              <button aria-label="Next output" onClick={() => moveZen(1)}><ChevronRight size={22} /></button>
+              <Tip content="Previous output"><button aria-label="Previous output" onClick={() => moveZen(-1)}><ChevronLeft size={22} /></button></Tip>
+              <Tip content="Next output"><button aria-label="Next output" onClick={() => moveZen(1)}><ChevronRight size={22} /></button></Tip>
             </div>
           ) : null}
 
-          <div className="top-fade" />
-          <button className="zen-control-button has-tip" data-tip="Controls" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
+          <Tip content="Controls"><button className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
             <PanelLeft size={16} />
-          </button>
-          <div className="app-brand">
-            <img src="/j-ai-logo.png" alt="" />
-            <h1>J AI Studio</h1>
-          </div>
+          </button></Tip>
           {doneGallery.length && !zenGalleryOpen ? (
-            <button className="zen-gallery-restore has-tip" data-tip="Show gallery" aria-label="Show gallery" onClick={() => setZenGalleryOpen(true)}>
+            <Tip content="Show gallery"><button className="zen-gallery-restore" aria-label="Show gallery" onClick={() => setZenGalleryOpen(true)}>
               <ChevronDown size={16} />
-            </button>
+            </button></Tip>
           ) : null}
           <div className="zen-top-actions">
-            <button className="icon-button has-tip" data-tip="Settings" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
-            <button className="icon-button has-tip" data-tip="Exit zen" aria-label="Exit zen" onClick={() => setZenMode(false)}><Minimize2 size={15} /></button>
+            <Tip content="Settings"><button className="icon-button" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button></Tip>
+            <Tip content="Exit zen"><button className="icon-button" aria-label="Exit zen" onClick={() => setZenMode(false)}><Minimize2 size={15} /></button></Tip>
           </div>
 
           <aside className={cn("zen-controls", zenControls && "open")}>
-            <div className="mode-tabs" role="tablist" aria-label="Generation mode">
-              <button className={cn(mode === "image" && "active")} onClick={() => changeMode("image")}>Image</button>
-              <button className={cn(mode === "video" && "active")} onClick={() => changeMode("video")}>Video</button>
-            </div>
-            <Field label={mode === "image" ? "Image model" : "Video model"}>
-              <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} />
-            </Field>
-            <div className="control-grid">
-              <Field label="Aspect">
-                <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
-              </Field>
-              {mode === "image" ? (
-                <Field label="Variations">
-                  <input type="number" min={1} max={8} value={count} onChange={(event) => setCount(Math.max(1, Math.min(8, Number(event.target.value))))} />
-                </Field>
-              ) : (
-                <Field label="Frames">
-                  <input type="number" min={frameMeta.min || 1} max={frameMeta.max} value={frames} step={frameMeta.step || 4} onChange={(event) => setFrames(Number(event.target.value))} />
-                </Field>
-              )}
-            </div>
-            {customSize ? (
-              <div className="control-grid">
-                <Field label="Width"><input type="number" min={widthMeta.min} max={widthMeta.max} value={width} step={widthMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setWidth(Number(event.target.value))} /></Field>
-                <Field label="Height"><input type="number" min={heightMeta.min} max={heightMeta.max} value={height} step={heightMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setHeight(Number(event.target.value))} /></Field>
-              </div>
-            ) : null}
-            <div className="control-grid">
-              <Field label="Steps"><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></Field>
-              {mode === "video" ? (
-                <Field label="FPS"><input type="number" min={1} value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field>
-              ) : (
-                <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field>
-              )}
-            </div>
-            <Field label="Negative prompt">
-              <textarea maxLength={negativeLimit} className="short" value={negative} onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
-              <span className="field-meta">{characterMeta(negative.length, negativeLimit)}</span>
-            </Field>
-            <button className="advanced-toggle" onClick={() => setAdvanced((value) => !value)}>
-              <span>Advanced</span>
-              <ChevronDown size={14} className={cn(advanced && "flip")} />
-            </button>
-            {advanced ? (
-              <div className="advanced-grid">
-                {currentProfile?.capabilities.textEncoder ? <Field label="Text encoder"><Select value={textEncoder} onChange={setTextEncoder} options={profileOptions.textEncoders || models?.textEncoders || []} /></Field> : null}
-                {currentProfile?.capabilities.vae ? <Field label="VAE"><Select value={vae} onChange={setVae} options={profileOptions.vaes || models?.vaes || []} /></Field> : null}
-                {currentProfile?.capabilities.weightDtype ? <Field label="Weight dtype"><Select value={weightDtype} onChange={setWeightDtype} options={profileOptions.weightDtypes || models?.weightDtypes || []} /></Field> : null}
-                <Field label="CFG"><input type="number" value={cfg} step="0.1" onChange={(event) => setCfg(Number(event.target.value))} /></Field>
-                <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={profileOptions.samplers?.length ? profileOptions.samplers : models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
-                <Field label="Scheduler"><Select value={scheduler} onChange={setScheduler} options={profileOptions.schedulers?.length ? profileOptions.schedulers : models?.schedulers?.length ? models.schedulers : fallbackSchedulers} /></Field>
-              </div>
-            ) : null}
+            {sidebarControls}
           </aside>
 
           <section className="zen-prompt">
             <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
+            <div className={cn("negative-drawer", showNegativePrompt && "open")}>
+              <textarea maxLength={negativeLimit} value={negative} placeholder="Negative prompt..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
+              <span>{characterMeta(negative.length, negativeLimit)}</span>
+            </div>
             <div className="zen-prompt-actions">
-              <span className="zen-status" title={status}>{status}</span>
+              <Tip content="Current status"><span className="zen-status">{status}</span></Tip>
               <div className="zen-inline-settings">
+                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
+                  <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
+                  Negative
+                </button></Tip>
                 <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
                 <label className="zen-steps">
                   <span>Steps</span>
                   <input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} />
                 </label>
               </div>
-              <button className="generate" onClick={generate} disabled={generateDisabled}>
+              <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />
                 {mode === "image" ? `Generate ${count}` : "Generate video"}
-              </button>
+              </button></Tip>
             </div>
           </section>
 
           {doneGallery.length && zenGalleryOpen ? (
             <div className="zen-gallery-wrap">
-              <button className="zen-gallery-toggle has-tip" data-tip="Hide gallery" aria-label="Hide gallery" onClick={() => setZenGalleryOpen(false)}><ChevronUp size={16} /></button>
-              {doneGallery[0]?.id !== zenItem?.id ? <button className="zen-latest" onClick={goLatestZen}>Latest</button> : null}
+              <Tip content="Hide gallery"><button className="zen-gallery-toggle" aria-label="Hide gallery" onClick={() => setZenGalleryOpen(false)}><ChevronUp size={16} /></button></Tip>
+              {doneGallery[0]?.id !== zenItem?.id ? <Tip content="Jump to latest output"><button className="zen-latest" onClick={goLatestZen}>Latest</button></Tip> : null}
               <div
                 ref={zenStripRef}
                 className="zen-gallery-strip"
@@ -1340,9 +1359,9 @@ function App() {
                 onPointerCancel={stopZenStripDrag}
               >
                 {doneGallery.map((item) => (
-                  <button key={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={() => selectZenItem(item.id)} onDragStart={(event) => event.preventDefault()}>
+                  <Tip key={item.id} content={titleFromPrompt(item.prompt || item.filename)}><button className={cn(item.id === zenItem?.id && "active")} onClick={(event) => { event.stopPropagation(); setZenSelectedId(item.id); }} onDragStart={(event) => event.preventDefault()}>
                     <Media item={item} muted />
-                  </button>
+                  </button></Tip>
                 ))}
               </div>
             </div>
@@ -1380,13 +1399,13 @@ function App() {
                     <div className="generate-bar-fill" />
                   </div>
                 </div>
-              ) : item.status === "done" ? <Media item={item} muted /> : <div className="generating stopped"><span>{item.status === "canceled" ? "Canceled" : "Failed"}</span></div>}
+              ) : item.status === "done" ? <Media item={item} muted /> : <div className="generating stopped"><span>Failed</span></div>}
               <span className="tile-caption">
                 <strong>{titleFromPrompt(item.prompt || item.filename)}</strong>
                 <em>{item.status === "pending" ? formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString())) : item.durationMs ? formatElapsed(item.durationMs) : item.outputName || item.type}</em>
               </span>
-              {item.status === "pending" ? <span className="tile-action" onClick={(event) => { event.stopPropagation(); cancelJob(item.jobId); }}>Cancel</span> : null}
-              {item.status !== "pending" ? <span className="tile-delete" title="Delete from gallery" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={13} /></span> : null}
+              {item.status === "pending" ? <Tip content="Cancel generation"><span className="tile-action" onClick={(event) => { event.stopPropagation(); cancelJob(item.jobId); }}>Cancel</span></Tip> : null}
+              {item.status !== "pending" ? <Tip content="Delete from gallery"><span className="tile-delete" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={13} /></span></Tip> : null}
             </button>
             );
           })}
@@ -1400,103 +1419,42 @@ function App() {
             <div className="bottom-fade" />
           </main>
 
-          <div className="top-fade" />
-          <button className="zen-control-button has-tip" data-tip="Controls" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
+          <Tip content="Controls"><button className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
             <PanelLeft size={16} />
-          </button>
-          <div className="app-brand">
-            <img src="/j-ai-logo.png" alt="" />
-            <h1>J AI Studio</h1>
-          </div>
+          </button></Tip>
           <div className="zen-top-actions">
-            {runningCount ? <button className="queue-button" onClick={cancelQueue}>Cancel queue</button> : null}
-            <button className="icon-button has-tip" data-tip="Zen mode" aria-label="Enter zen mode" onClick={() => setZenMode(true)}><Maximize2 size={15} /></button>
-            <button className="icon-button has-tip" data-tip="Settings" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
+            {runningCount ? <Tip content="Cancel all running and queued generations"><button className="queue-button" onClick={cancelQueue}>Cancel queue</button></Tip> : null}
+            <Tip content="Settings"><button className="icon-button" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button></Tip>
+            <Tip content="Zen mode"><button className="icon-button" aria-label="Enter zen mode" onClick={() => setZenMode(true)}><Maximize2 size={15} /></button></Tip>
           </div>
 
           <aside className={cn("zen-controls", zenControls && "open")}>
-            <div className="mode-tabs" role="tablist" aria-label="Generation mode">
-              <button className={cn(mode === "image" && "active")} onClick={() => changeMode("image")}>Image</button>
-              <button className={cn(mode === "video" && "active")} onClick={() => changeMode("video")}>Video</button>
-            </div>
-            <Field label={mode === "image" ? "Image model" : "Video model"}>
-              <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} />
-            </Field>
-            <Field label="Negative prompt">
-              <textarea maxLength={negativeLimit} className="short" value={negative} onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
-              <span className="field-meta">{characterMeta(negative.length, negativeLimit)}</span>
-            </Field>
-            <div className="control-grid">
-              <Field label="Aspect">
-                <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
-              </Field>
-              {mode === "image" ? (
-                <Field label="Variations">
-                  <input type="number" min={1} max={8} value={count} onChange={(event) => setCount(Math.max(1, Math.min(8, Number(event.target.value))))} />
-                </Field>
-              ) : (
-                <Field label="Frames">
-                  <input type="number" min={frameMeta.min || 1} max={frameMeta.max} value={frames} step={frameMeta.step || 4} onChange={(event) => setFrames(Number(event.target.value))} />
-                </Field>
-              )}
-            </div>
-            {customSize ? (
-              <div className="control-grid">
-                <Field label="Width"><input type="number" min={widthMeta.min} max={widthMeta.max} value={width} step={widthMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setWidth(Number(event.target.value))} /></Field>
-                <Field label="Height"><input type="number" min={heightMeta.min} max={heightMeta.max} value={height} step={heightMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setHeight(Number(event.target.value))} /></Field>
-              </div>
-            ) : null}
-            <div className="control-grid">
-              <Field label="Steps"><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></Field>
-              {mode === "video" ? (
-                <Field label="FPS"><input type="number" min={1} value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field>
-              ) : (
-                <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field>
-              )}
-            </div>
-            {canUseStartImage ? (
-              <Field label="Start image">
-                <label className="file-pick">
-                  <input type="file" accept="image/*" onChange={(event) => readStartImage(event.target.files?.[0])} />
-                  <span>{startImageName || "Choose image"}</span>
-                  {startImageName ? <button type="button" onClick={(event) => { event.preventDefault(); if (window.confirm("Clear the selected start image?")) { setStartImage(""); setStartImageName(""); } }}>Clear</button> : null}
-                </label>
-                {currentProfile?.capabilities.denoise ? (
-                  <input type="number" min={0} max={1} step="0.01" value={denoise} onChange={(event) => setDenoise(Number(event.target.value))} placeholder="Denoise" />
-                ) : null}
-              </Field>
-            ) : null}
-            <button className="advanced-toggle" onClick={() => setAdvanced((value) => !value)}>
-              <span>Advanced</span>
-              <ChevronDown size={14} className={cn(advanced && "flip")} />
-            </button>
-            {advanced ? (
-              <div className="advanced-grid">
-                {currentProfile?.capabilities.textEncoder ? <Field label="Text encoder"><Select value={textEncoder} onChange={setTextEncoder} options={profileOptions.textEncoders || models?.textEncoders || []} /></Field> : null}
-                {currentProfile?.capabilities.vae ? <Field label="VAE"><Select value={vae} onChange={setVae} options={profileOptions.vaes || models?.vaes || []} /></Field> : null}
-                {currentProfile?.capabilities.weightDtype ? <Field label="Weight dtype"><Select value={weightDtype} onChange={setWeightDtype} options={profileOptions.weightDtypes || models?.weightDtypes || []} /></Field> : null}
-                <Field label="CFG"><input type="number" value={cfg} step="0.1" onChange={(event) => setCfg(Number(event.target.value))} /></Field>
-                <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={profileOptions.samplers?.length ? profileOptions.samplers : models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
-                <Field label="Scheduler"><Select value={scheduler} onChange={setScheduler} options={profileOptions.schedulers?.length ? profileOptions.schedulers : models?.schedulers?.length ? models.schedulers : fallbackSchedulers} /></Field>
-              </div>
-            ) : null}
+            {sidebarControls}
           </aside>
 
           <section className="zen-prompt">
             <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
+            <div className={cn("negative-drawer", showNegativePrompt && "open")}>
+              <textarea maxLength={negativeLimit} value={negative} placeholder="Negative prompt..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
+              <span>{characterMeta(negative.length, negativeLimit)}</span>
+            </div>
             <div className="zen-prompt-actions">
-              <span className="zen-status" title={status}>{status}</span>
+              <Tip content="Current status"><span className="zen-status">{status}</span></Tip>
               <div className="zen-inline-settings">
+                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
+                  <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
+                  Negative
+                </button></Tip>
                 <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
                 <label className="zen-steps">
                   <span>Steps</span>
                   <input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} />
                 </label>
               </div>
-              <button className="generate" onClick={generate} disabled={generateDisabled}>
+              <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />
                 {mode === "image" ? `Generate ${count}` : "Generate video"}
-              </button>
+              </button></Tip>
             </div>
           </section>
         </>
@@ -1506,10 +1464,11 @@ function App() {
         <div className="scrim modal-scrim" onClick={() => setSettings(false)}>
           <div className="settings-card" onClick={(event) => event.stopPropagation()}>
             <header>
-              <div>
+              <div className="settings-brand">
+                <img src="/j-ai-logo.png" alt="" />
                 <h2>Settings</h2>
               </div>
-              <button className="icon-button has-tip" data-tip="Close (Esc)" aria-label="Close settings" onClick={() => setSettings(false)}><X size={15} /></button>
+              <Tip content="Close (Esc)"><button className="icon-button" aria-label="Close settings" onClick={() => setSettings(false)}><X size={15} /></button></Tip>
             </header>
 
             <div className="settings-grid">
@@ -1518,8 +1477,8 @@ function App() {
                 <div className="setting-row"><span>Studio</span><strong>127.0.0.1:8787</strong></div>
                 <div className="setting-row"><span>ComfyUI</span><strong>127.0.0.1:8188</strong></div>
                 <div className="setting-actions">
-                  <button onClick={() => refreshModels()}>Refresh models</button>
-                  <button onClick={() => { window.open("http://127.0.0.1:8188", "_blank"); showToast("Opening ComfyUI"); }}>Open ComfyUI</button>
+                  <Tip content="Rescan local models"><button onClick={() => refreshModels()}>Refresh models</button></Tip>
+                  <Tip content="Open ComfyUI in a new tab"><button onClick={() => { window.open("http://127.0.0.1:8188", "_blank"); showToast("Opening ComfyUI"); }}>Open ComfyUI</button></Tip>
                 </div>
               </section>
 
@@ -1533,16 +1492,7 @@ function App() {
               </section>
 
               <section>
-                <h3>Defaults</h3>
-                <div className="split">
-                  <Field label="Image variations"><input type="number" min={1} max={8} value={prefs.defaultImageCount} onChange={(event) => setPrefs({ defaultImageCount: Number(event.target.value) })} /></Field>
-                  <Field label="Image steps"><input type="number" min={1} value={prefs.defaultImageSteps} onChange={(event) => setPrefs({ defaultImageSteps: Number(event.target.value) })} /></Field>
-                </div>
-                <div className="split">
-                  <Field label="Video frames"><input type="number" min={5} value={prefs.defaultVideoFrames} onChange={(event) => setPrefs({ defaultVideoFrames: Number(event.target.value) })} /></Field>
-                  <Field label="Video steps"><input type="number" min={1} value={prefs.defaultVideoSteps} onChange={(event) => setPrefs({ defaultVideoSteps: Number(event.target.value) })} /></Field>
-                </div>
-                <Field label="Video FPS"><input type="number" min={1} value={prefs.defaultFps} onChange={(event) => setPrefs({ defaultFps: Number(event.target.value) })} /></Field>
+                <h3>Generation</h3>
                 <Field label="Variation mode">
                   <Select
                     value={prefs.variationQueueMode}
@@ -1573,16 +1523,12 @@ function App() {
                 <div className="setting-row"><span>Current tab</span><strong>{visibleGallery.length} {mode === "image" ? "images" : "videos"}</strong></div>
                 <div className="setting-row"><span>Outputs</span><strong>{paths.outputDir || "Not configured"}</strong></div>
                 <div className="setting-actions">
-                  <button onClick={() => copyAndToast(paths.outputDir || "", "Output path copied")}>Copy output path</button>
-                  <button onClick={openOutputFolder} disabled={!paths.outputDir}>Open output folder</button>
+                  <Tip content="Copy the output folder path"><button onClick={() => copyAndToast(paths.outputDir || "", "Output path copied")}>Copy output path</button></Tip>
+                  <Tip content="Open the output folder"><button onClick={openOutputFolder} disabled={!paths.outputDir}>Open output folder</button></Tip>
                 </div>
-                <button className="wide-button subtle-danger" onClick={clearGallery}>Clear finished gallery</button>
+                <Tip content="Remove finished items from this gallery"><button className="wide-button subtle-danger" onClick={clearGallery}>Clear finished gallery</button></Tip>
               </section>
 
-              <section>
-                <h3>Localhost</h3>
-                <button className="danger-button" onClick={shutdown}><Power size={15} /> Close localhost</button>
-              </section>
             </div>
           </div>
         </div>
@@ -1599,21 +1545,22 @@ function App() {
           }} onWheel={(event) => event.preventDefault()}>
             <div className="viewer-shell" onClick={(event) => event.stopPropagation()}>
               <header className="viewer-topbar">
-                <div className="viewer-title">
-                  <strong>{titleFromPrompt(active.prompt || active.filename) || "Untitled"}</strong>
-                  <em>{active.model || familyLabel(currentProfile) || active.type}</em>
-                </div>
+                <div />
                 <div className="viewer-tools">
-                  <button className="icon-button has-tip" data-tip="Zoom out (-)" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)}><ZoomOut size={15} /></button>
-                  <button className="text-button viewer-zoom has-tip" data-tip="Reset zoom (0)" onClick={resetViewer}><RotateCcw size={13} /> {Math.round(viewerZoom * 100)}%</button>
-                  <button className="icon-button has-tip" data-tip="Zoom in (+)" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)}><ZoomIn size={15} /></button>
+                  {viewerZoom > 1 ? (
+                    <>
+                      <Tip content="Zoom out (-)"><button className="icon-button" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)}><ZoomOut size={15} /></button></Tip>
+                      <Tip content="Reset zoom (0)"><button className="text-button viewer-zoom" onClick={resetViewer}><RotateCcw size={13} /> {Math.round(viewerZoom * 100)}%</button></Tip>
+                      <Tip content="Zoom in (+)"><button className="icon-button" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)}><ZoomIn size={15} /></button></Tip>
+                      <span className="viewer-divider" />
+                    </>
+                  ) : null}
+                  <Tip content={active.type === "image" ? "Copy image" : "Copy output link"}><button className="icon-button" aria-label={active.type === "image" ? "Copy image" : "Copy output link"} onClick={() => copyImageAndToast(active)}><Copy size={15} /></button></Tip>
+                  <Tip content="Download file"><a className="icon-button" aria-label="Download file" href={active.url} download><Download size={15} /></a></Tip>
+                  <Tip content="Delete (Del)"><button className="icon-button danger-tone" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button></Tip>
                   <span className="viewer-divider" />
-                  <button className="icon-button has-tip" data-tip={active.type === "image" ? "Copy image" : "Copy output link"} aria-label={active.type === "image" ? "Copy image" : "Copy output link"} onClick={() => copyImageAndToast(active)}><Copy size={15} /></button>
-                  <a className="icon-button has-tip" data-tip="Download file" aria-label="Download file" href={active.url} download><Download size={15} /></a>
-                  <button className="icon-button danger-tone has-tip" data-tip="Delete (Del)" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button>
-                  <span className="viewer-divider" />
-                  <button className={cn("icon-button has-tip", showDetails && "active")} data-tip={showDetails ? "Hide details" : "Show details"} aria-label="Toggle details" aria-pressed={showDetails} onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={15} /></button>
-                  <button className="icon-button has-tip" data-tip="Close (Esc)" aria-label="Close" onClick={() => setActive(null)}><X size={16} /></button>
+                  <Tip content={showDetails ? "Hide details" : "Show details"}><button className={cn("icon-button", showDetails && "active")} aria-label="Toggle details" aria-pressed={showDetails} onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={15} /></button></Tip>
+                  <Tip content="Close (Esc)"><button className="icon-button" aria-label="Close" onClick={() => setActive(null)}><X size={16} /></button></Tip>
                 </div>
               </header>
               <div className={cn("viewer-stage", showDetails && "with-side")}>
@@ -1636,8 +1583,8 @@ function App() {
                 </div>
                 {hasNeighbors ? (
                   <>
-                    <button className="viewer-arrow prev has-tip" data-tip="Previous (<-)" aria-label="Previous output" onClick={() => moveViewer(-1)}><ChevronLeft size={20} /></button>
-                    <button className="viewer-arrow next has-tip" data-tip="Next (->)" aria-label="Next output" onClick={() => moveViewer(1)}><ChevronRight size={20} /></button>
+                    <Tip content="Previous"><button className="viewer-arrow prev" aria-label="Previous output" onClick={() => moveViewer(-1)}><ChevronLeft size={20} /></button></Tip>
+                    <Tip content="Next"><button className="viewer-arrow next" aria-label="Next output" onClick={() => moveViewer(1)}><ChevronRight size={20} /></button></Tip>
                   </>
                 ) : null}
                 {showDetails ? (
@@ -1648,12 +1595,18 @@ function App() {
                     <div className="viewer-side-body">
                       <div className="prompt-readout">
                         <span>Prompt</span>
-                        <p>{active.prompt || "No prompt recorded"}</p>
+                        <div className="readout-box">
+                          <p>{active.prompt || "No prompt recorded"}</p>
+                          <Tip content="Copy prompt"><button className="readout-copy" aria-label="Copy prompt" onClick={() => copyAndToast(active.prompt || "", "Prompt copied")}><Copy size={13} /></button></Tip>
+                        </div>
                       </div>
                       {active.negative ? (
                         <div className="prompt-readout">
                           <span>Negative</span>
-                          <p>{active.negative}</p>
+                          <div className="readout-box">
+                            <p>{active.negative}</p>
+                            <Tip content="Copy negative prompt"><button className="readout-copy" aria-label="Copy negative prompt" onClick={() => copyAndToast(active.negative || "", "Negative prompt copied")}><Copy size={13} /></button></Tip>
+                          </div>
                         </div>
                       ) : null}
                       <div className="detail-grid">
@@ -1677,8 +1630,7 @@ function App() {
                       ) : null}
                     </div>
                     <div className="viewer-side-foot">
-                      <button onClick={() => copyAndToast(active.prompt || "", "Prompt copied")}>Copy prompt</button>
-                      <button onClick={() => applyAllSettings(active)}>Apply all settings</button>
+                      <Tip content="Copy this output's full settings into the generator"><button onClick={() => applyAllSettings(active)}>Copy All Settings</button></Tip>
                     </div>
                   </aside>
                 ) : null}
@@ -1694,8 +1646,8 @@ function App() {
 }
 
 function Media({ item, muted = false }: { item: Output; muted?: boolean }) {
-  if (item.type === "video") return <video src={item.url} controls={!muted} muted={muted} loop autoPlay={muted} draggable={false} />;
-  return <img src={item.url} alt={item.filename} draggable={false} onDragStart={(e) => e.preventDefault()} />;
+  if (item.type === "video") return <video src={item.url} controls={!muted} muted={muted} loop autoPlay={muted} preload="metadata" draggable={false} />;
+  return <img src={item.url} alt={item.filename} loading="lazy" decoding="async" draggable={false} onDragStart={(e) => e.preventDefault()} />;
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

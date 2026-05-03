@@ -796,7 +796,7 @@ function App() {
       if (target.closest("[data-open-trigger], [data-open-surface], [data-radix-popper-content-wrapper], [role='listbox'], [role='tooltip']")) return;
       if (zenControls) setZenControls(false);
       if (prefs.zenMode && zenGalleryOpen) setZenGalleryOpen(false);
-      if (active && showDetails) setShowDetails(false);
+      if (active && showDetails && target.closest("[data-viewer-empty]")) setShowDetails(false);
     }
     window.addEventListener("pointerdown", onPointerDown, true);
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
@@ -1976,9 +1976,10 @@ function App() {
             setActive(null);
           }} onWheel={(event) => event.preventDefault()}>
             <div className="viewer-shell" onClick={(event) => event.stopPropagation()}>
-              <div className={cn("viewer-stage", showDetails && "with-side")}>
+              <div className={cn("viewer-stage", showDetails && "with-side")} data-viewer-empty>
                 <div
                   className={cn("viewer-canvas", viewerZoom > 1 && "is-zoomed", isDraggingViewer && "is-dragging")}
+                  data-open-surface
                   style={{ "--zoom": viewerZoom, "--pan-x": `${viewerPan.x}px`, "--pan-y": `${viewerPan.y}px` } as React.CSSProperties}
                   onWheel={wheelViewer}
                   onPointerDown={startViewerDrag}

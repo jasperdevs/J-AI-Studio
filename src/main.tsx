@@ -617,7 +617,7 @@ function familyLabel(profile: Profile | null) {
   return profile.family;
 }
 
-function ModelPicker({ value, profiles, onChange }: { value: string; profiles: Profile[]; onChange: (value: string) => void }) {
+function ModelPicker({ value, profiles, onChange, compact = false }: { value: string; profiles: Profile[]; onChange: (value: string) => void; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const selected = profiles.find((profile) => profile.id === value) || profiles[0] || null;
@@ -630,13 +630,17 @@ function ModelPicker({ value, profiles, onChange }: { value: string; profiles: P
     return () => window.removeEventListener("pointerdown", closeOnOutside, true);
   }, [open]);
   return (
-    <div className="model-picker" ref={pickerRef}>
+    <div className={cn("model-picker", compact && "is-compact")} ref={pickerRef}>
       <Tip content="Choose model"><button type="button" className="model-trigger" onClick={() => setOpen((next) => !next)}>
           <span className="model-glyph">{selected?.kind === "video" ? "V" : "I"}</span>
-          <span className="model-copy">
-            <strong>{selected?.displayName || selected?.label || "No model"}</strong>
-            <em>{selected ? familyLabel(selected) : "No supported workflow"}</em>
-          </span>
+          {compact ? (
+            <span className="model-copy"><strong>{selected?.displayName || selected?.label || "No model"}</strong></span>
+          ) : (
+            <span className="model-copy">
+              <strong>{selected?.displayName || selected?.label || "No model"}</strong>
+              <em>{selected ? familyLabel(selected) : "No supported workflow"}</em>
+            </span>
+          )}
           <ChevronDown size={14} className={cn(open && "flip")} />
         </button></Tip>
       {open ? (
@@ -1530,9 +1534,6 @@ function App() {
         <Tip content="Image generation"><button className={cn(mode === "image" && "active")} onClick={() => changeMode("image")}>Image</button></Tip>
         <Tip content="Video generation"><button className={cn(mode === "video" && "active")} onClick={() => changeMode("video")}>Video</button></Tip>
       </div>
-      <Field label={mode === "image" ? "Image model" : "Video model"}>
-        {models ? <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} /> : <Skeleton className="skeleton-control" />}
-      </Field>
       {mode === "video" ? (
         <div className="number-row">
           <NumberPicker label="Frames" value={frames} onChange={setFrames} min={frameMeta.min || 1} max={frameMeta.max ?? 240} step={frameMeta.step || 4} fill />
@@ -1659,8 +1660,8 @@ function App() {
               <span>{characterMeta(negative.length, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
-              <Tip content="Current status"><span className="zen-status">{status}</span></Tip>
               <div className="zen-inline-settings">
+                {models ? <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} compact /> : <Skeleton className="skeleton-control" />}
                 <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative
@@ -1735,6 +1736,12 @@ function App() {
                 <em>{item.status === "pending" ? formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString())) : item.durationMs ? formatElapsed(item.durationMs) : item.outputName || item.type}</em>
               </span>
               {item.status === "pending" ? <Tip content="Cancel generation"><span className="tile-action" onClick={(event) => { event.stopPropagation(); cancelJob(item.jobId); }}>Cancel</span></Tip> : null}
+              {item.status === "done" ? (
+                <span className="tile-hover-actions">
+                  {item.url ? <Tip content="Download"><a className="tile-icon" aria-label="Download" href={item.url} download onClick={(event) => event.stopPropagation()}><Download size={13} /></a></Tip> : null}
+                  <Tip content="Copy"><span className="tile-icon" role="button" aria-label="Copy" onClick={(event) => { event.stopPropagation(); copyImageAndToast(item); }}><Copy size={13} /></span></Tip>
+                </span>
+              ) : null}
               {item.status !== "pending" ? <Tip content="Delete from gallery"><span className="tile-delete" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={13} /></span></Tip> : null}
             </button>
             );
@@ -1772,8 +1779,8 @@ function App() {
               <span>{characterMeta(negative.length, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
-              <Tip content="Current status"><span className="zen-status">{status}</span></Tip>
               <div className="zen-inline-settings">
+                {models ? <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} compact /> : <Skeleton className="skeleton-control" />}
                 <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative

@@ -1397,6 +1397,9 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .modal-scrim {
   display: grid; place-items: center;
   padding: 24px;
+  background: hsl(var(--background) / 0.72);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -1685,10 +1688,11 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 
 .settings-card {
-  width: min(560px, calc(100vw - 32px));
-  max-height: 88vh;
+  width: min(760px, calc(100vw - 40px));
+  max-height: min(86vh, 920px);
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
   border: 1px solid hsl(var(--border));
   border-radius: calc(var(--radius) + 6px);
   background: hsl(var(--card));
@@ -1699,7 +1703,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .settings-card header {
   position: sticky; top: 0; z-index: 3;
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
-  padding: 16px 18px;
+  padding: 18px 24px;
   border-bottom: 1px solid hsl(var(--border));
   background: hsl(var(--card));
 }
@@ -1717,7 +1721,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .settings-card h2 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 .settings-card h3 {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   font-size: 13px; font-weight: 600;
   color: hsl(var(--foreground));
   letter-spacing: -0.005em;
@@ -1733,13 +1737,14 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .settings-grid section {
   min-width: 0;
   max-width: 100%;
-  padding: 18px;
+  padding: 24px;
   background: hsl(var(--card));
   overflow: hidden;
   border-bottom: 1px solid hsl(var(--border));
 }
 .settings-grid section:last-child { border-bottom: 0; }
 .settings-grid section:nth-last-child(1):nth-child(odd) { grid-column: auto; }
+.settings-grid .field { margin-bottom: 16px; }
 
 .project-card {
   display: grid;
@@ -1774,12 +1779,12 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 
 .setting-row {
   display: grid;
-  grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.2fr);
-  gap: 14px;
+  grid-template-columns: minmax(140px, 0.72fr) minmax(0, 1.28fr);
+  gap: 22px;
   align-items: baseline;
   color: hsl(var(--muted-foreground));
   font-size: 13px;
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid hsl(var(--border) / 0.5);
 }
 .setting-row:last-of-type { border-bottom: 0; }
@@ -1791,15 +1796,15 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   overflow-wrap: anywhere;
 }
 
-.setting-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.setting-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
 .setting-actions.single { grid-template-columns: 1fr; }
 .setting-actions button, .wide-button {
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   background: hsl(var(--secondary));
   color: hsl(var(--secondary-foreground));
-  min-height: 36px;
-  padding: 0 12px;
+  min-height: 40px;
+  padding: 0 14px;
   cursor: pointer;
   font-size: 13px; font-weight: 500;
   text-decoration: none;
@@ -1825,8 +1830,8 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 14px 18px 14px 14px;
+  gap: 24px;
+  padding: 16px 20px 16px 16px;
   border: 1px solid hsl(var(--border));
   border-radius: calc(var(--radius) + 2px);
   background: hsl(var(--input));
@@ -1834,6 +1839,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out);
 }
 .toggle-row:hover { border-color: hsl(var(--border-strong)); background: hsl(var(--accent)); }
+.toggle-row + .toggle-row { margin-top: 10px; }
 .toggle-row span { display: grid; gap: 3px; }
 .toggle-row strong { font-size: 13px; font-weight: 600; color: hsl(var(--foreground)); letter-spacing: -0.005em; }
 .toggle-row em { color: hsl(var(--muted-foreground)); font-size: 12px; font-style: normal; }

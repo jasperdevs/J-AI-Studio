@@ -1,7 +1,7 @@
 import React from 'react';
 import { Toaster } from 'sonner';
-import { ColumnsPhotoAlbum } from 'react-photo-album';
-import 'react-photo-album/columns.css';
+import { RowsPhotoAlbum } from 'react-photo-album';
+import 'react-photo-album/rows.css';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, Github, Maximize2, Minimize2, PanelLeft, RotateCcw, Settings, SlidersHorizontal, Trash2, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { githubUrl } from './constants';
 import { cn } from './format';
@@ -163,11 +163,12 @@ export function StudioView({ view }: { view: Record<string, any> }) {
           <main ref={galleryStageRef} className="stage-gallery" onScroll={onGalleryScroll}>
             <section className="gallery" style={{ "--gallery-columns": galleryColumnCount } as React.CSSProperties}>
           {!galleryLoaded ? <GallerySkeleton columns={galleryColumnCount} /> : visibleGallery.length ? (
-            <ColumnsPhotoAlbum<GalleryPhoto>
+            <RowsPhotoAlbum<GalleryPhoto>
               photos={visibleGallery.map(galleryPhoto)}
               spacing={7}
               padding={0}
-              columns={(containerWidth) => containerWidth < 620 ? 3 : containerWidth < 1100 ? 4 : 6}
+              targetRowHeight={(containerWidth) => containerWidth < 620 ? 132 : containerWidth < 1100 ? 178 : 214}
+              rowConstraints={(containerWidth) => ({ singleRowMaxHeight: containerWidth < 620 ? 150 : 230 })}
               render={{
                 photo: (_, { photo, width: photoWidth, height: photoHeight }) => {
                   const item = photo.item;

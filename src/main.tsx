@@ -42,6 +42,7 @@ type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pend
 type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress; preview?: string };
 type TouchGesture = { mode: "pan"; id: number; x: number; y: number; panX: number; panY: number; moved: boolean } | { mode: "pinch"; distance: number; zoom: number; panX: number; panY: number; centerX: number; centerY: number; moved: boolean };
 type SelectOption = { label: string; value: string };
+type Provider = { id: string; name: string; logoUrl?: string; source?: string };
 type Profile = {
   id: string;
   kind: Mode;
@@ -51,6 +52,7 @@ type Profile = {
   model: string;
   workflow: string;
   family: string;
+  provider?: Provider;
   defaults: Record<string, string | number>;
   aspectPresets: AspectPreset[];
   constraints?: Record<string, { min?: number; max?: number; step?: number; default?: number }>;
@@ -617,6 +619,24 @@ function familyLabel(profile: Profile | null) {
   return profile.family;
 }
 
+function providerInitials(name = "AI") {
+  return name
+    .split(/\s|-/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "AI";
+}
+
+function ProviderLogo({ provider, compact = false }: { provider?: Provider; compact?: boolean }) {
+  const label = provider?.name || "Local model";
+  return (
+    <span className={cn("provider-logo", compact && "is-compact")} aria-label={label} title={label}>
+      {provider?.logoUrl ? <img src={provider.logoUrl} alt="" loading="lazy" /> : <span>{providerInitials(label)}</span>}
+    </span>
+  );
+}
+
 function ModelPicker({ value, profiles, onChange, compact = false }: { value: string; profiles: Profile[]; onChange: (value: string) => void; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
@@ -632,7 +652,7 @@ function ModelPicker({ value, profiles, onChange, compact = false }: { value: st
   return (
     <div className={cn("model-picker", compact && "is-compact")} ref={pickerRef} data-open-surface={open || undefined}>
       <Tip content="Choose model"><button type="button" data-open-trigger className="model-trigger" onClick={() => setOpen((next) => !next)}>
-          <span className="model-glyph">{selected?.kind === "video" ? "V" : "I"}</span>
+          <ProviderLogo provider={selected?.provider} compact={compact} />
           {compact ? (
             <span className="model-copy"><strong>{selected?.displayName || selected?.label || "No model"}</strong></span>
           ) : (
@@ -654,10 +674,10 @@ function ModelPicker({ value, profiles, onChange, compact = false }: { value: st
                   setOpen(false);
                 }}
               >
-                <span className="model-glyph">{profile.kind === "video" ? "V" : "I"}</span>
+                <ProviderLogo provider={profile.provider} />
                 <span className="model-copy">
                   <strong>{profile.displayName || profile.label}</strong>
-                  <em>{profile.description || familyLabel(profile)}</em>
+                  <em>{profile.provider?.name || profile.description || familyLabel(profile)}</em>
                 </span>
                 <span className="model-badge">{familyLabel(profile)}</span>
               </button></Tip>

@@ -263,15 +263,18 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out);
 }
 .model-trigger:hover, .model-option:hover { border-color: hsl(var(--border-strong)); background: hsl(var(--accent)); }
-.model-glyph {
+.provider-logo {
   width: 28px; height: 28px;
   border: 1px solid hsl(var(--border-strong));
   border-radius: calc(var(--radius) - 2px);
   display: grid; place-items: center;
+  overflow: hidden;
   color: hsl(var(--foreground));
   font-size: 11px; font-weight: 600;
   background: hsl(var(--background));
 }
+.provider-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.provider-logo span { font-size: 10px; font-weight: 650; letter-spacing: 0; }
 .model-copy { min-width: 0; display: grid; gap: 2px; }
 .model-copy strong {
   display: block; min-width: 0;
@@ -296,7 +299,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   gap: 7px;
   padding: 0 10px 0 6px;
 }
-.model-picker.is-compact .model-glyph {
+.model-picker.is-compact .provider-logo {
   width: 22px; height: 22px;
   font-size: 10px;
   border-radius: calc(var(--radius) - 3px);
@@ -324,7 +327,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .model-option:hover { border-color: transparent; background: hsl(var(--accent)); }
 .model-option.active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
 .model-option.active:hover { background: hsl(var(--primary)); }
-.model-option.active .model-glyph { background: hsl(var(--primary-foreground)); color: hsl(var(--primary)); border-color: hsl(var(--primary-foreground)); }
+.model-option.active .provider-logo { background: hsl(var(--primary-foreground)); color: hsl(var(--primary)); border-color: hsl(var(--primary-foreground)); }
 .model-option.active .model-copy strong { color: hsl(var(--primary-foreground)); }
 .model-option.active .model-copy em { color: hsl(var(--primary-foreground) / 0.7); }
 .model-badge {

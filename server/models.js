@@ -1,4 +1,4 @@
-import { nodeRange, optionsFor, textRange } from './comfy.js';
+import { missingNodes, nodeRange, optionsFor, textRange } from './comfy.js';
 
 export function modelBasename(name = "") {
   return String(name).split(/[\\/]/).pop() || name;
@@ -159,6 +159,10 @@ export function buildProfile({ id, kind, label, displayName, description, model,
 }
 
 export function inferModels(info, stats = {}) {
+  const missingCoreImageNodes = missingNodes(info, ["KSampler", "CLIPTextEncode", "VAEDecode", "SaveImage"]);
+  if (missingCoreImageNodes.length) {
+    return emptyModelResult({ reason: `ComfyUI is missing required image nodes: ${missingCoreImageNodes.join(", ")}` });
+  }
   const unets = optionsFor(info, "UNETLoader", "unet_name");
   const checkpoints = optionsFor(info, "CheckpointLoaderSimple", "ckpt_name");
   const clips = optionsFor(info, "CLIPLoader", "clip_name");
@@ -176,6 +180,9 @@ export function inferModels(info, stats = {}) {
     denoise: nodeRange(info, "KSampler", "denoise", { default: 1, min: 0, max: 1, step: 0.01 })
   };
   const profiles = [];
+  const canRunUnetImage = missingNodes(info, ["UNETLoader", "CLIPLoader", "VAELoader", "EmptySD3LatentImage"]).length === 0;
+  const canRunCheckpointImage = missingNodes(info, ["CheckpointLoaderSimple", "EmptyLatentImage"]).length === 0;
+  const canRunWanVideo = missingNodes(info, ["UNETLoader", "CLIPLoader", "VAELoader", "Wan22ImageToVideoLatent", "CreateVideo", "SaveVideo"]).length === 0;
   const sd3Range = {
     width: nodeRange(info, "EmptySD3LatentImage", "width", { default: 1024, min: 16, max: 16384, step: 16 }),
     height: nodeRange(info, "EmptySD3LatentImage", "height", { default: 1024, min: 16, max: 16384, step: 16 }),
@@ -193,7 +200,7 @@ export function inferModels(info, stats = {}) {
     fps: nodeRange(info, "CreateVideo", "fps", { default: 30, min: 1, max: 120, step: 1 })
   };
 
-  const zImageNames = new Set(runnableUnets.filter(isZImageModel));
+  const zImageNames = new Set(canRunUnetImage ? runnableUnets.filter(isZImageModel) : []);
   for (const name of zImageNames) {
     profiles.push(buildProfile({
       id: `image:unet-z:${name}`,
@@ -230,7 +237,7 @@ export function inferModels(info, stats = {}) {
     }));
   }
 
-  for (const name of checkpoints.filter((name) => !zImageNames.has(name))) {
+  for (const name of canRunCheckpointImage ? checkpoints.filter((name) => !zImageNames.has(name)) : []) {
     profiles.push(buildProfile({
       id: `image:checkpoint:${name}`,
       kind: "image",
@@ -263,7 +270,7 @@ export function inferModels(info, stats = {}) {
     }));
   }
 
-  for (const name of runnableUnets.filter(isWanVideoModel)) {
+  for (const name of canRunWanVideo ? runnableUnets.filter(isWanVideoModel) : []) {
     profiles.push(buildProfile({
       id: `video:wan:${name}`,
       kind: "video",
@@ -325,5 +332,23 @@ export function inferModels(info, stats = {}) {
       video: videoProfiles.length > 0 && Boolean(info.Wan22ImageToVideoLatent || info.WanImageToVideo),
       startImage: profiles.some((profile) => profile.capabilities.startImage)
     }
+  };
+}
+
+function emptyModelResult(extra = {}) {
+  return {
+    imageModels: [],
+    videoModels: [],
+    profiles: [],
+    unsupportedModels: [],
+    textEncoders: [],
+    vaes: [],
+    clipTypes: [],
+    weightDtypes: [],
+    samplers: [],
+    schedulers: [],
+    defaults: { imageModel: "", videoModel: "" },
+    capabilities: { image: false, video: false, startImage: false },
+    ...extra
   };
 }

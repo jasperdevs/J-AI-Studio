@@ -1,4 +1,4 @@
-import { comfy, comfyUrl } from './comfy.js';
+import { comfy, comfyUrl, normalizeComfyError } from './comfy.js';
 import { imageGraph, videoGraph } from './graphs.js';
 import { outputsFrom, replaceGalleryJob, updateGalleryJob } from './gallery-store.js';
 
@@ -81,13 +81,6 @@ function sendSocketFeatureFlags(socket) {
   }
 }
 
-function publicErrorMessage(message = "") {
-  if (/float4_e2m1fn_x2/i.test(message)) {
-    return "This NVFP4 model needs a newer PyTorch build. Use a non-NVFP4 model or update ComfyUI's PyTorch.";
-  }
-  return message || "Generation failed";
-}
-
 function watchProgress(id, promptId, socket = openProgressSocket(id)) {
   if (!socket) return null;
   socket.addEventListener("message", async (event) => {
@@ -115,7 +108,7 @@ function watchProgress(id, promptId, socket = openProgressSocket(id)) {
         updateGalleryJob(id, { status: "canceled" });
       }
       if (message.type === "execution_error") {
-        const error = publicErrorMessage(data.exception_message);
+        const error = normalizeComfyError(data.exception_message);
         jobs.set(id, { ...current, status: "error", error });
         updateGalleryJob(id, { status: "error", filename: error });
       }
@@ -167,7 +160,7 @@ async function runJob(id, body) {
       await new Promise((resolve) => setTimeout(resolve, 1600));
     }
   } catch (error) {
-    const message = publicErrorMessage(error.message);
+    const message = normalizeComfyError(error.message);
     jobs.set(id, { ...jobs.get(id), status: "error", error: message });
     updateGalleryJob(id, { status: "error", filename: message });
     socket?.close();

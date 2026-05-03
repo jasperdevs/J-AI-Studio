@@ -13,10 +13,33 @@ export async function comfy(pathname, options = {}) {
   const response = await fetch(`${comfyUrl}${pathname}`, options);
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`Comfy ${response.status}: ${text || response.statusText}`);
+    throw new Error(normalizeComfyError(`Comfy ${response.status}: ${text || response.statusText}`));
   }
   const type = response.headers.get("content-type") || "";
   return type.includes("application/json") ? response.json() : response.arrayBuffer();
+}
+
+export function normalizeComfyError(message = "") {
+  let text = String(message || "").trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}$/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      text = parsed?.error?.message || parsed?.node_errors && Object.values(parsed.node_errors)[0]?.errors?.[0]?.message || text;
+    } catch {
+      // Keep the original ComfyUI error text.
+    }
+  }
+  if (/float4_e2m1fn_x2/i.test(text)) {
+    return "This NVFP4 model needs a newer PyTorch build. Use a non-NVFP4 model or update ComfyUI's PyTorch.";
+  }
+  if (/out of memory|cuda.*memory|allocation/i.test(text)) {
+    return "ComfyUI ran out of GPU memory. Try a smaller size, fewer steps, or a lighter model.";
+  }
+  if (/cannot import|no module named|module .* has no attribute|attributeerror/i.test(text)) {
+    return "ComfyUI failed inside Python. Check that the selected model, custom nodes, and PyTorch version are compatible.";
+  }
+  return text || "ComfyUI request failed.";
 }
 
 export function optionsFor(info, node, key) {
@@ -24,6 +47,14 @@ export function optionsFor(info, node, key) {
   if (Array.isArray(value)) return value;
   if (value?.options) return value.options;
   return [];
+}
+
+export function hasNode(info, node) {
+  return Boolean(info?.[node]);
+}
+
+export function missingNodes(info, nodes = []) {
+  return nodes.filter((node) => !hasNode(info, node));
 }
 export function nodeRange(info, node, key, fallback = {}) {
   const meta = info?.[node]?.input?.required?.[key]?.[1];

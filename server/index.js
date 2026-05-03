@@ -52,7 +52,8 @@ app.post("/api/generate", async (req, res) => {
   let body;
   try {
     const info = await comfy("/object_info");
-    body = sanitizeGenerateBody(req.body, info);
+    const stats = await comfy("/system_stats").catch(() => ({}));
+    body = sanitizeGenerateBody(req.body, info, stats);
   } catch (error) {
     res.status(400).json({ error: error.message });
     return;

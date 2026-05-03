@@ -84,6 +84,8 @@ J AI Studio does not download models, include models, or publish generated outpu
 
 J AI Studio runs on top of ComfyUI. It reads available models, samplers, schedulers, size limits, prompt limits, text encoders, and VAEs from your local ComfyUI server where ComfyUI exposes them.
 
+It does not replace ComfyUI, download models, train models, patch your ComfyUI install, or maintain a separate model runtime. ComfyUI remains the source of truth for installed nodes, model files, queue execution, previews, and output files.
+
 <details>
 <summary>Model support</summary>
 

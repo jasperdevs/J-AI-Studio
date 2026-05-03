@@ -1,4 +1,5 @@
-import { nodeRange, optionsFor } from './comfy.js';
+import { missingNodes, nodeRange, optionsFor } from './comfy.js';
+import { inferModels } from './models.js';
 
 export function clampNumber(value, fallback, min, max) {
   const number = Number(value);
@@ -35,7 +36,14 @@ export function ensureOption(info, node, key, value, label) {
   }
 }
 
-export function sanitizeGenerateBody(input = {}, info = {}) {
+function requiredNodesForWorkflow(workflow) {
+  if (workflow === "checkpoint-image") return ["CheckpointLoaderSimple", "CLIPTextEncode", "EmptyLatentImage", "KSampler", "VAEDecode", "SaveImage"];
+  if (workflow === "unet-image") return ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "EmptySD3LatentImage", "KSampler", "VAEDecode", "SaveImage"];
+  if (workflow === "wan-video") return ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "Wan22ImageToVideoLatent", "KSampler", "VAEDecode", "CreateVideo", "SaveVideo"];
+  return [];
+}
+
+export function sanitizeGenerateBody(input = {}, info = {}, stats = {}) {
   const kind = input.kind === "video" ? "video" : "image";
   const workflow = String(input.workflow || "");
   const prompt = String(input.prompt || "").trim();
@@ -44,6 +52,11 @@ export function sanitizeGenerateBody(input = {}, info = {}) {
   if (!["unet-image", "checkpoint-image", "wan-video"].includes(workflow)) throw new Error("This model does not have a supported workflow.");
   if (kind === "video" && workflow !== "wan-video") throw new Error("The selected model is not a video workflow.");
   if (kind === "image" && workflow === "wan-video") throw new Error("The selected model is not an image workflow.");
+  const missing = missingNodes(info, requiredNodesForWorkflow(workflow));
+  if (missing.length) throw new Error(`ComfyUI is missing required nodes for this model: ${missing.join(", ")}`);
+  const profiles = inferModels(info, stats).profiles || [];
+  const profile = profiles.find((item) => item.kind === kind && item.workflow === workflow && item.model === input.model);
+  if (!profile) throw new Error("ComfyUI does not currently expose this model as a runnable workflow.");
   if ((workflow === "unet-image" || workflow === "wan-video") && (!input.textEncoder || !input.vae)) {
     throw new Error("This workflow needs a text encoder and VAE.");
   }

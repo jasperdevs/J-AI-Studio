@@ -18,13 +18,12 @@
 
 ## Preview
 
-| Main view | Zen mode |
+| View | Preview |
 | --- | --- |
-| <img src="./docs/screenshots/hero.png" alt="Main view screenshot" width="520" /> | <img src="./docs/screenshots/zen.png" alt="Zen mode screenshot" width="520" /> |
-
-| Fullscreen details | Realtime generation |
-| --- | --- |
-| <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="520" /> | <a href="./docs/screenshots/realtime-generation.mp4"><img src="./docs/screenshots/realtime-generation.gif" alt="Realtime generation preview" width="520" /></a> |
+| **Main view**<br />Prompt controls with a local output gallery. | <img src="./docs/screenshots/hero.png" alt="Main view screenshot" width="760" /> |
+| **Zen mode**<br />Fullscreen prompt-first generation. | <img src="./docs/screenshots/zen.png" alt="Zen mode screenshot" width="760" /> |
+| **Fullscreen details**<br />Inspect an output and copy its settings. | <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="760" /> |
+| **Realtime generation**<br />Live ComfyUI previews while an image is running. | <a href="./docs/screenshots/realtime-generation.mp4"><img src="./docs/screenshots/realtime-generation.gif" alt="Realtime generation preview" width="760" /></a> |
 
 ## Features
 

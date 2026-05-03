@@ -22,9 +22,9 @@
 | --- | --- |
 | <img src="./docs/screenshots/hero.png" alt="Main view screenshot" width="520" /> | <img src="./docs/screenshots/zen.png" alt="Zen mode screenshot" width="520" /> |
 
-| Fullscreen details | Queue and gallery |
+| Fullscreen details | Realtime generation |
 | --- | --- |
-| <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="520" /> | <img src="./docs/screenshots/gallery-placeholder.svg" alt="Gallery screenshot" width="520" /> |
+| <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="520" /> | <img src="./docs/screenshots/realtime-generation.gif" alt="Realtime generation preview" width="520" /> |
 
 ## Features
 

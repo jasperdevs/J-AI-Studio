@@ -1,6 +1,6 @@
 import { comfy, comfyUrl } from './comfy.js';
 import { imageGraph, videoGraph } from './graphs.js';
-import { replaceGalleryJob, updateGalleryJob } from './gallery-store.js';
+import { outputsFrom, replaceGalleryJob, updateGalleryJob } from './gallery-store.js';
 
 export const jobs = new Map();
 

@@ -20,12 +20,19 @@
 
 html {
   scroll-behavior: smooth;
+  width: 100%;
+  max-width: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
+  width: 100%;
+  max-width: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
   background:
     linear-gradient(rgb(9 9 9 / 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgb(9 9 9 / 0.055) 1px, transparent 1px),
@@ -166,7 +173,9 @@ img {
 
 main {
   width: min(92rem, calc(100% - 4rem));
+  max-width: 100%;
   margin: 0 auto;
+  overflow-x: clip;
 }
 
 .hero {
@@ -178,7 +187,7 @@ main {
   min-height: calc(100dvh - 5.9rem);
   padding: 5.5rem 0 8rem;
   border-top: 1px solid var(--rule);
-  overflow: visible;
+  overflow-x: clip;
 }
 
 .hero-copy {
@@ -296,6 +305,7 @@ footer a:focus-visible {
 
 .feature-band {
   padding: 7.5rem 0 8.5rem;
+  overflow-x: clip;
 }
 
 .section-heading {
@@ -406,6 +416,7 @@ footer a:focus-visible {
   grid-template-columns: minmax(21rem, 0.5fr) minmax(0, 1fr);
   gap: 5rem;
   padding: 7.2rem 0 8.6rem;
+  overflow-x: clip;
 }
 
 .faq-intro {
@@ -468,6 +479,7 @@ footer a:focus-visible {
   display: grid;
   justify-items: center;
   overflow: hidden;
+  overflow-x: clip;
   min-height: 44rem;
   padding: 8.5rem 0 17rem;
   text-align: center;

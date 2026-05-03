@@ -37,7 +37,13 @@ function optionsFor(info, node, key) {
 
 function loadGallery() {
   try {
-    return JSON.parse(fs.readFileSync(galleryPath, "utf8"));
+    const staleAfter = 30 * 60 * 1000;
+    return JSON.parse(fs.readFileSync(galleryPath, "utf8")).map((item) => {
+      if (item.status === "pending" && Date.now() - Date.parse(item.createdAt || 0) > staleAfter) {
+        return { ...item, status: "canceled" };
+      }
+      return item;
+    });
   } catch {
     return [];
   }
@@ -435,6 +441,7 @@ function recordsFromComfyHistory(history) {
   for (const [promptId, item] of Object.entries(history || {})) {
     const graph = item?.prompt?.[2] || {};
     const prompt = graph["4"]?.inputs?.text || "";
+    const negative = graph["5"]?.inputs?.text || graph["3"]?.inputs?.text || "";
     const latent = graph["6"]?.inputs || {};
     const model = graph["1"]?.inputs?.unet_name || "";
     for (const output of outputsFrom(item)) {
@@ -444,12 +451,14 @@ function recordsFromComfyHistory(history) {
         jobId: promptId,
         status: "done",
         prompt,
+        negative,
         filename: promptTitle(prompt) || output.filename,
         outputName: output.filename,
         createdAt: new Date(Number(item?.prompt?.[3]?.create_time || Date.now())).toISOString(),
         width: Number(latent.width || 0),
         height: Number(latent.height || 0),
-        model
+        model,
+        settings: {}
       });
     }
   }
@@ -467,26 +476,52 @@ function makePendingItems(id, body) {
     type: body.kind === "video" ? "video" : "image",
     status: "pending",
     prompt: body.prompt || "",
+    negative: body.negative || "",
     createdAt: new Date().toISOString(),
     width: Number(body.width || 0),
     height: Number(body.height || 0),
-    model: body.model || ""
+    model: body.model || "",
+    settings: generationSettings(body)
   }));
+}
+
+function generationSettings(body) {
+  return {
+    workflow: body.workflow || "",
+    steps: Number(body.steps || 0),
+    cfg: Number(body.cfg || 0),
+    sampler: body.sampler || "",
+    scheduler: body.scheduler || "",
+    seed: body.seed || "Random",
+    count: Number(body.count || 1),
+    frames: Number(body.frames || 0),
+    fps: Number(body.fps || 0),
+    denoise: Number(body.denoise || 0),
+    textEncoder: body.textEncoder || "",
+    vae: body.vae || "",
+    clipType: body.clipType || "",
+    weightDtype: body.weightDtype || ""
+  };
 }
 
 function replaceGalleryJob(id, outputs, body, status = "done") {
   const title = promptTitle(body.prompt);
+  const job = jobs.get(id) || {};
+  const durationMs = job.startedAt ? Date.now() - job.startedAt : 0;
   const completed = outputs.map((item, index) => ({
     ...item,
     id: item.url,
     jobId: id,
     status,
     prompt: body.prompt || "",
+    negative: body.negative || "",
     filename: title || item.filename,
     createdAt: new Date().toISOString(),
+    durationMs,
     width: Number(body.width || 0),
     height: Number(body.height || 0),
     model: body.model || "",
+    settings: generationSettings(body),
     outputName: item.filename,
     index
   }));
@@ -610,7 +645,7 @@ app.post("/api/generate", (req, res) => {
   const items = makePendingItems(id, req.body);
   gallery = [...items, ...gallery].slice(0, 200);
   saveGallery();
-  jobs.set(id, { status: "queued", kind: req.body.kind, prompt: req.body.prompt, outputs: [], items });
+  jobs.set(id, { status: "queued", kind: req.body.kind, prompt: req.body.prompt, outputs: [], items, startedAt: Date.now() });
   runJob(id, req.body);
   res.json({ jobId: id, items });
 });
@@ -662,6 +697,14 @@ app.post("/api/gallery/clear", (_req, res) => {
   gallery = gallery.filter((item) => item.status === "pending");
   saveGallery();
   res.json({ ok: true, outputs: gallery });
+});
+
+app.delete("/api/gallery/:id", (req, res) => {
+  const id = decodeURIComponent(req.params.id);
+  const before = gallery.length;
+  gallery = gallery.filter((item) => item.id !== id && item.url !== id);
+  if (gallery.length !== before) saveGallery();
+  res.json({ ok: true, removed: before - gallery.length, outputs: gallery });
 });
 
 app.post("/api/shutdown", (_req, res) => {

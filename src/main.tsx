@@ -10,17 +10,22 @@ import {
   Loader2,
   Power,
   RefreshCw,
+  RotateCcw,
   Settings2,
   SlidersHorizontal,
+  Trash2,
   Wand2,
-  X
+  X,
+  ZoomIn,
+  ZoomOut
 } from "lucide-react";
 import "./styles.css";
 
 type Mode = "image" | "video";
 type Progress = { value: number; max: number; node?: string };
-type Output = { url: string; filename: string; type: "image" | "video"; prompt?: string; outputName?: string };
-type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; width?: number; height?: number };
+type Output = { url: string; filename: string; type: "image" | "video"; prompt?: string; negative?: string; outputName?: string };
+type GenerationSettings = Record<string, string | number | boolean | null | undefined>;
+type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; width?: number; height?: number; createdAt?: string; durationMs?: number; model?: string; settings?: GenerationSettings };
 type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress };
 type SelectOption = { label: string; value: string };
 type Profile = {
@@ -67,7 +72,6 @@ type Preferences = {
   defaultVideoFrames: number;
   defaultVideoSteps: number;
   defaultFps: number;
-  autoOpenViewer: boolean;
 };
 
 const defaultPrefs: Preferences = {
@@ -75,8 +79,7 @@ const defaultPrefs: Preferences = {
   defaultImageSteps: 8,
   defaultVideoFrames: 33,
   defaultVideoSteps: 12,
-  defaultFps: 16,
-  autoOpenViewer: true
+  defaultFps: 16
 };
 
 const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
@@ -116,6 +119,31 @@ function aspectIconStyle(option: AspectPreset): React.CSSProperties {
 function titleFromPrompt(text = "") {
   const compact = text.replace(/\s+/g, " ").trim();
   return compact.length > 76 ? `${compact.slice(0, 73)}...` : compact;
+}
+
+function formatElapsed(ms: number) {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return minutes ? `${minutes}:${String(rest).padStart(2, "0")}` : `${rest}s`;
+}
+
+function fullGenerationText(item: GalleryItem) {
+  const settings = item.settings || {};
+  const lines = [
+    `Prompt: ${item.prompt || ""}`,
+    `Negative prompt: ${item.negative || ""}`,
+    `Model: ${item.model || ""}`,
+    `Output: ${item.outputName || item.filename || ""}`,
+    `Type: ${item.type}`,
+    `Aspect: ${item.width || "?"}x${item.height || "?"}`
+  ];
+  for (const [key, value] of Object.entries(settings)) {
+    if (value !== "" && value !== undefined && value !== null && value !== 0) {
+      lines.push(`${key}: ${value}`);
+    }
+  }
+  return lines.join("\n");
 }
 
 function loadPrefs(): Preferences {
@@ -180,6 +208,18 @@ function AspectPicker({ value, options, onChange }: { value: string; options: As
               <em>{option.value}</em>
             </button>
           ))}
+          <button
+            type="button"
+            className={cn("aspect-option", value === "custom" && "active")}
+            onClick={() => {
+              onChange("custom");
+              setOpen(false);
+            }}
+          >
+            <span className="aspect-shape custom" />
+            <span>Custom</span>
+            <em>Width x height</em>
+          </button>
         </div>
       ) : null}
     </div>
@@ -260,6 +300,10 @@ function App() {
   const [status, setStatus] = useState("Ready");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [active, setActive] = useState<GalleryItem | null>(null);
+  const [viewerZoom, setViewerZoom] = useState(1);
+  const [showDetails, setShowDetails] = useState(true);
+  const [customSize, setCustomSize] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const [startImage, setStartImage] = useState("");
   const [startImageName, setStartImageName] = useState("");
 
@@ -272,6 +316,11 @@ function App() {
     const timer = window.setInterval(() => {
       loadGallery();
     }, 2500);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -305,6 +354,7 @@ function App() {
 
   function applyProfile(profile: Profile, setModelId = true) {
     if (setModelId) setModel(profile.id);
+    setCustomSize(false);
     setTextEncoder(String(profile.defaults.textEncoder || ""));
     setVae(String(profile.defaults.vae || ""));
     setClipType(String(profile.defaults.clipType || ""));
@@ -337,8 +387,13 @@ function App() {
   }
 
   function applyAspect(value: string, targetMode = mode) {
+    if (value === "custom") {
+      setCustomSize(true);
+      return;
+    }
     const preset = aspectOptions.find((item) => item.value === value) || fallbackAspectPresets[targetMode].find((item) => item.value === value);
     if (!preset) return;
+    setCustomSize(false);
     setWidth(preset.w);
     setHeight(preset.h);
   }
@@ -356,6 +411,7 @@ function App() {
   const frameMeta = currentProfile?.constraints?.frames || {};
   const profileOptions = currentProfile?.options || {};
   const aspectValue = `${width}x${height}`;
+  const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "custom" : aspectValue;
   const runningCount = gallery.filter((item) => item.status === "pending").length;
 
   function chooseModel(profileId: string) {
@@ -414,7 +470,6 @@ function App() {
       const job: Job = await fetch(`/api/jobs/${jobId}`).then((res) => res.json());
       if (job.status === "done") {
         loadGallery();
-        if (prefs.autoOpenViewer) setActive((current) => current || job.outputs[0] || null);
         setStatus(`${job.outputs.length} output${job.outputs.length === 1 ? "" : "s"} added`);
         return;
       }
@@ -454,6 +509,18 @@ function App() {
     if (data?.outputs) setGallery(data.outputs);
   }
 
+  async function deleteItem(item: GalleryItem) {
+    setGallery((current) => current.filter((next) => next.id !== item.id));
+    if (active?.id === item.id) setActive(null);
+    await fetch(`/api/gallery/${encodeURIComponent(item.id)}`, { method: "DELETE" }).catch(() => null);
+  }
+
+  function openItem(item: GalleryItem) {
+    setViewerZoom(1);
+    setShowDetails(true);
+    setActive(item);
+  }
+
   async function shutdown() {
     setStatus("Closing localhost...");
     await fetch("/api/shutdown", { method: "POST" }).catch(() => null);
@@ -488,7 +555,7 @@ function App() {
           <div className="section-title">Output</div>
           <div className="control-grid">
             <Field label="Aspect">
-              <AspectPicker value={aspectOptions.some((item) => item.value === aspectValue) ? aspectValue : "custom"} onChange={(value) => applyAspect(value)} options={aspectOptions} />
+              <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
             </Field>
             {mode === "image" ? (
               <Field label="Variations">
@@ -500,10 +567,12 @@ function App() {
               </Field>
             )}
           </div>
-          <div className="control-grid">
-            <Field label="Width"><input type="number" min={widthMeta.min} max={widthMeta.max} value={width} step={widthMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setWidth(Number(event.target.value))} /></Field>
-            <Field label="Height"><input type="number" min={heightMeta.min} max={heightMeta.max} value={height} step={heightMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setHeight(Number(event.target.value))} /></Field>
-          </div>
+          {customSize ? (
+            <div className="control-grid">
+              <Field label="Width"><input type="number" min={widthMeta.min} max={widthMeta.max} value={width} step={widthMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setWidth(Number(event.target.value))} /></Field>
+              <Field label="Height"><input type="number" min={heightMeta.min} max={heightMeta.max} value={height} step={heightMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setHeight(Number(event.target.value))} /></Field>
+            </div>
+          ) : null}
           <div className="control-grid">
             <Field label="Steps"><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></Field>
             {mode === "video" ? (
@@ -569,16 +638,20 @@ function App() {
 
         <section className="gallery">
           {gallery.length ? gallery.map((item) => (
-            <button key={item.id} className={cn("tile", item.status)} onClick={() => item.status === "done" && setActive(item)}>
+            <button key={item.id} className={cn("tile", item.status)} style={{ "--tile-ratio": `${item.width || 1} / ${item.height || 1}` } as React.CSSProperties} onClick={() => item.status === "done" && openItem(item)}>
               {item.status === "pending" ? (
                 <div className="generating">
                   <div className="pulse-mark"><Loader2 size={16} className="spin" /></div>
                   <span>{item.progress?.max ? `${item.progress.value}/${item.progress.max}` : "Queued"}</span>
+                  <small>{formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString()))}</small>
                 </div>
               ) : item.status === "done" ? <Media item={item} muted /> : <div className="generating stopped"><span>{item.status === "canceled" ? "Canceled" : "Failed"}</span></div>}
-              <span className="tile-title">{titleFromPrompt(item.prompt || item.filename)}</span>
-              <small>{item.status === "done" ? item.outputName || item.type : item.status}</small>
+              <span className="tile-caption">
+                <strong>{titleFromPrompt(item.prompt || item.filename)}</strong>
+                <em>{item.status === "pending" ? formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString())) : item.durationMs ? formatElapsed(item.durationMs) : item.outputName || item.type}</em>
+              </span>
               {item.status === "pending" ? <span className="tile-action" onClick={(event) => { event.stopPropagation(); cancelJob(item.jobId); }}>Cancel</span> : null}
+              {item.status !== "pending" ? <span className="tile-delete" title="Delete from gallery" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={13} /></span> : null}
             </button>
           )) : (
             <div className="empty">
@@ -629,7 +702,6 @@ function App() {
                   <Field label="Video steps"><input type="number" min={1} value={prefs.defaultVideoSteps} onChange={(event) => setPrefs({ defaultVideoSteps: Number(event.target.value) })} /></Field>
                 </div>
                 <Field label="Video FPS"><input type="number" min={1} value={prefs.defaultFps} onChange={(event) => setPrefs({ defaultFps: Number(event.target.value) })} /></Field>
-                <label className="check-row"><input type="checkbox" checked={prefs.autoOpenViewer} onChange={(event) => setPrefs({ autoOpenViewer: event.target.checked })} /> Open viewer when a job finishes</label>
               </section>
 
               <section>
@@ -650,11 +722,46 @@ function App() {
       {active ? (
         <div className="viewer" onClick={() => setActive(null)}>
           <div className="viewer-bar" onClick={(event) => event.stopPropagation()}>
+            <button className="icon-button" title="Zoom out" onClick={() => setViewerZoom((value) => Math.max(0.5, Number((value - 0.25).toFixed(2))))}><ZoomOut size={15} /></button>
+            <button className="icon-button" title="Reset zoom" onClick={() => setViewerZoom(1)}><RotateCcw size={15} /></button>
+            <button className="icon-button" title="Zoom in" onClick={() => setViewerZoom((value) => Math.min(4, Number((value + 0.25).toFixed(2))))}><ZoomIn size={15} /></button>
+            <button className="icon-button" title="Details" onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={15} /></button>
+            <button className="icon-button" title="Copy prompt" onClick={() => navigator.clipboard.writeText(active.prompt || "")}><Copy size={15} /></button>
+            <button className="text-button" title="Copy full generation settings" onClick={() => navigator.clipboard.writeText(fullGenerationText(active))}>Copy full</button>
             <button className="icon-button" title="Copy output link" onClick={() => navigator.clipboard.writeText(active.url)}><Copy size={15} /></button>
             <a className="icon-button" href={active.url} download><Download size={15} /></a>
+            <button className="icon-button" title="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button>
             <button className="icon-button" onClick={() => setActive(null)}><X size={15} /></button>
           </div>
-          <div className="viewer-media" onClick={(event) => event.stopPropagation()}><Media item={active} /></div>
+          <div className="viewer-layout" onClick={(event) => event.stopPropagation()}>
+            <div className="viewer-media" style={{ "--zoom": viewerZoom } as React.CSSProperties}><Media item={active} /></div>
+            {showDetails ? (
+              <aside className="viewer-details">
+                <h3>{titleFromPrompt(active.prompt || active.filename)}</h3>
+                <label>
+                  <span>Prompt</span>
+                  <textarea readOnly value={active.prompt || ""} />
+                </label>
+                {active.negative ? (
+                  <label>
+                    <span>Negative</span>
+                    <textarea readOnly value={active.negative} />
+                  </label>
+                ) : null}
+                <div className="detail-grid">
+                  <span>Aspect</span><strong>{active.width || "?"}x{active.height || "?"}</strong>
+                  <span>Model</span><strong>{active.model || ""}</strong>
+                  <span>Output</span><strong>{active.outputName || active.filename}</strong>
+                  {active.durationMs ? <><span>Time</span><strong>{formatElapsed(active.durationMs)}</strong></> : null}
+                  {Object.entries(active.settings || {}).map(([key, value]) => value ? (
+                    <React.Fragment key={key}>
+                      <span>{key}</span><strong>{String(value)}</strong>
+                    </React.Fragment>
+                  ) : null)}
+                </div>
+              </aside>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

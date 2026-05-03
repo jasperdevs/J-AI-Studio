@@ -24,7 +24,8 @@ app.get("/api/health", async (_req, res) => {
 app.get("/api/models", async (_req, res) => {
   try {
     const info = await comfy("/object_info");
-    res.json(inferModels(info));
+    const stats = await comfy("/system_stats").catch(() => ({}));
+    res.json(inferModels(info, stats));
   } catch (error) {
     res.status(503).json({ error: error.message });
   }

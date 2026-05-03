@@ -12,6 +12,8 @@
   <a href="#features">Features</a>
   ·
   <a href="#comfyui">ComfyUI</a>
+  ·
+  <a href="#license">License</a>
 </p>
 
 <!-- Replace docs/screenshots/hero-placeholder.svg with the main app screenshot. -->
@@ -155,6 +157,10 @@ npm run dev
 
 The dev command starts Vite and the local API server together.
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Do not commit generated media, local model files, logs, or `.env` files.
+
 ## Troubleshooting
 
 If no models appear, make sure ComfyUI is running and that `COMFY_URL` points to the right server.
@@ -162,3 +168,7 @@ If no models appear, make sure ComfyUI is running and that `COMFY_URL` points to
 If generation fails, confirm the selected model works in ComfyUI and that any required custom nodes are installed.
 
 If video is missing, confirm your ComfyUI install has video generation nodes available.
+
+## License
+
+MIT

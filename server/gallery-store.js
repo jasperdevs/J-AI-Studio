@@ -30,9 +30,11 @@ export function setGallery(items) {
 
 function loadHiddenGalleryIds() {
   try {
-    return new Set(JSON.parse(fs.readFileSync(hiddenGalleryPath, "utf8")));
+    const raw = JSON.parse(fs.readFileSync(hiddenGalleryPath, "utf8"));
+    if (Array.isArray(raw)) return new Map(raw.map((key) => [key, 0]));
+    return new Map(Object.entries(raw).map(([key, value]) => [key, Number(value) || 0]));
   } catch {
-    return new Set();
+    return new Map();
   }
 }
 
@@ -41,16 +43,21 @@ export function galleryKey(item) {
 }
 
 export function hideGalleryItems(items) {
+  const hiddenAt = Date.now();
   for (const item of items) {
     const key = galleryKey(item);
-    if (key) hiddenGalleryIds.add(key);
+    if (key) hiddenGalleryIds.set(key, hiddenAt);
   }
   saveHiddenGalleryIds();
 }
 
 export function isGalleryHidden(item) {
   const key = galleryKey(item);
-  return Boolean(key && hiddenGalleryIds.has(key));
+  if (!key || !hiddenGalleryIds.has(key)) return false;
+  const hiddenAt = Number(hiddenGalleryIds.get(key) || 0);
+  const createdAt = Date.parse(item?.createdAt || "");
+  if (hiddenAt && Number.isFinite(createdAt) && createdAt > hiddenAt) return false;
+  return true;
 }
 
 export function filterVisibleGallery(items) {
@@ -114,6 +121,20 @@ export function deleteGalleryFiles(items) {
   return { deleted, skipped };
 }
 
+export function hasExistingOutputFile(item) {
+  if (!comfyOutputDir) return true;
+  return outputFileCandidates(item).some((file) => {
+    const resolved = path.resolve(file);
+    const base = path.resolve(comfyOutputDir);
+    if (resolved !== base && !resolved.startsWith(`${base}${path.sep}`)) return false;
+    try {
+      return fs.existsSync(resolved) && fs.statSync(resolved).isFile();
+    } catch {
+      return false;
+    }
+  });
+}
+
 export function saveGallery() {
   fs.mkdirSync(dataDir, { recursive: true });
   const persistable = gallery.slice(0, galleryLimit).map(({ preview, ...rest }) => rest);
@@ -122,7 +143,8 @@ export function saveGallery() {
 
 export function saveHiddenGalleryIds() {
   fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(hiddenGalleryPath, JSON.stringify([...hiddenGalleryIds].slice(-galleryLimit * 2), null, 2));
+  const entries = [...hiddenGalleryIds.entries()].slice(-galleryLimit * 2);
+  fs.writeFileSync(hiddenGalleryPath, JSON.stringify(Object.fromEntries(entries), null, 2));
 }
 
 export function promptTitle(text = "") {
@@ -154,7 +176,7 @@ export function recordsFromComfyHistory(history) {
     const latent = graph["6"]?.inputs || {};
     const model = graph["1"]?.inputs?.unet_name || "";
     for (const output of outputsFrom(item)) {
-      records.push({
+      const record = {
         ...output,
         id: output.url,
         jobId: promptId,
@@ -168,7 +190,8 @@ export function recordsFromComfyHistory(history) {
         height: Number(latent.height || 0),
         model,
         settings: {}
-      });
+      };
+      if (hasExistingOutputFile(record)) records.push(record);
     }
   }
   return records;

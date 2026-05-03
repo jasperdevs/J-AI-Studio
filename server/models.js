@@ -25,6 +25,22 @@ export function isZImageModel(name = "") {
   return /z[-_ ]?anime|z[-_ ]?image|turbo/i.test(name);
 }
 
+export function isNvfp4Model(name = "") {
+  return /nvfp4/i.test(name);
+}
+
+export function torchVersionAtLeast(version = "", major, minor) {
+  const match = String(version).match(/(\d+)\.(\d+)/);
+  if (!match) return false;
+  const currentMajor = Number(match[1]);
+  const currentMinor = Number(match[2]);
+  return currentMajor > major || (currentMajor === major && currentMinor >= minor);
+}
+
+export function torchSupportsNvfp4(stats = {}) {
+  return torchVersionAtLeast(stats?.system?.pytorch_version, 2, 8);
+}
+
 export function isWanVideoModel(name = "") {
   return /wan/i.test(name);
 }
@@ -142,7 +158,7 @@ export function buildProfile({ id, kind, label, displayName, description, model,
   };
 }
 
-export function inferModels(info) {
+export function inferModels(info, stats = {}) {
   const unets = optionsFor(info, "UNETLoader", "unet_name");
   const checkpoints = optionsFor(info, "CheckpointLoaderSimple", "ckpt_name");
   const clips = optionsFor(info, "CLIPLoader", "clip_name");
@@ -151,6 +167,8 @@ export function inferModels(info) {
   const samplers = optionsFor(info, "KSampler", "sampler_name");
   const schedulers = optionsFor(info, "KSampler", "scheduler");
   const weightDtypes = optionsFor(info, "UNETLoader", "weight_dtype");
+  const incompatibleModels = unets.filter((name) => isNvfp4Model(name) && !torchSupportsNvfp4(stats));
+  const runnableUnets = unets.filter((name) => !incompatibleModels.includes(name));
   const textMeta = textRange(info, "CLIPTextEncode", "text");
   const samplerRange = {
     steps: nodeRange(info, "KSampler", "steps", { default: 20, min: 1, max: 10000, step: 1 }),
@@ -175,7 +193,7 @@ export function inferModels(info) {
     fps: nodeRange(info, "CreateVideo", "fps", { default: 30, min: 1, max: 120, step: 1 })
   };
 
-  const zImageNames = new Set(unets.filter(isZImageModel));
+  const zImageNames = new Set(runnableUnets.filter(isZImageModel));
   for (const name of zImageNames) {
     profiles.push(buildProfile({
       id: `image:unet-z:${name}`,
@@ -245,7 +263,7 @@ export function inferModels(info) {
     }));
   }
 
-  for (const name of unets.filter(isWanVideoModel)) {
+  for (const name of runnableUnets.filter(isWanVideoModel)) {
     profiles.push(buildProfile({
       id: `video:wan:${name}`,
       kind: "video",
@@ -286,7 +304,7 @@ export function inferModels(info) {
   const imageProfiles = profiles.filter((profile) => profile.kind === "image");
   const videoProfiles = profiles.filter((profile) => profile.kind === "video");
   const profiled = new Set(profiles.map((profile) => profile.model));
-  const unsupportedModels = [...new Set([...unets, ...checkpoints].filter((name) => !profiled.has(name)))];
+  const unsupportedModels = [...new Set([...incompatibleModels, ...unets, ...checkpoints].filter((name) => !profiled.has(name)))];
   return {
     imageModels: imageProfiles.map((profile) => ({ label: profile.label, value: profile.id })),
     videoModels: videoProfiles.map((profile) => ({ label: profile.label, value: profile.id })),

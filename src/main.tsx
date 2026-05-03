@@ -136,6 +136,19 @@ function formatElapsed(ms: number) {
   return minutes ? `${minutes}:${String(rest).padStart(2, "0")}` : `${rest}s`;
 }
 
+function formatGeneratedAt(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 function fullGenerationText(item: GalleryItem) {
   const settings = item.settings || {};
   const lines = [
@@ -144,7 +157,8 @@ function fullGenerationText(item: GalleryItem) {
     `Model: ${item.model || ""}`,
     `Output: ${item.outputName || item.filename || ""}`,
     `Type: ${item.type}`,
-    `Aspect: ${item.width || "?"}x${item.height || "?"}`
+    `Aspect: ${item.width || "?"}x${item.height || "?"}`,
+    `Generated: ${formatGeneratedAt(item.createdAt)}`
   ];
   for (const [key, value] of Object.entries(settings)) {
     if (value !== "" && value !== undefined && value !== null && value !== 0) {
@@ -1147,6 +1161,7 @@ function App() {
                   <span>Aspect</span><strong>{active.width || "?"}x{active.height || "?"}</strong>
                   <span>Model</span><strong>{active.model || ""}</strong>
                   <span>Output</span><strong>{active.outputName || active.filename}</strong>
+                  {active.createdAt ? <><span>Generated</span><strong>{formatGeneratedAt(active.createdAt)}</strong></> : null}
                   {active.durationMs ? <><span>Time</span><strong>{formatElapsed(active.durationMs)}</strong></> : null}
                   {Object.entries(active.settings || {}).map(([key, value]) => value ? (
                     <React.Fragment key={key}>

@@ -66,7 +66,7 @@ export function useViewerControls(view: any) {
 
   function moveViewer(direction: 1 | -1) {
     if (!active) return;
-    const doneItems = visibleGallery.filter((item) => item.status === "done" || item.status === "error");
+    const doneItems = visibleGallery.filter((item) => item.status === "pending" || item.status === "done" || item.status === "error");
     const currentIndex = doneItems.findIndex((item) => item.id === active.id);
     if (currentIndex < 0 || doneItems.length < 2) return;
     resetViewer();

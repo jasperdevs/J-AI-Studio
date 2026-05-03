@@ -6,7 +6,7 @@ import { githubUrl } from './constants';
 import { cn, fullGenerationText } from './format';
 import { AspectPicker, Field, GallerySkeleton, Media, ModelPicker, NumberPicker, Skeleton, StudioSelect as Select, Tip } from './components';
 export function StudioView({ view }: { view: Record<string, any> }) {
-  const { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, characterMeta, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, doneGallery, formatElapsed, gallery, galleryColumnCount, galleryColumns, galleryLoaded, galleryStageRef, generate, generationDetailEntries, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, settings, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, status, steps, stepsMeta, stopViewerDrag, submitZenPrompt, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenSelectedId, zenStripDragRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, titleFromPrompt, zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, setPrefs } = view;
+  const { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, characterMeta, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, doneGallery, zenGallery, formatElapsed, gallery, galleryColumnCount, galleryColumns, galleryLoaded, galleryStageRef, generate, generationDetailEntries, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, settings, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, status, steps, stepsMeta, stopViewerDrag, submitZenPrompt, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenSelectedId, zenStripDragRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, titleFromPrompt, zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, setPrefs } = view;
   return (
     <div className={cn(prefs.zenMode ? "zen-shell" : "app-shell", showNegativePrompt && "negative-open")}>
       {prefs.zenMode ? (
@@ -71,7 +71,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
             <div className="zen-fade" />
             <div className="bottom-fade" />
           </div>
-          {doneGallery.length > 1 ? (
+          {zenGallery.length > 1 ? (
             <div className="zen-arrows">
               <Tip content="Previous output"><button aria-label="Previous output" onClick={() => moveZen(-1)}><ChevronLeft size={22} /></button></Tip>
               <Tip content="Next output"><button aria-label="Next output" onClick={() => moveZen(1)}><ChevronRight size={22} /></button></Tip>
@@ -87,7 +87,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
               <Tip content="Zoom in (+)"><button className="icon-button" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)} disabled={viewerZoom >= 6}><ZoomIn size={15} /></button></Tip>
             </div>
           ) : null}
-          {doneGallery.length && !zenGalleryOpen ? (
+          {zenGallery.length && !zenGalleryOpen ? (
             <Tip content="Show gallery"><button data-open-trigger className="zen-gallery-restore" aria-label="Show gallery" onClick={() => setZenGalleryOpen(true)}>
               <ChevronDown size={16} />
             </button></Tip>
@@ -133,10 +133,10 @@ export function StudioView({ view }: { view: Record<string, any> }) {
               </button></Tip>
             </div>
           </section>
-          {doneGallery.length && zenGalleryOpen ? (
+          {zenGallery.length && zenGalleryOpen ? (
             <div data-open-surface className="zen-gallery-wrap">
               <Tip content="Hide gallery"><button className="zen-gallery-toggle" aria-label="Hide gallery" onClick={() => setZenGalleryOpen(false)}><ChevronUp size={16} /></button></Tip>
-              {doneGallery[0]?.id !== zenItem?.id ? <Tip content="Jump to latest output"><button className="zen-latest" onClick={goLatestZen}>Latest</button></Tip> : null}
+              {zenGallery[0]?.id !== zenItem?.id ? <Tip content="Jump to latest output"><button className="zen-latest" onClick={goLatestZen}>Latest</button></Tip> : null}
               <div
                 ref={zenStripRef}
                 className="zen-gallery-strip"
@@ -145,7 +145,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                 onPointerUp={stopZenStripDrag}
                 onPointerCancel={stopZenStripDrag}
               >
-                {doneGallery.map((item) => (
+                {zenGallery.map((item) => (
                   <Tip key={item.id} content={titleFromPrompt(item.prompt || item.filename)}><button data-zen-id={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={(event) => { event.stopPropagation(); selectZenItem(item.id); }} onDragStart={(event) => event.preventDefault()}>
                     <Media item={item} muted />
                   </button></Tip>
@@ -391,8 +391,8 @@ export function StudioView({ view }: { view: Record<string, any> }) {
         </div>
       ) : null}
       {active ? (() => {
-        const doneItems = visibleGallery.filter((item) => item.status === "done" || item.status === "error");
-        const hasNeighbors = doneItems.length > 1;
+        const viewerItems = visibleGallery.filter((item) => item.status === "pending" || item.status === "done" || item.status === "error");
+        const hasNeighbors = viewerItems.length > 1;
         return (
           <div className="scrim" onClick={(event) => {
             if (event.target !== event.currentTarget) return;
@@ -417,7 +417,20 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                   onClick={clickViewer}
                   onDoubleClick={(event) => { event.stopPropagation(); zoomViewer(viewerZoom > 1 ? 1 : 2.5); }}
                 >
-                  <Media item={active} />
+                  {active.status === "pending" ? (() => {
+                    const ratio = active.progress?.max ? Math.min(1, Math.max(0, active.progress.value / active.progress.max)) : 0;
+                    return (
+                      <div className={cn("generating", "zen-generating", active.preview && "has-preview")} style={{ "--progress-ratio": ratio } as React.CSSProperties}>
+                        {active.preview ? <img className="generate-preview" src={active.preview} alt="" draggable={false} /> : null}
+                        {!active.preview ? <div className="noise-layer" /> : null}
+                        <div className="generate-overlay">
+                          {active.progress?.max ? <span className="generate-step"><span className="generate-step-label">Step</span><span className="generate-step-count">{active.progress.value}<i>/</i>{active.progress.max}</span></span> : <span className="generate-step-label is-queued">Queued</span>}
+                          <span className="generate-elapsed">{formatElapsed(now - Date.parse(active.createdAt || new Date().toISOString()))}</span>
+                        </div>
+                        <div className={cn("generate-bar", !active.progress?.max && "is-indeterminate")}><div className="generate-bar-fill" /></div>
+                      </div>
+                    );
+                  })() : <Media item={active} />}
                 </div>
                 {hasNeighbors ? (
                   <>

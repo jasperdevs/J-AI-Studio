@@ -251,21 +251,21 @@ function App() {
   useEffect(() => {
     if (!active) return;
     const activeItem = active;
-    const doneItems = visibleGallery.filter((item) => item.status === "done" || item.status === "error");
-    const currentIndex = doneItems.findIndex((item) => item.id === activeItem.id);
+    const viewerItems = visibleGallery.filter((item) => item.status === "pending" || item.status === "done" || item.status === "error");
+    const currentIndex = viewerItems.findIndex((item) => item.id === activeItem.id);
     function onKeyDown(event: KeyboardEvent) {
       if (event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement) return;
       if (event.key === "ArrowRight" && currentIndex >= 0) {
         event.preventDefault();
         setViewerZoom(1);
         setViewerPan({ x: 0, y: 0 });
-        setActive(doneItems[(currentIndex + 1) % doneItems.length]);
+        setActive(viewerItems[(currentIndex + 1) % viewerItems.length]);
       }
       if (event.key === "ArrowLeft" && currentIndex >= 0) {
         event.preventDefault();
         setViewerZoom(1);
         setViewerPan({ x: 0, y: 0 });
-        setActive(doneItems[(currentIndex - 1 + doneItems.length) % doneItems.length]);
+        setActive(viewerItems[(currentIndex - 1 + viewerItems.length) % viewerItems.length]);
       }
       if (event.key === "+" || event.key === "=") {
         event.preventDefault();
@@ -291,17 +291,17 @@ function App() {
 
   useEffect(() => {
     if (!prefs.zenMode || active || settings) return;
-    const doneItems = visibleGallery.filter((item) => item.status === "done" || item.status === "error");
-    const currentIndex = Math.max(0, doneItems.findIndex((item) => item.id === zenSelectedId));
+    const zenItems = visibleGallery.filter((item) => item.status === "pending" || item.status === "done" || item.status === "error");
+    const currentIndex = Math.max(0, zenItems.findIndex((item) => item.id === zenSelectedId));
     function onKeyDown(event: KeyboardEvent) {
       if (event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement) return;
-      if (event.key === "ArrowRight" && doneItems.length) {
+      if (event.key === "ArrowRight" && zenItems.length) {
         event.preventDefault();
-        setZenSelectedId(doneItems[(currentIndex + 1) % doneItems.length].id);
+        setZenSelectedId(zenItems[(currentIndex + 1) % zenItems.length].id);
       }
-      if (event.key === "ArrowLeft" && doneItems.length) {
+      if (event.key === "ArrowLeft" && zenItems.length) {
         event.preventDefault();
-        setZenSelectedId(doneItems[(currentIndex - 1 + doneItems.length) % doneItems.length].id);
+        setZenSelectedId(zenItems[(currentIndex - 1 + zenItems.length) % zenItems.length].id);
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -479,9 +479,9 @@ function App() {
   const hasMoreGallery = renderedGallery.length < visibleGallery.length;
   const runningCount = visibleGallery.filter((item) => item.status === "pending").length;
   const doneGallery = visibleGallery.filter((item) => item.status === "done" || item.status === "error");
-  const zenPendingItem = visibleGallery.find((item) => item.status === "pending") || null;
-  const zenItem = doneGallery.find((item) => item.id === zenSelectedId) || doneGallery[0] || null;
-  const zenDisplayItem = zenPendingItem || zenItem;
+  const zenGallery = visibleGallery.filter((item) => item.status === "pending" || item.status === "done" || item.status === "error");
+  const zenItem = zenGallery.find((item) => item.id === zenSelectedId) || zenGallery[0] || null;
+  const zenDisplayItem = zenItem;
   const generateDisabled = !currentProfile || (currentProfile.capabilities.textEncoder && !textEncoder) || (currentProfile.capabilities.vae && !vae);
 
   useEffect(() => {
@@ -530,13 +530,13 @@ function App() {
   const { generate, cancelJob, cancelQueue, clearGallery, clearFailedItems, resetAllSettings, clearAllCache, openOutputFolder, deleteItem } = generationActions;
 
   const viewerActions = useViewerControls({
-    active, deleteItem, doneGallery, generate, generateDisabled, height, lastTapRef, mode, models, prefs, setActive, setCfg, setClipType, setCount, setDenoise, setFps, setFrames, setHeight, setIsDraggingViewer, setMode, setModel, setNegative, setPrompt, setSampler, setScheduler, setSeed, setShowDetails, setStartImage, setStartImageName, setTextEncoder, setVae, setViewerPan, setViewerZoom, setWeightDtype, setWidth, setZenSelectedId, showToast, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, visibleGallery, width, zenItem, zenStripDragRef, zenStripRef
+    active, deleteItem, doneGallery: zenGallery, generate, generateDisabled, height, lastTapRef, mode, models, prefs, setActive, setCfg, setClipType, setCount, setDenoise, setFps, setFrames, setHeight, setIsDraggingViewer, setMode, setModel, setNegative, setPrompt, setSampler, setScheduler, setSeed, setShowDetails, setStartImage, setStartImageName, setTextEncoder, setVae, setViewerPan, setViewerZoom, setWeightDtype, setWidth, setZenSelectedId, showToast, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, visibleGallery, width, zenItem, zenStripDragRef, zenStripRef
   });
   const { resetViewer, openItem, applyAllSettings, moveZen, moveViewer, goLatestZen, submitZenPrompt, startZenStripDrag, dragZenStrip, stopZenStripDrag, selectZenItem, zoomViewer, wheelViewer, clickViewer, startViewerDrag, dragViewer, stopViewerDrag, startViewerTouch, moveViewerTouch, endViewerTouch } = viewerActions;
 
   const sidebarControls = <SidebarControls view={{ canUseStartImage, cfg, cfgMeta, changeMode, clipType, confirmAction, currentProfile, customSize, denoise, denoiseMeta, fps, fpsMeta, frameMeta, frames, height, heightMeta, mode, models, profileOptions, readStartImage, sampler, scheduler, seed, setCfg, setDenoise, setFps, setFrames, setHeight, setSampler, setScheduler, setSeed, setStartImage, setStartImageName, setTextEncoder, setVae, setWeightDtype, setWidth, startImageName, textEncoder, vae, weightDtype, width, widthMeta }} />;
 
-  const view = { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, doneGallery, gallery, galleryColumnCount, galleryColumns, galleryLoaded, galleryStageRef, generate, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, status, steps, stepsMeta, stopViewerDrag, submitZenPrompt, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenSelectedId, zenStripDragRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, characterMeta, formatElapsed, generationDetailEntries, titleFromPrompt , zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, settings, setPrefs };
+  const view = { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, doneGallery, zenGallery, gallery, galleryColumnCount, galleryColumns, galleryLoaded, galleryStageRef, generate, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, status, steps, stepsMeta, stopViewerDrag, submitZenPrompt, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenSelectedId, zenStripDragRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, characterMeta, formatElapsed, generationDetailEntries, titleFromPrompt , zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, settings, setPrefs };
 
   return <StudioView view={view} />;
 }

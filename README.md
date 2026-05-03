@@ -18,12 +18,6 @@
 
 ## Preview
 
-### Main view
-
-Prompt controls with a local output gallery.
-
-<img src="./docs/screenshots/hero.jpg" alt="Main view screenshot" width="100%" />
-
 ### Zen mode
 
 Fullscreen prompt-first generation.

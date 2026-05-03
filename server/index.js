@@ -12,6 +12,7 @@ const port = Number(process.env.PORT || 8787);
 const app = express();
 const jobs = new Map();
 const gallery = [];
+const localHosts = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 
 app.use(express.json({ limit: "25mb" }));
 
@@ -227,6 +228,11 @@ app.get("/api/jobs/:id", (req, res) => {
 });
 
 app.post("/api/shutdown", (_req, res) => {
+  const remote = _req.socket.remoteAddress || "";
+  if (!localHosts.has(remote)) {
+    res.status(403).json({ ok: false, error: "Shutdown is only allowed from this computer." });
+    return;
+  }
   res.json({ ok: true });
   setTimeout(() => process.exit(0), 250);
 });

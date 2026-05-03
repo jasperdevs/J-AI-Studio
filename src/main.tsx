@@ -1769,13 +1769,13 @@ function App() {
                 <em>{item.status === "pending" ? formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString())) : item.durationMs ? formatElapsed(item.durationMs) : item.outputName || item.type}</em>
               </span>
               {item.status === "pending" ? <Tip content="Cancel generation"><span className="tile-action" onClick={(event) => { event.stopPropagation(); cancelJob(item.jobId); }}>Cancel</span></Tip> : null}
-              {item.status === "done" ? (
+              {item.status !== "pending" ? (
                 <span className="tile-hover-actions">
                   {item.url ? <Tip content="Download"><a className="tile-icon" aria-label="Download" href={item.url} download onClick={(event) => event.stopPropagation()}><Download size={13} /></a></Tip> : null}
-                  <Tip content="Copy"><span className="tile-icon" role="button" aria-label="Copy" onClick={(event) => { event.stopPropagation(); copyImageAndToast(item); }}><Copy size={13} /></span></Tip>
+                  {item.status === "done" ? <Tip content="Copy"><span className="tile-icon" role="button" aria-label="Copy" onClick={(event) => { event.stopPropagation(); copyImageAndToast(item); }}><Copy size={14} /></span></Tip> : null}
+                  <Tip content="Delete from gallery"><span className="tile-delete" role="button" aria-label="Delete from gallery" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={14} /></span></Tip>
                 </span>
               ) : null}
-              {item.status !== "pending" ? <Tip content="Delete from gallery"><span className="tile-delete" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={13} /></span></Tip> : null}
             </button>
             );
           })}

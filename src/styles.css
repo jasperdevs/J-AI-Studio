@@ -1151,10 +1151,10 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   color: rgb(255 255 255 / 0.7);
   font-size: 11px; font-style: normal;
 }
-.tile-action, .tile-delete {
+.tile-action {
   position: absolute; top: 8px; right: 8px;
   border: 1px solid rgb(255 255 255 / 0.16);
-  border-radius: 999px;
+  border-radius: 8px;
   background: rgb(0 0 0 / 0.65);
   color: #fff !important;
   margin: 0 !important;
@@ -1165,29 +1165,36 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   transition: opacity 180ms var(--ease-out), background 160ms var(--ease-out), transform 220ms var(--spring);
 }
 .tile-action { padding: 4px 9px; }
-.tile-delete { width: 28px; height: 28px; display: grid !important; place-items: center; padding: 0; }
-.tile-action:hover, .tile-delete:hover { background: rgb(0 0 0 / 0.85); transform: scale(1.06); }
+.tile-action:hover { background: rgb(0 0 0 / 0.85); transform: translateY(-1px); }
 
 .tile-hover-actions {
-  position: absolute; top: 8px; left: 8px;
-  display: flex; align-items: center; gap: 4px;
+  position: absolute; top: 8px; right: 8px;
+  display: flex; align-items: center; justify-content: flex-end; gap: 5px;
   opacity: 0;
   transition: opacity 180ms var(--ease-out);
   pointer-events: none;
 }
-.tile-hover-actions .tile-icon {
-  width: 28px; height: 28px;
+.tile-hover-actions .tile-icon,
+.tile-hover-actions .tile-delete {
+  width: 34px; height: 32px;
   display: grid; place-items: center;
   border: 1px solid rgb(255 255 255 / 0.16);
-  border-radius: 999px;
-  background: rgb(0 0 0 / 0.65);
-  color: #fff;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.68);
+  color: #fff !important;
   cursor: pointer;
   pointer-events: auto;
   text-decoration: none;
-  transition: background 160ms var(--ease-out), transform 220ms var(--spring);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.22);
+  transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 220ms var(--spring);
 }
-.tile-hover-actions .tile-icon:hover { background: rgb(0 0 0 / 0.85); transform: scale(1.06); }
+.tile-hover-actions .tile-icon:hover,
+.tile-hover-actions .tile-delete:hover {
+  border-color: rgb(255 255 255 / 0.26);
+  background: rgb(0 0 0 / 0.86);
+  transform: translateY(-1px);
+}
+.tile-hover-actions .tile-delete:hover { background: hsl(var(--destructive) / 0.86); }
 
 @media (hover: hover) {
   .tile:hover .tile-action, .tile:hover .tile-delete, .tile:hover .tile-hover-actions { opacity: 1; }

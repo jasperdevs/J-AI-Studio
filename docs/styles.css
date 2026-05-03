@@ -2,8 +2,8 @@
 
 :root {
   color-scheme: light;
-  --paper: #f4f2ec;
-  --paper-deep: #ebe8df;
+  --paper: #f6f5f0;
+  --paper-deep: #ece9e1;
   --ink: #070707;
   --muted: #5f5d57;
   --faint: #8f8b82;
@@ -34,9 +34,9 @@ body {
   overflow-x: clip;
   overscroll-behavior-x: none;
   background:
-    linear-gradient(rgb(9 9 9 / 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(9 9 9 / 0.055) 1px, transparent 1px),
-    radial-gradient(circle at 70% 0%, rgb(0 0 0 / 0.08), transparent 34rem),
+    linear-gradient(rgb(9 9 9 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(9 9 9 / 0.045) 1px, transparent 1px),
+    radial-gradient(circle at 80% 0%, rgb(0 0 0 / 0.055), transparent 33rem),
     var(--paper);
   background-size: 7rem 7rem, 7rem 7rem, auto, auto;
   color: var(--ink);
@@ -53,8 +53,8 @@ body::before {
   pointer-events: none;
   opacity: 0.48;
   background-image:
-    radial-gradient(circle at 20% 30%, rgb(0 0 0 / 0.1) 0 1px, transparent 1px),
-    radial-gradient(circle at 80% 70%, rgb(0 0 0 / 0.08) 0 1px, transparent 1px);
+    radial-gradient(circle at 20% 30%, rgb(0 0 0 / 0.075) 0 1px, transparent 1px),
+    radial-gradient(circle at 80% 70%, rgb(0 0 0 / 0.055) 0 1px, transparent 1px);
   background-size: 13px 13px, 17px 17px;
   mix-blend-mode: multiply;
 }
@@ -83,7 +83,7 @@ img {
   gap: 24px;
   width: 100%;
   margin: 0;
-  padding: 1.35rem max(1rem, calc((100vw - 92rem) / 2));
+  padding: 1rem max(1rem, calc((100vw - 92rem) / 2)) 1.55rem;
   background: linear-gradient(to bottom, var(--paper) 0%, rgb(244 242 236 / 0.96) 66%, rgb(244 242 236 / 0) 100%);
 }
 
@@ -126,18 +126,17 @@ img {
   height: 4.4rem;
   margin-bottom: 2rem;
   border-radius: 0.65rem;
-  background: var(--black);
+  background: var(--white);
 }
 
 .brand-mark.large img {
   width: 3.5rem;
   height: 3.5rem;
-  filter: invert(1);
 }
 
 .site-header nav {
   justify-self: end;
-  gap: 2.6rem;
+  gap: 2.25rem;
   color: var(--ink);
   font-size: 0.95rem;
   font-weight: 600;
@@ -172,7 +171,7 @@ img {
 }
 
 main {
-  width: min(92rem, calc(100% - 4rem));
+  width: min(92rem, calc(100% - 3rem));
   max-width: 100%;
   margin: 0 auto;
   overflow-x: clip;
@@ -181,11 +180,11 @@ main {
 .hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(34rem, 1.15fr);
-  gap: 4.75rem;
+  grid-template-columns: minmax(0, 0.78fr) minmax(35rem, 1.22fr);
+  gap: 3.6rem;
   align-items: center;
-  min-height: calc(100dvh - 5.9rem);
-  padding: 5.5rem 0 8rem;
+  min-height: calc(92dvh - 5.9rem);
+  padding: 4.75rem 0 7rem;
   border-top: 1px solid var(--rule);
   overflow-x: clip;
 }
@@ -213,11 +212,11 @@ figure {
 }
 
 h1 {
-  margin-bottom: 2rem;
-  font-size: clamp(4.5rem, 7.8vw, 9.4rem);
-  line-height: 0.88;
+  margin-bottom: 2.1rem;
+  font-size: clamp(4.1rem, 6.9vw, 8.2rem);
+  line-height: 0.9;
   font-weight: 800;
-  letter-spacing: -0.085em;
+  letter-spacing: -0.074em;
   text-wrap: balance;
 }
 
@@ -279,21 +278,19 @@ footer a:focus-visible {
   overflow: hidden;
   border: 1px solid var(--ink);
   background: var(--black);
-  box-shadow: 0 2rem 4rem rgb(0 0 0 / 0.16);
+  box-shadow: 0 1.2rem 2.2rem rgb(0 0 0 / 0.11);
 }
 
 .hero-plate {
   position: relative;
   margin: 0;
-  transform: rotate(-1.2deg);
-  transform-origin: center;
-  border-radius: 0.8rem;
+  border-radius: 0.55rem;
 }
 
 .hero-plate img {
   aspect-ratio: 16 / 10;
   width: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center top;
 }
 
@@ -304,7 +301,7 @@ footer a:focus-visible {
 }
 
 .feature-band {
-  padding: 7.5rem 0 8.5rem;
+  padding: 7rem 0 8rem;
   overflow-x: clip;
 }
 
@@ -320,7 +317,7 @@ footer a:focus-visible {
 .faq-intro h2,
 .final-cta h2 {
   margin: 0;
-  font-size: clamp(3.2rem, 5vw, 6.7rem);
+  font-size: clamp(3rem, 4.7vw, 6.25rem);
   line-height: 0.94;
   font-weight: 700;
   letter-spacing: -0.07em;
@@ -329,43 +326,37 @@ footer a:focus-visible {
 
 .feature-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(28rem, 0.92fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(27rem, 0.88fr);
   gap: 5.25rem;
   align-items: center;
 }
 
 .plate-stack {
-  position: relative;
-  min-height: 35rem;
+  display: grid;
+  gap: 0.8rem;
+  min-height: 0;
 }
 
 .stack-plate {
-  position: absolute;
   margin: 0;
-  border-radius: 0.55rem;
+  border-radius: var(--radius);
 }
 
 .stack-plate img {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center top;
   background: var(--black);
 }
 
 .stack-plate.top {
-  top: 0;
-  left: 1rem;
-  width: 78%;
-  height: 20rem;
-  transform: rotate(-3deg);
+  width: 88%;
 }
 
 .stack-plate.middle {
-  top: 14rem;
-  right: 0;
-  width: 76%;
-  height: 20rem;
-  transform: rotate(1.5deg);
+  width: 88%;
+  justify-self: end;
 }
 
 .feature-list {
@@ -378,7 +369,7 @@ footer a:focus-visible {
   gap: 2rem;
   align-items: start;
   border-bottom: 1px solid var(--rule-strong);
-  padding: 2rem 0 2.25rem;
+  padding: 1.8rem 0 2rem;
 }
 
 .feature-list span,
@@ -413,9 +404,9 @@ footer a:focus-visible {
 
 .faq {
   display: grid;
-  grid-template-columns: minmax(21rem, 0.5fr) minmax(0, 1fr);
+  grid-template-columns: minmax(21rem, 0.46fr) minmax(0, 1fr);
   gap: 5rem;
-  padding: 7.2rem 0 8.6rem;
+  padding: 7rem 0 8rem;
   overflow-x: clip;
 }
 
@@ -431,13 +422,12 @@ footer a:focus-visible {
 
 .code-card {
   display: grid;
-  gap: 0;
   max-width: 30rem;
   margin-top: 3rem;
   overflow: hidden;
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  background: rgb(255 255 255 / 0.34);
+  border-radius: 0;
+  background: rgb(255 255 255 / 0.25);
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   font-size: 0.9rem;
 }
@@ -456,13 +446,12 @@ footer a:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   border-top: 1px solid var(--rule-strong);
-  border-left: 1px solid var(--rule-strong);
+  column-gap: 2.25rem;
 }
 
 .faq-list article {
-  min-height: 17rem;
-  padding: 2rem;
-  border-right: 1px solid var(--rule-strong);
+  min-height: 14rem;
+  padding: 1.75rem 0 2rem;
   border-bottom: 1px solid var(--rule-strong);
 }
 
@@ -477,22 +466,24 @@ footer a:focus-visible {
 .final-cta {
   position: relative;
   display: grid;
-  justify-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 2rem;
   overflow: hidden;
   overflow-x: clip;
-  min-height: 36rem;
-  padding: 8.5rem 0 9rem;
-  text-align: center;
+  min-height: 30rem;
+  padding: 7rem 0;
+  text-align: left;
 }
 
 .final-cta h2 {
-  max-width: 52rem;
+  max-width: 56rem;
   margin-bottom: 1.4rem;
 }
 
 .final-cta p {
   max-width: 33rem;
-  margin-bottom: 2.2rem;
+  margin-bottom: 0;
   font-size: 1.15rem;
 }
 
@@ -509,7 +500,7 @@ footer a:focus-visible {
   display: grid;
   grid-template-columns: 0.72fr 1.26fr 0.82fr;
   gap: 0.55rem;
-  height: 9.25rem;
+  height: 8.4rem;
   overflow: hidden;
   border-right: 1px solid var(--ink);
   border-bottom: 1px solid var(--ink);
@@ -586,7 +577,8 @@ footer a:focus-visible {
 
   .hero,
   .feature-layout,
-  .faq {
+  .faq,
+  .final-cta {
     grid-template-columns: 1fr;
   }
 
@@ -599,6 +591,10 @@ footer a:focus-visible {
   .hero-plate {
     margin-right: 0;
     transform: none;
+  }
+
+  .final-cta {
+    align-items: start;
   }
 
   .plate-stack {
@@ -637,6 +633,10 @@ footer a:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .section-heading {
+    gap: 1.5rem;
+  }
+
   .plate-stack {
     min-height: auto;
   }
@@ -659,7 +659,7 @@ footer a:focus-visible {
   }
 
   .faq-list article {
-    border-left: 1px solid var(--rule-strong);
+    border-left: 0;
   }
 
   .final-cta {

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" role="img" aria-label="Fullscreen screenshot placeholder">
+  <rect width="900" height="560" fill="#080808"/>
+  <rect x="48" y="48" width="520" height="464" rx="16" fill="#151515" stroke="#2a2a2a"/>
+  <rect x="600" y="48" width="252" height="464" rx="16" fill="#101010" stroke="#2a2a2a"/>
+  <text x="308" y="286" text-anchor="middle" fill="#f4f4f5" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="600">fullscreen view</text>
+  <text x="726" y="286" text-anchor="middle" fill="#a1a1aa" font-family="Inter, Arial, sans-serif" font-size="18">details</text>
+</svg>

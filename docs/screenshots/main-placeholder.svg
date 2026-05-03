@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" role="img" aria-label="Main view screenshot placeholder">
+  <rect width="900" height="560" fill="#0a0a0a"/>
+  <rect x="36" y="36" width="828" height="488" rx="18" fill="#111" stroke="#2a2a2a"/>
+  <text x="450" y="270" text-anchor="middle" fill="#f4f4f5" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="600">main view</text>
+  <text x="450" y="308" text-anchor="middle" fill="#a1a1aa" font-family="Inter, Arial, sans-serif" font-size="18">replace with screenshot</text>
+</svg>

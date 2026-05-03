@@ -1,56 +1,56 @@
-# J AI Studio
+<p align="center">
+  <img src="./docs/screenshots/hero-placeholder.svg" alt="J AI Studio preview placeholder" width="1100" />
+</p>
 
-Simple local image and video generation for ComfyUI, without the graph editor.
+<h1 align="center">J AI Studio</h1>
 
-J AI Studio is a small React + Express app that sits in front of a running ComfyUI server. It discovers the models and generation options that ComfyUI already has installed, then gives you a cleaner prompt-first UI for image and video jobs.
+<p align="center">A simple local image and video UI for ComfyUI, without the graph editor.</p>
 
-## What It Does
+<p align="center">
+  <a href="#quick-start">Quick start</a>
+  ·
+  <a href="#features">Features</a>
+  ·
+  <a href="#comfyui">ComfyUI</a>
+</p>
 
-- Generates images and videos from one interface
-- Detects supported ComfyUI workflow profiles from installed nodes and model files
-- Shows installed image models, video models, text encoders, VAEs, CLIP types, weight dtypes, samplers, and schedulers when the selected workflow uses them
-- Includes prompt, negative prompt, aspect ratio, width, height, seed, steps, CFG, and batch variation controls
-- Includes video controls for frames and FPS
-- Shows start-image and denoise controls only for workflows that can actually use them
-- Keeps advanced model settings available without making them the default workflow
-- Shows generated outputs in a persistent local gallery with fullscreen preview and download controls
-- Shows queue progress, prompt labels, cancel controls, and recovered ComfyUI history
-- Runs locally; no hosted service or model files are included
+<!-- Replace docs/screenshots/hero-placeholder.svg with the main app screenshot. -->
 
-## Requirements
+## Preview
 
-- Node.js 20 or newer
-- A running ComfyUI server
-- ComfyUI models installed locally
+| Main view | Zen mode |
+| --- | --- |
+| <img src="./docs/screenshots/main-placeholder.svg" alt="Main view screenshot placeholder" width="520" /> | <img src="./docs/screenshots/zen-placeholder.svg" alt="Zen mode screenshot placeholder" width="520" /> |
 
-For image generation, the profile system supports:
+| Fullscreen details | Queue and gallery |
+| --- | --- |
+| <img src="./docs/screenshots/fullscreen-placeholder.svg" alt="Fullscreen screenshot placeholder" width="520" /> | <img src="./docs/screenshots/gallery-placeholder.svg" alt="Gallery screenshot placeholder" width="520" /> |
 
-- Z-Image/Z-Anime-style UNET workflows through `UNETLoader`, `CLIPLoader`, `VAELoader`, `EmptySD3LatentImage`, `KSampler`, `VAEDecode`, and `SaveImage`
-- Checkpoint workflows through `CheckpointLoaderSimple`, `EmptyLatentImage`, `KSampler`, `VAEDecode`, and `SaveImage`
+## Features
 
-For video generation, it expects Wan-style video support through `Wan22ImageToVideoLatent` plus ComfyUI's `CreateVideo` and `SaveVideo` nodes.
+<table>
+  <tr>
+    <td width="45%" valign="top">
+      <ul>
+        <li>Prompt-first image and video generation</li>
+        <li>Model-aware controls from ComfyUI node metadata</li>
+        <li>Image and video galleries kept separate by mode</li>
+        <li>Zen mode for a cleaner fullscreen workflow</li>
+        <li>Live queue/progress cards with cancel controls</li>
+        <li>Persistent local gallery metadata</li>
+      </ul>
+    </td>
+    <td width="55%" valign="top">
+      <img src="./docs/screenshots/features-placeholder.svg" alt="Feature screenshot placeholder" width="620" />
+    </td>
+  </tr>
+</table>
 
-## ComfyUI Setup
-
-J AI Studio does not bundle ComfyUI. Keep ComfyUI as its own install, then run J AI Studio beside it. This keeps the repo small and lets you update ComfyUI or models without replacing the app.
-
-1. Install and start ComfyUI.
-2. Confirm ComfyUI opens at `http://127.0.0.1:8188`.
-3. Put image models, video models, text encoders, and VAEs in ComfyUI's normal model folders.
-4. Open `http://127.0.0.1:8188/object_info` in a browser if you want to confirm ComfyUI is exposing its nodes.
-5. Start J AI Studio and open `http://127.0.0.1:8787`.
-
-The model picker is populated from ComfyUI's `/object_info` response, but it now lists workflow profiles rather than raw filenames. Each profile decides which controls should appear: text encoder, VAE, CLIP type, weight dtype, start image, denoise, video frames, FPS, and aspect presets. Other model files stay hidden from the main picker until a matching workflow profile exists.
+<!-- Replace docs/screenshots/features-placeholder.svg with a focused feature screenshot or collage. -->
 
 ## Quick Start
 
-Start ComfyUI first. By default, J AI Studio connects to:
-
-```text
-http://127.0.0.1:8188
-```
-
-Then run the app:
+J AI Studio expects ComfyUI to already be installed and running.
 
 ```bash
 npm install
@@ -64,9 +64,44 @@ Open:
 http://127.0.0.1:8787
 ```
 
-## Configuration
+By default, the app connects to ComfyUI at:
 
-Copy `.env.example` to `.env` if you want to change the default ports.
+```text
+http://127.0.0.1:8188
+```
+
+## Requirements
+
+- Node.js 20 or newer
+- A running ComfyUI server
+- Local ComfyUI model files
+
+J AI Studio does not download models, include models, or publish generated outputs. Models stay in your ComfyUI install. Generated files stay in ComfyUI's output folder.
+
+## ComfyUI
+
+The model picker lists supported workflow profiles, not every raw model file. A model appears when J AI Studio can match it to a workflow the app knows how to run.
+
+<details>
+<summary>Supported workflow profiles</summary>
+
+Image workflows:
+
+- Z-Image / Z-Anime-style UNET workflows using `UNETLoader`, `CLIPLoader`, `VAELoader`, `EmptySD3LatentImage`, `KSampler`, `VAEDecode`, and `SaveImage`
+- Checkpoint workflows using `CheckpointLoaderSimple`, `EmptyLatentImage`, `KSampler`, `VAEDecode`, and `SaveImage`
+
+Video workflows:
+
+- Wan-style video workflows using `Wan22ImageToVideoLatent`, `CreateVideo`, and `SaveVideo`
+
+The app detects available text encoders, VAEs, CLIP types, weight dtypes, samplers, schedulers, size ranges, and prompt limits from ComfyUI's `/object_info` response where ComfyUI exposes them.
+
+</details>
+
+<details>
+<summary>Configuration</summary>
+
+Copy `.env.example` to `.env` if you need different ports or paths.
 
 ```bash
 COMFY_URL=http://127.0.0.1:8188
@@ -76,31 +111,27 @@ JAI_DATA_DIR=./data
 COMFY_OUTPUT_DIR=
 ```
 
-`COMFY_URL` is the ComfyUI server J AI Studio should talk to. `HOST` and `PORT` control where J AI Studio itself is served. `JAI_DATA_DIR` controls where local gallery metadata is stored. `COMFY_OUTPUT_DIR` is optional; set it when you want the app's output-folder button to open a specific ComfyUI output directory.
+`COMFY_OUTPUT_DIR` is optional. Set it only if you want the app's output-folder button to open a specific ComfyUI output directory.
 
-## Development
+</details>
 
-```bash
-npm install
-npm run dev
-```
+<details>
+<summary>Local network hosting</summary>
 
-The dev command starts Vite and the local API server together.
-
-## Local Hosting
-
-For normal local use, keep ComfyUI running and start J AI Studio with:
+For another device on your network, set:
 
 ```bash
-npm run build
-npm start
+HOST=0.0.0.0
 ```
 
-To make it reachable from another device on your network, set `HOST=0.0.0.0` and open the chosen `PORT` in your firewall. Do this only on a trusted network.
+Then open the selected `PORT` in your firewall. Only do this on a trusted network.
 
-## Desktop Shortcut
+</details>
 
-On Windows, you can make a shortcut that starts ComfyUI, starts J AI Studio, and opens the browser. Point the shortcut at a PowerShell script like this:
+<details>
+<summary>Windows shortcut example</summary>
+
+You can make a shortcut that starts ComfyUI, starts J AI Studio, and opens the browser.
 
 ```powershell
 $appRoot = "C:\path\to\J-AI-Studio"
@@ -118,16 +149,21 @@ if (-not (Get-NetTCPConnection -LocalPort 8787 -State Listen -ErrorAction Silent
 Start-Process "http://127.0.0.1:8787/"
 ```
 
+</details>
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+The dev command starts Vite and the local API server together.
+
 ## Troubleshooting
 
 If no models appear, make sure ComfyUI is running and that `COMFY_URL` points to the right server.
 
-If image generation fails, confirm the selected model works with the selected text encoder and VAE in ComfyUI.
+If generation fails, confirm the selected model works with the selected text encoder and VAE in ComfyUI.
 
-If video generation is missing or fails, confirm your ComfyUI install has the Wan video latent node and video save nodes available.
-
-If outputs generate but do not preview, check that ComfyUI can serve the file from its `/view` endpoint. J AI Studio also recovers recent ComfyUI history into its local gallery if the app restarts.
-
-## Notes
-
-J AI Studio does not download models, include models, or publish generated outputs. Models stay in your ComfyUI installation. Gallery metadata is stored locally in `data/gallery.json` by default, or in `JAI_DATA_DIR` when that environment variable is set. Generated files stay in ComfyUI's output folder.
+If video is missing, confirm your ComfyUI install has the required Wan video nodes available.

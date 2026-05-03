@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { comfy } from './comfy.js';
 
 export async function uploadReferenceImage(dataUrl) {

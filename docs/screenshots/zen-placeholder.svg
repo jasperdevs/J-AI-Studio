@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" role="img" aria-label="Zen mode screenshot placeholder">
-  <rect width="900" height="560" fill="#050505"/>
-  <circle cx="450" cy="240" r="112" fill="#151515" stroke="#303030"/>
-  <rect x="180" y="420" width="540" height="72" rx="18" fill="#101010" stroke="#2a2a2a"/>
-  <text x="450" y="255" text-anchor="middle" fill="#f4f4f5" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="600">zen mode</text>
-</svg>

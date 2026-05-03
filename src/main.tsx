@@ -137,7 +137,6 @@ function App() {
       if (!target) return;
       if (target.closest("[data-open-trigger], [data-open-surface], [data-radix-popper-content-wrapper], [role='listbox'], [role='tooltip']")) return;
       if (zenControls) setZenControls(false);
-      if (prefs.zenMode && zenGalleryOpen) setZenGalleryOpen(false);
       if (active && showDetails && target.closest("[data-viewer-empty]")) setShowDetails(false);
     }
     window.addEventListener("pointerdown", onPointerDown, true);

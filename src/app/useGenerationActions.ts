@@ -67,7 +67,10 @@ export function useGenerationActions(view: any) {
           body: JSON.stringify({ ...requestBody, count: requestCount })
         });
         queuedJobs.push(jobId);
-        if (items?.length) setGallery((current: GalleryItem[]) => dedupeGalleryItems([...items, ...current]));
+        if (items?.length) {
+          setGallery((current: GalleryItem[]) => dedupeGalleryItems([...items, ...current]));
+          if (prefs.zenMode) setZenSelectedId(items[0].id);
+        }
       }
       generatePostingRef.current = false;
 
@@ -87,11 +90,11 @@ export function useGenerationActions(view: any) {
             return job;
           }
           if (job.status === "done" || job.status === "canceled") return job;
-          if (job.preview || job.progress?.max) {
+          if (job.preview || job.progress || job.status === "queued" || job.status === "running") {
             setGallery((current: GalleryItem[]) => current.map((item: GalleryItem) => item.jobId === jobId ? {
               ...item,
               preview: job.preview || item.preview,
-              progress: job.progress || item.progress,
+              progress: job.progress || item.progress || { value: 0, max: 0, node: job.status },
               status: item.status === "pending" ? "pending" : item.status
             } : item));
           }

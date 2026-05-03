@@ -338,12 +338,29 @@
 
 .empty {
   grid-column: 1 / -1;
+  min-height: calc(100vh - 260px);
+  width: 100%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
   text-align: center;
-  align-self: center; justify-self: center;
-  max-width: 360px;
   color: hsl(var(--muted-foreground));
 }
-.empty h2 { color: hsl(var(--foreground)); font-size: 18px; font-weight: 600; margin: 12px 0 5px; letter-spacing: -0.01em; }
+.empty img {
+  width: 38px;
+  height: 38px;
+  filter: invert(1);
+  opacity: 0.42;
+  margin-bottom: 2px;
+}
+.empty h2 {
+  color: hsl(var(--foreground));
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
 
 .scrim {
   position: fixed; inset: 0;

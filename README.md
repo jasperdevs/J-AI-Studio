@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./docs/screenshots/hero-placeholder.svg" alt="J AI Studio preview placeholder" width="1100" />
+  <img src="./docs/screenshots/hero.png" alt="J AI Studio gallery view" width="1100" />
 </p>
 
 <h1 align="center">J AI Studio</h1>
@@ -16,17 +16,15 @@
   <a href="#license">License</a>
 </p>
 
-<!-- Replace docs/screenshots/hero-placeholder.svg with the main app screenshot. -->
-
 ## Preview
 
 | Main view | Zen mode |
 | --- | --- |
-| <img src="./docs/screenshots/main-placeholder.svg" alt="Main view screenshot placeholder" width="520" /> | <img src="./docs/screenshots/zen-placeholder.svg" alt="Zen mode screenshot placeholder" width="520" /> |
+| <img src="./docs/screenshots/hero.png" alt="Main view screenshot" width="520" /> | <img src="./docs/screenshots/zen.png" alt="Zen mode screenshot" width="520" /> |
 
 | Fullscreen details | Queue and gallery |
 | --- | --- |
-| <img src="./docs/screenshots/fullscreen-placeholder.svg" alt="Fullscreen screenshot placeholder" width="520" /> | <img src="./docs/screenshots/gallery-placeholder.svg" alt="Gallery screenshot placeholder" width="520" /> |
+| <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="520" /> | <img src="./docs/screenshots/gallery-placeholder.svg" alt="Gallery screenshot" width="520" /> |
 
 ## Features
 
@@ -43,12 +41,10 @@
       </ul>
     </td>
     <td width="55%" valign="top">
-      <img src="./docs/screenshots/features-placeholder.svg" alt="Feature screenshot placeholder" width="620" />
+      <img src="./docs/screenshots/features-placeholder.svg" alt="Feature screenshot" width="620" />
     </td>
   </tr>
 </table>
-
-<!-- Replace docs/screenshots/features-placeholder.svg with a focused feature screenshot or collage. -->
 
 ## Quick Start
 

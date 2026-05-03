@@ -47,7 +47,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                               <span className="generate-step-count">{zenDisplayItem.progress.value}<i>/</i>{zenDisplayItem.progress.max}</span>
                             </>
                           ) : (
-                            <span className="generate-step-label is-queued">Queued</span>
+                            <span className="generate-step-label is-queued">{zenDisplayItem.progress?.node === "running" ? "Rendering" : "Queued"}</span>
                           )}
                         </span>
                         <span className="generate-elapsed">{formatElapsed(now - Date.parse(zenDisplayItem.createdAt || new Date().toISOString()))}</span>
@@ -177,7 +177,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                           <span className="generate-step-count">{item.progress.value}<i>/</i>{item.progress.max}</span>
                         </>
                       ) : (
-                        <span className="generate-step-label is-queued">Queued</span>
+                        <span className="generate-step-label is-queued">{item.progress?.node === "running" ? "Rendering" : "Queued"}</span>
                       )}
                     </span>
                     <span className="generate-elapsed">{formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString()))}</span>
@@ -205,6 +205,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
             </div>
           )) : (
             <div className="empty">
+              <img src="/j-ai-logo.png" alt="" />
               <h2>No outputs yet</h2>
             </div>
           )}
@@ -424,7 +425,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                         {active.preview ? <img className="generate-preview" src={active.preview} alt="" draggable={false} /> : null}
                         {!active.preview ? <div className="noise-layer" /> : null}
                         <div className="generate-overlay">
-                          {active.progress?.max ? <span className="generate-step"><span className="generate-step-label">Step</span><span className="generate-step-count">{active.progress.value}<i>/</i>{active.progress.max}</span></span> : <span className="generate-step-label is-queued">Queued</span>}
+                          {active.progress?.max ? <span className="generate-step"><span className="generate-step-label">Step</span><span className="generate-step-count">{active.progress.value}<i>/</i>{active.progress.max}</span></span> : <span className="generate-step-label is-queued">{active.progress?.node === "running" ? "Rendering" : "Queued"}</span>}
                           <span className="generate-elapsed">{formatElapsed(now - Date.parse(active.createdAt || new Date().toISOString()))}</span>
                         </div>
                         <div className={cn("generate-bar", !active.progress?.max && "is-indeterminate")}><div className="generate-bar-fill" /></div>

@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-label="J AI Studio hero screenshot placeholder">
-  <rect width="1400" height="760" fill="#0a0a0a"/>
-  <rect x="80" y="72" width="1240" height="616" rx="24" fill="#111" stroke="#2a2a2a"/>
-  <rect x="128" y="120" width="760" height="520" rx="18" fill="#171717"/>
-  <rect x="920" y="120" width="352" height="520" rx="18" fill="#0f0f0f" stroke="#272727"/>
-  <text x="700" y="382" text-anchor="middle" fill="#f4f4f5" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="600">main app screenshot</text>
-  <text x="700" y="428" text-anchor="middle" fill="#a1a1aa" font-family="Inter, Arial, sans-serif" font-size="22">replace this image before release</text>
-</svg>

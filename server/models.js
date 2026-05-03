@@ -22,7 +22,7 @@ export function prettyModelName(name = "") {
 }
 
 export function isZImageModel(name = "") {
-  return /z[-_ ]?anime|z[-_ ]?image|turbo/i.test(name);
+  return /z[-_ ]?anime|z[-_ ]?image/i.test(name);
 }
 
 export function isNvfp4Model(name = "") {

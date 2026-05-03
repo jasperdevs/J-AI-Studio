@@ -183,10 +183,15 @@ export function recordsFromComfyHistory(history) {
   const records = [];
   for (const [promptId, item] of Object.entries(history || {})) {
     const graph = item?.prompt?.[2] || {};
-    const prompt = graph["4"]?.inputs?.text || "";
-    const negative = graph["5"]?.inputs?.text || graph["3"]?.inputs?.text || "";
-    const latent = graph["6"]?.inputs || {};
-    const model = graph["1"]?.inputs?.unet_name || "";
+    const textNodes = Object.values(graph).filter((node) => node?.class_type === "CLIPTextEncode");
+    const prompt = textNodes[0]?.inputs?.text || "";
+    const negative = textNodes[1]?.inputs?.text || "";
+    const latentNode = Object.values(graph).find((node) => /Latent/i.test(node?.class_type || "") && (node?.inputs?.width || node?.inputs?.height));
+    const latent = latentNode?.inputs || {};
+    const modelLoader = Object.values(graph).find((node) => node?.inputs?.unet_name || node?.inputs?.ckpt_name);
+    const model = modelLoader?.inputs?.unet_name || modelLoader?.inputs?.ckpt_name || "";
+    const rawCreatedAt = Number(item?.prompt?.[3]?.create_time || Date.now());
+    const createdAtMs = rawCreatedAt > 0 && rawCreatedAt < 1e12 ? rawCreatedAt * 1000 : rawCreatedAt;
     for (const output of outputsFrom(item)) {
       const record = {
         ...output,
@@ -197,7 +202,7 @@ export function recordsFromComfyHistory(history) {
         negative,
         filename: promptTitle(prompt) || output.filename,
         outputName: output.filename,
-        createdAt: new Date(Number(item?.prompt?.[3]?.create_time || Date.now())).toISOString(),
+        createdAt: new Date(createdAtMs).toISOString(),
         width: Number(latent.width || 0),
         height: Number(latent.height || 0),
         model,

@@ -55,24 +55,6 @@ export function useGalleryColumnCount() {
   return count;
 }
 
-export function distributeGalleryColumns(items: GalleryItem[], count: number) {
-  const columns = Array.from({ length: Math.max(1, count) }, () => [] as GalleryItem[]);
-  const heights = columns.map(() => 0);
-  items.forEach((item) => {
-    const target = heights.indexOf(Math.min(...heights));
-    columns[target].push(item);
-    heights[target] += estimatedTileHeight(item);
-  });
-  return columns;
-}
-
-export function galleryTileRatio(item: GalleryItem) {
-  const width = Number(item.width || 1);
-  const height = Number(item.height || 1);
-  const ratio = width > 0 && height > 0 ? width / height : 1;
-  return Math.max(0.42, Math.min(2.4, ratio));
-}
-
 export function galleryPhoto(item: GalleryItem): GalleryPhoto {
   const width = Math.max(1, Number(item.width || 1));
   const height = Math.max(1, Number(item.height || 1));
@@ -83,10 +65,6 @@ export function galleryPhoto(item: GalleryItem): GalleryPhoto {
     key: item.id,
     item
   };
-}
-
-function estimatedTileHeight(item: GalleryItem) {
-  return 1 / galleryTileRatio(item);
 }
 
 export function touchDistance(touches: React.TouchList) {

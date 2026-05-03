@@ -1798,7 +1798,7 @@ function App() {
                     <div className="generate-bar-fill" />
                   </div>
                 </div>
-              ) : item.status === "done" ? <Media item={item} muted /> : <div className="generating stopped"><span>Failed</span></div>}
+              ) : item.status === "done" ? <Media item={item} muted /> : <div className="generating stopped"><span>{titleFromPrompt(item.filename || "Failed")}</span></div>}
               <span className="tile-caption">
                 <strong>{titleFromPrompt(item.prompt || item.filename)}</strong>
                 <em>{item.status === "pending" ? formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString())) : item.durationMs ? formatElapsed(item.durationMs) : item.outputName || item.type}</em>

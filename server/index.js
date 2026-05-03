@@ -165,6 +165,11 @@ function snapDimension(value, meta = {}) {
   return Math.max(min, Math.min(max, snapped));
 }
 
+function detectedDefault(meta = {}, fallback) {
+  const value = Number(meta.default);
+  return Number.isFinite(value) ? value : fallback;
+}
+
 function aspectSet(defaults, ratios, ranges = {}) {
   const defaultArea = Math.max(1, Number(defaults.width || 1024) * Number(defaults.height || 1024));
   const seen = new Set();
@@ -261,8 +266,8 @@ function inferModels(info) {
       workflow: "unet-image",
       family: "z-image",
       defaults: {
-        width: 1024,
-        height: 1024,
+        width: detectedDefault(sd3Range.width, 1024),
+        height: detectedDefault(sd3Range.height, 1024),
         steps: 8,
         cfg: 1,
         sampler: "euler_ancestral",
@@ -272,7 +277,7 @@ function inferModels(info) {
         clipType: clipTypes.includes("qwen_image") ? "qwen_image" : "wan",
         weightDtype: weightDtypes.includes("default") ? "default" : weightDtypes[0] || "default"
       },
-      aspects: aspectSet({ width: 1024, height: 1024 }, [
+      aspects: aspectSet({ width: detectedDefault(sd3Range.width, 1024), height: detectedDefault(sd3Range.height, 1024) }, [
         ["1:1", 1, 1],
         ["16:9", 16, 9],
         ["9:16", 9, 16],
@@ -297,15 +302,15 @@ function inferModels(info) {
       workflow: "checkpoint-image",
       family: "checkpoint",
       defaults: {
-        width: 1024,
-        height: 1024,
+        width: detectedDefault(imageRange.width, 512),
+        height: detectedDefault(imageRange.height, 512),
         steps: 20,
         cfg: 7,
         sampler: samplers.includes("dpmpp_2m") ? "dpmpp_2m" : samplers[0] || "euler",
         scheduler: schedulers.includes("karras") ? "karras" : schedulers[0] || "normal",
         denoise: 0.65
       },
-      aspects: aspectSet({ width: 1024, height: 1024 }, [
+      aspects: aspectSet({ width: detectedDefault(imageRange.width, 512), height: detectedDefault(imageRange.height, 512) }, [
         ["1:1", 1, 1],
         ["16:9", 16, 9],
         ["9:16", 9, 16],
@@ -330,11 +335,11 @@ function inferModels(info) {
       workflow: "wan-video",
       family: "wan",
       defaults: {
-        width: 512,
-        height: 288,
-        frames: 33,
-        fps: 16,
-        steps: 12,
+        width: detectedDefault(wanRange.width, 512),
+        height: detectedDefault(wanRange.height, 288),
+        frames: detectedDefault(wanRange.frames, 33),
+        fps: detectedDefault(wanRange.fps, 16),
+        steps: detectedDefault(samplerRange.steps, 12),
         cfg: 5,
         sampler: samplers.includes("uni_pc") ? "uni_pc" : samplers[0] || "euler",
         scheduler: schedulers.includes("simple") ? "simple" : schedulers[0] || "normal",
@@ -343,7 +348,7 @@ function inferModels(info) {
         clipType: clipTypes.includes("wan") ? "wan" : clipTypes[0] || "wan",
         weightDtype: weightDtypes.includes("default") ? "default" : weightDtypes[0] || "default"
       },
-      aspects: aspectSet({ width: 512, height: 288 }, [
+      aspects: aspectSet({ width: detectedDefault(wanRange.width, 512), height: detectedDefault(wanRange.height, 288) }, [
         ["16:9", 16, 9],
         ["9:16", 9, 16],
         ["1:1", 1, 1],
@@ -658,6 +663,19 @@ function clampInteger(value, fallback, min, max) {
   return Math.round(clampNumber(value, fallback, min, max));
 }
 
+function snapNumber(value, fallback, range = {}) {
+  const step = Number(range.step || 1) || 1;
+  const min = Number.isFinite(Number(range.min)) ? Number(range.min) : -Number.MAX_SAFE_INTEGER;
+  const max = Number.isFinite(Number(range.max)) ? Number(range.max) : Number.MAX_SAFE_INTEGER;
+  const base = clampNumber(value, fallback, min, max);
+  const snapped = Math.round(base / step) * step;
+  return Math.max(min, Math.min(max, snapped));
+}
+
+function snapInteger(value, fallback, range = {}) {
+  return Math.round(snapNumber(value, fallback, range));
+}
+
 function ensureOption(info, node, key, value, label) {
   const selected = String(value || "");
   if (!selected) throw new Error(`${label} is required for this workflow.`);
@@ -711,17 +729,17 @@ function sanitizeGenerateBody(input = {}, info = {}) {
     vae: String(input.vae || ""),
     clipType: String(input.clipType || "wan"),
     weightDtype: String(input.weightDtype || "default"),
-    width: clampNumber(input.width, widthRange.default, widthRange.min, widthRange.max),
-    height: clampNumber(input.height, heightRange.default, heightRange.min, heightRange.max),
-    steps: clampInteger(input.steps, stepsRange.default, stepsRange.min, stepsRange.max),
-    cfg: clampNumber(input.cfg, cfgRange.default, cfgRange.min, cfgRange.max),
-    denoise: clampNumber(input.denoise, denoiseRange.default, denoiseRange.min, denoiseRange.max),
+    width: snapInteger(input.width, widthRange.default, widthRange),
+    height: snapInteger(input.height, heightRange.default, heightRange),
+    steps: snapInteger(input.steps, stepsRange.default, stepsRange),
+    cfg: snapNumber(input.cfg, cfgRange.default, cfgRange),
+    denoise: snapNumber(input.denoise, denoiseRange.default, denoiseRange),
     sampler: String(input.sampler || ""),
     scheduler: String(input.scheduler || ""),
     seed: String(input.seed || ""),
-    count: clampInteger(input.count, countRange.default, countRange.min, countRange.max),
-    frames: clampInteger(input.frames, frameRange.default, frameRange.min, frameRange.max),
-    fps: clampInteger(input.fps, fpsRange.default, fpsRange.min, fpsRange.max),
+    count: snapInteger(input.count, countRange.default, countRange),
+    frames: snapInteger(input.frames, frameRange.default, frameRange),
+    fps: snapInteger(input.fps, fpsRange.default, fpsRange),
     startImage: String(input.startImage || ""),
     startImageName: String(input.startImageName || "")
   };

@@ -2,7 +2,7 @@ import React from 'react';
 import { Toaster } from 'sonner';
 import { MasonryPhotoAlbum } from 'react-photo-album';
 import 'react-photo-album/masonry.css';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, Github, Maximize2, Minimize2, PanelLeft, RotateCcw, Settings, SlidersHorizontal, Trash2, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, Github, ImagePlus, Maximize2, Minimize2, PanelLeft, RotateCcw, Settings, SlidersHorizontal, Trash2, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { githubUrl } from './constants';
 import { cn } from './format';
 import { galleryPhoto, type GalleryPhoto } from './gallery';
@@ -10,7 +10,7 @@ import { AspectPicker, Field, GallerySkeleton, Media, ModelPicker, NumberPicker,
 import { GalleryTile } from './GalleryTile';
 import type { GalleryItem } from './types';
 export function StudioView({ view }: { view: Record<string, any> }) {
-  const { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, characterMeta, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, zenGallery, formatElapsed, gallery, galleryColumnCount, galleryLoaded, galleryStageRef, generate, generationDetailEntries, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, renderedGallery, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, settings, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, steps, stepsMeta, stopViewerDrag, submitZenPrompt, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, titleFromPrompt, zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, setPrefs } = view;
+  const { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, characterMeta, checkForUpdates, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, zenGallery, formatElapsed, gallery, galleryColumnCount, galleryLoaded, galleryStageRef, generate, generationDetailEntries, goLatestZen, hasMoreGallery, health, height, heightMeta, installUpdate, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, renderedGallery, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, settings, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, steps, stepsMeta, stopViewerDrag, submitZenPrompt, updateBusy, updateStatus, useOutputAsStartImage, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, titleFromPrompt, zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, setPrefs } = view;
   return (
     <div className={cn(prefs.zenMode ? "zen-shell" : "app-shell", showNegativePrompt && "negative-open")}>
       {prefs.zenMode ? (
@@ -261,6 +261,17 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                 </div>
               </section>
               <section>
+                <h3>Update</h3>
+                <div className="setting-row"><span>Branch</span><strong>{updateStatus?.branch || "Unknown"}</strong></div>
+                <div className="setting-row"><span>Current</span><strong>{updateStatus?.current || "Unknown"}</strong></div>
+                <div className="setting-row"><span>Status</span><strong>{updateStatus?.error || (updateStatus?.available ? `${updateStatus.behind || 1} update${updateStatus.behind === 1 ? "" : "s"} available` : updateStatus?.ok ? "Up to date" : "Not checked")}</strong></div>
+                <div className="setting-actions">
+                  <Tip content="Check GitHub for a newer commit"><button onClick={() => checkForUpdates()} disabled={updateBusy}>{updateBusy ? "Checking..." : "Check updates"}</button></Tip>
+                  <Tip content="Pull latest code, install packages, and rebuild"><button onClick={installUpdate} disabled={updateBusy || !updateStatus?.available}>{updateBusy ? "Working..." : "Install update"}</button></Tip>
+                </div>
+                {updateStatus?.restartRequired ? <span className="field-meta">Restart the local server after updating.</span> : null}
+              </section>
+              <section>
                 <h3>Connection</h3>
                 <div className="setting-row"><span>Studio</span><strong>{window.location.host || "Localhost"}</strong></div>
                 <div className="setting-row"><span>ComfyUI</span><strong>{health ? health.comfyUrl || "Not connected" : <Skeleton className="skeleton-text short" />}</strong></div>
@@ -434,6 +445,9 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                         </div>
                       ) : null}
                       <Tip content="Copy this output's full settings into the generator"><button className="copy-all-settings" onClick={() => applyAllSettings(active)}>Copy All Settings</button></Tip>
+                      {canUseStartImage && active.type === "image" && active.url ? (
+                        <Tip content="Use this output as the next start image"><button className="copy-all-settings" onClick={() => useOutputAsStartImage(active)}>Use as Start Image</button></Tip>
+                      ) : null}
                       {generationDetailEntries(active).length ? (
                         <details className="settings-disclosure" open={showGenerationSettings} onToggle={(event) => setShowGenerationSettings(event.currentTarget.open)}>
                           <summary>Generation settings</summary>
@@ -455,6 +469,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                   <Tip content="Zoom in (+)"><button className="icon-button" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)} disabled={viewerZoom >= 6}><ZoomIn size={15} /></button></Tip>
                   <span className="viewer-divider" />
                   <Tip content={active.url ? active.type === "image" ? "Copy image" : "Copy output link" : "Copy generation details"}><button className="icon-button" aria-label={active.url ? active.type === "image" ? "Copy image" : "Copy output link" : "Copy generation details"} onClick={() => copyImageAndToast(active)}><Copy size={15} /></button></Tip>
+                  {canUseStartImage && active.type === "image" && active.url ? <Tip content="Use as start image"><button className="icon-button" aria-label="Use as start image" onClick={() => useOutputAsStartImage(active)}><ImagePlus size={15} /></button></Tip> : null}
                   {active.url ? <Tip content="Download file"><a className="icon-button" aria-label="Download file" href={active.url} download><Download size={15} /></a></Tip> : null}
                   <Tip content="Delete (Del)"><button className="icon-button danger-tone" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button></Tip>
                   <span className="viewer-divider" />

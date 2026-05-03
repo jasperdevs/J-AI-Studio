@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { comfy, comfyOutputDir, comfyUrl, host, localHosts, port, root } from './comfy.js';
 import { inferModels } from './models.js';
 import { sanitizeGenerateBody } from './validation.js';
@@ -11,6 +12,38 @@ import { jobs, runJob } from './jobs.js';
 
 const app = express();
 app.use(express.json({ limit: "25mb" }));
+const execFileAsync = promisify(execFile);
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+
+function requireLocal(req, res) {
+  const remote = req.socket.remoteAddress || "";
+  if (localHosts.has(remote)) return true;
+  res.status(403).json({ ok: false, error: "This action is only allowed from this computer." });
+  return false;
+}
+
+async function runRepoCommand(command, args) {
+  const { stdout = "", stderr = "" } = await execFileAsync(command, args, {
+    cwd: root,
+    timeout: 600000,
+    maxBuffer: 1024 * 1024
+  });
+  return `${stdout}${stderr}`.trim();
+}
+
+async function updateStatus() {
+  if (!fs.existsSync(path.join(root, ".git"))) {
+    return { ok: false, available: false, current: "", latest: "", branch: "", error: "This copy is not a Git checkout." };
+  }
+  const branch = (await runRepoCommand("git", ["rev-parse", "--abbrev-ref", "HEAD"])).trim();
+  const current = (await runRepoCommand("git", ["rev-parse", "--short", "HEAD"])).trim();
+  await runRepoCommand("git", ["fetch", "--quiet", "origin"]);
+  const upstreamRef = branch && branch !== "HEAD" ? `origin/${branch}` : "origin/main";
+  const latest = (await runRepoCommand("git", ["rev-parse", "--short", upstreamRef])).trim();
+  const behindText = await runRepoCommand("git", ["rev-list", "--count", `${current}..${upstreamRef}`]);
+  const behind = Number(behindText.trim() || 0);
+  return { ok: true, available: behind > 0, current, latest, branch, behind };
+}
 
 function openFolder(folder) {
   if (process.platform === "win32") return execFile("explorer.exe", [folder]);
@@ -164,11 +197,7 @@ app.delete("/api/gallery/:id", (req, res) => {
 });
 
 app.post("/api/open-output-folder", (req, res) => {
-  const remote = req.socket.remoteAddress || "";
-  if (!localHosts.has(remote)) {
-    res.status(403).json({ ok: false, error: "Opening folders is only allowed from this computer." });
-    return;
-  }
+  if (!requireLocal(req, res)) return;
   if (!comfyOutputDir || !fs.existsSync(comfyOutputDir)) {
     res.status(404).json({ ok: false, error: "Output folder is not configured." });
     return;
@@ -177,12 +206,40 @@ app.post("/api/open-output-folder", (req, res) => {
   res.json({ ok: true, outputDir: comfyOutputDir });
 });
 
-app.post("/api/shutdown", (_req, res) => {
-  const remote = _req.socket.remoteAddress || "";
-  if (!localHosts.has(remote)) {
-    res.status(403).json({ ok: false, error: "Shutdown is only allowed from this computer." });
-    return;
+app.get("/api/update/status", async (req, res) => {
+  if (!requireLocal(req, res)) return;
+  try {
+    res.json(await updateStatus());
+  } catch (error) {
+    res.status(500).json({ ok: false, available: false, error: error.message });
   }
+});
+
+app.post("/api/update/install", async (req, res) => {
+  if (!requireLocal(req, res)) return;
+  try {
+    const before = await updateStatus();
+    if (!before.ok) {
+      res.status(400).json(before);
+      return;
+    }
+    if (!before.available) {
+      res.json({ ...before, updated: false, message: "Already up to date." });
+      return;
+    }
+    const branch = before.branch && before.branch !== "HEAD" ? before.branch : "main";
+    const pull = await runRepoCommand("git", ["pull", "--ff-only", "origin", branch]);
+    const install = await runRepoCommand(npmCommand, ["install"]);
+    const build = await runRepoCommand(npmCommand, ["run", "build"]);
+    const after = await updateStatus();
+    res.json({ ...after, updated: true, restartRequired: true, logs: { pull, install, build } });
+  } catch (error) {
+    res.status(500).json({ ok: false, updated: false, error: error.message });
+  }
+});
+
+app.post("/api/shutdown", (_req, res) => {
+  if (!requireLocal(_req, res)) return;
   res.json({ ok: true });
   setTimeout(() => process.exit(0), 250);
 });

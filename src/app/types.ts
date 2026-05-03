@@ -44,6 +44,7 @@ export type Models = {
 };
 export type Paths = { outputDir?: string; galleryDir?: string };
 export type Health = { ok: boolean; comfyUrl?: string; error?: string };
+export type UpdateStatus = { ok: boolean; available?: boolean; current?: string; latest?: string; branch?: string; behind?: number; updated?: boolean; restartRequired?: boolean; message?: string; error?: string };
 export type AspectPreset = { label: string; value: string; w: number; h: number };
 
 export type Preferences = {

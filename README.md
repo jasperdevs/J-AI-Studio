@@ -48,6 +48,7 @@ Live ComfyUI previews while an image is running.
 - Zen mode for a cleaner fullscreen workflow
 - Live queue/progress cards with cancel controls
 - Persistent local gallery metadata
+- Start-image reuse when the selected ComfyUI workflow supports it
 
 ## Quick Start
 
@@ -90,6 +91,7 @@ Please do the full local setup for me:
 8. Run npm run build.
 9. Start the app with npm start.
 10. Open http://127.0.0.1:8787 and verify the app can reach ComfyUI, detect models, and load the gallery.
+11. For future updates, use Settings -> Update, or run git pull, npm install, and npm run build.
 
 Keep everything local. Do not expose HOST=0.0.0.0 unless I ask for phone or LAN access. If something fails, read the error, check ComfyUI /object_info and /system_stats, and fix the setup instead of guessing.
 ```
@@ -101,6 +103,10 @@ Keep everything local. Do not expose HOST=0.0.0.0 unless I ask for phone or LAN 
 - Local ComfyUI model files
 
 ## Update
+
+From the app, open Settings -> Update to check GitHub and install the latest commit for a Git checkout. Restart the local server after an update.
+
+CLI fallback:
 
 ```bash
 git pull
@@ -127,6 +133,8 @@ It does not replace ComfyUI, download models, train models, patch your ComfyUI i
 The app is meant to be a simpler front end for common ComfyUI image and video generation, not a replacement for the graph editor.
 
 Models appear when J AI Studio can detect enough ComfyUI metadata to build a generation workflow for them. If a model needs a custom graph, custom nodes, or special wiring, open it in ComfyUI first and confirm the required nodes are installed.
+
+Start-image controls only appear when the selected workflow exposes the required image input path through ComfyUI.
 
 Generated files and model files stay local in your ComfyUI setup.
 

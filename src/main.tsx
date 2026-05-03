@@ -6,7 +6,7 @@ import "@fontsource/inter/latin-500.css";
 import "@fontsource/inter/latin-600.css";
 import "./styles.css";
 
-import type { GalleryItem, Health, Mode, Models, Paths, Preferences, Profile, TouchGesture } from './app/types';
+import type { GalleryItem, Health, Mode, Models, Paths, Preferences, Profile, TouchGesture, UpdateStatus } from './app/types';
 import { fallbackAspectPresets, galleryBatchSize, galleryInitialBatch } from './app/constants';
 import { apiJson, copyImage, copyText, loadDraft, loadPrefs } from './app/api';
 import { characterMeta, clampText, formatElapsed, generationDetailEntries, settingMax, textLength, titleFromPrompt } from './app/format';
@@ -22,6 +22,8 @@ function App() {
   const [mode, setMode] = useState<Mode>(initialDraft.mode === "video" ? "video" : "image");
   const [models, setModels] = useState<Models | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
+  const [updateBusy, setUpdateBusy] = useState(false);
   const [prefs, setPrefsState] = useState<Preferences>(() => loadPrefs());
   const [prompt, setPrompt] = useState(String(initialDraft.prompt || ""));
   const [negative, setNegative] = useState(String(initialDraft.negative || ""));
@@ -365,6 +367,35 @@ function App() {
       .catch(() => null);
   }
 
+  async function checkForUpdates(notify = true) {
+    try {
+      setUpdateBusy(true);
+      const data = await apiJson<UpdateStatus>("/api/update/status");
+      setUpdateStatus(data);
+      if (notify) showToast(data.available ? "Update available" : data.ok ? "Already up to date" : data.error || "Update check failed", data.ok ? "success" : "error");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Update check failed";
+      setUpdateStatus({ ok: false, error: message });
+      if (notify) showToast(message, "error");
+    } finally {
+      setUpdateBusy(false);
+    }
+  }
+
+  async function installUpdate() {
+    if (!confirmAction("Update J AI Studio now? This runs git pull, npm install, and npm run build in this checkout.")) return;
+    try {
+      setUpdateBusy(true);
+      const data = await apiJson<UpdateStatus>("/api/update/install", { method: "POST" });
+      setUpdateStatus(data);
+      showToast(data.updated ? "Update installed. Restart the server to use it." : data.message || "Already up to date", data.updated ? "success" : "default");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Update failed", "error");
+    } finally {
+      setUpdateBusy(false);
+    }
+  }
+
   function applyProfile(profile: Profile, setModelId = true) {
     if (setModelId) setModel(profile.id);
     setCustomSize(false);
@@ -490,6 +521,31 @@ function App() {
     setStartImageName(file.name);
   }
 
+  async function useOutputAsStartImage(item: GalleryItem) {
+    if (!canUseStartImage || item.type !== "image" || !item.url) {
+      showToast("The selected model cannot use a start image", "error");
+      return;
+    }
+    try {
+      const response = await fetch(item.url);
+      if (!response.ok) throw new Error("Could not read output image");
+      const blob = await response.blob();
+      const data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+      setMode("image");
+      setStartImage(data);
+      setStartImageName(item.outputName || item.filename || "output.png");
+      setActive(null);
+      showToast("Start image set", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not use this image", "error");
+    }
+  }
+
 
 
   const generationActions = useGenerationActions({
@@ -504,7 +560,7 @@ function App() {
 
   const sidebarControls = <SidebarControls view={{ canUseStartImage, cfg, cfgMeta, changeMode, clipType, confirmAction, currentProfile, customSize, denoise, denoiseMeta, fps, fpsMeta, frameMeta, frames, height, heightMeta, mode, models, profileOptions, readStartImage, sampler, scheduler, seed, setCfg, setDenoise, setFps, setFrames, setHeight, setSampler, setScheduler, setSeed, setStartImage, setStartImageName, setTextEncoder, setVae, setWeightDtype, setWidth, startImageName, textEncoder, vae, weightDtype, width, widthMeta }} />;
 
-  const view = { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, doneGallery, zenGallery, gallery, galleryColumnCount, galleryLoaded, galleryStageRef, generate, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, renderedGallery, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, status, steps, stepsMeta, stopViewerDrag, submitZenPrompt, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenSelectedId, zenStripDragRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, characterMeta, formatElapsed, generationDetailEntries, titleFromPrompt , zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, settings, setPrefs };
+  const view = { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, checkForUpdates, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, doneGallery, zenGallery, gallery, galleryColumnCount, galleryLoaded, galleryStageRef, generate, goLatestZen, hasMoreGallery, health, height, heightMeta, installUpdate, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, renderedGallery, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, status, steps, stepsMeta, stopViewerDrag, submitZenPrompt, touchGestureRef, updateBusy, updateStatus, useOutputAsStartImage, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenSelectedId, zenStripDragRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, characterMeta, formatElapsed, generationDetailEntries, titleFromPrompt , zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, settings, setPrefs };
 
   return <StudioView view={view} />;
 }

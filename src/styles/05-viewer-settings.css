@@ -391,6 +391,7 @@
 }
 
 .setting-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.setting-actions > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 .setting-actions.single { grid-template-columns: 1fr; }
 .setting-actions button, .wide-button {
   border: 1px solid hsl(var(--border));
@@ -478,4 +479,3 @@
   transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 220ms var(--spring);
 }
 .danger-button:hover { background: hsl(var(--destructive) / 0.32); border-color: hsl(var(--destructive) / 0.7); transform: translateY(-1px); }
-

@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { comfy, comfyOutputDir, comfyUrl, host, localHosts, port, root } from './comfy.js';
 import { inferModels } from './models.js';
 import { sanitizeGenerateBody } from './validation.js';
-import { dedupeGallery, gallery, galleryLimit, dataDir, makePendingItems, recordsFromComfyHistory, saveGallery, setGallery, cleanupGalleryState, updateGalleryJob } from './gallery-store.js';
+import { dedupeGallery, filterVisibleGallery, gallery, galleryLimit, dataDir, hideGalleryItems, makePendingItems, recordsFromComfyHistory, saveGallery, setGallery, cleanupGalleryState, updateGalleryJob } from './gallery-store.js';
 import { jobs, runJob } from './jobs.js';
 
 const app = express();
@@ -39,10 +39,10 @@ app.get("/api/gallery", async (_req, res) => {
   const recovered = recordsFromComfyHistory(history);
   if (recovered.length) {
     const pending = gallery.filter((item) => item.status === "pending");
-    setGallery(dedupeGallery([...pending, ...gallery, ...recovered]).slice(0, galleryLimit));
+    setGallery(filterVisibleGallery(dedupeGallery([...pending, ...gallery, ...recovered])).slice(0, galleryLimit));
     saveGallery();
   }
-  setGallery(dedupeGallery(gallery));
+  setGallery(filterVisibleGallery(dedupeGallery(gallery)));
   res.json({ outputs: gallery });
 });
 
@@ -112,12 +112,16 @@ app.post("/api/queue/cancel", async (_req, res) => {
 });
 
 app.post("/api/gallery/clear", (_req, res) => {
-  setGallery(gallery.filter((item) => item.status === "pending"));
+  const cleared = gallery.filter((item) => item.status === "done");
+  hideGalleryItems(cleared);
+  setGallery(gallery.filter((item) => item.status !== "done"));
   saveGallery();
   res.json({ ok: true, outputs: gallery });
 });
 
 app.post("/api/gallery/errors/clear", (_req, res) => {
+  const cleared = gallery.filter((item) => item.status === "error" || item.status === "canceled");
+  hideGalleryItems(cleared);
   setGallery(gallery.filter((item) => item.status !== "error" && item.status !== "canceled"));
   saveGallery();
   res.json({ ok: true, outputs: gallery });
@@ -141,6 +145,7 @@ app.post("/api/cache/clear", async (_req, res) => {
 app.delete("/api/gallery/:id", (req, res) => {
   const id = decodeURIComponent(req.params.id);
   const before = gallery.length;
+  hideGalleryItems(gallery.filter((item) => item.id === id || item.url === id));
   setGallery(gallery.filter((item) => item.id !== id && item.url !== id));
   if (gallery.length !== before) saveGallery();
   res.json({ ok: true, removed: before - gallery.length, outputs: gallery });

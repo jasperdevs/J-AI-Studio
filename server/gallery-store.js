@@ -4,6 +4,7 @@ import { root } from './comfy.js';
 
 export const dataDir = process.env.JAI_DATA_DIR ? path.resolve(process.env.JAI_DATA_DIR) : path.join(root, "data");
 export const galleryPath = path.join(dataDir, "gallery.json");
+export const hiddenGalleryPath = path.join(dataDir, "gallery-hidden.json");
 export const galleryLimit = Number(process.env.JAI_GALLERY_LIMIT || 1000);
 
 function loadGallery() {
@@ -21,15 +22,50 @@ function loadGallery() {
 }
 
 export let gallery = loadGallery();
+export let hiddenGalleryIds = loadHiddenGalleryIds();
 
 export function setGallery(items) {
   gallery = items;
+}
+
+function loadHiddenGalleryIds() {
+  try {
+    return new Set(JSON.parse(fs.readFileSync(hiddenGalleryPath, "utf8")));
+  } catch {
+    return new Set();
+  }
+}
+
+export function galleryKey(item) {
+  return item?.url || item?.id || item?.outputName || item?.filename || "";
+}
+
+export function hideGalleryItems(items) {
+  for (const item of items) {
+    const key = galleryKey(item);
+    if (key) hiddenGalleryIds.add(key);
+  }
+  saveHiddenGalleryIds();
+}
+
+export function isGalleryHidden(item) {
+  const key = galleryKey(item);
+  return Boolean(key && hiddenGalleryIds.has(key));
+}
+
+export function filterVisibleGallery(items) {
+  return items.filter((item) => !isGalleryHidden(item));
 }
 
 export function saveGallery() {
   fs.mkdirSync(dataDir, { recursive: true });
   const persistable = gallery.slice(0, galleryLimit).map(({ preview, ...rest }) => rest);
   fs.writeFileSync(galleryPath, JSON.stringify(persistable, null, 2));
+}
+
+export function saveHiddenGalleryIds() {
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(hiddenGalleryPath, JSON.stringify([...hiddenGalleryIds].slice(-galleryLimit * 2), null, 2));
 }
 
 export function promptTitle(text = "") {

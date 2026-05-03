@@ -147,6 +147,22 @@ function fullGenerationText(item: GalleryItem) {
   return lines.join("\n");
 }
 
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+}
+
 function loadPrefs(): Preferences {
   try {
     return { ...defaultPrefs, ...JSON.parse(localStorage.getItem("j-ai-studio-prefs") || "{}") };
@@ -323,12 +339,14 @@ function App() {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [active, setActive] = useState<GalleryItem | null>(null);
   const [viewerZoom, setViewerZoom] = useState(1);
+  const [viewerPan, setViewerPan] = useState({ x: 0, y: 0 });
   const [showDetails, setShowDetails] = useState(false);
   const [customSize, setCustomSize] = useState(Boolean(initialDraft.customSize));
   const [now, setNow] = useState(Date.now());
   const [startImage, setStartImage] = useState("");
   const [startImageName, setStartImageName] = useState("");
   const generatePostingRef = useRef(false);
+  const viewerDragRef = useRef<{ id: number; x: number; y: number; panX: number; panY: number } | null>(null);
 
   useEffect(() => {
     refreshModels();
@@ -383,11 +401,13 @@ function App() {
       if (event.key === "ArrowRight" && currentIndex >= 0) {
         event.preventDefault();
         setViewerZoom(1);
+        setViewerPan({ x: 0, y: 0 });
         setActive(doneItems[(currentIndex + 1) % doneItems.length]);
       }
       if (event.key === "ArrowLeft" && currentIndex >= 0) {
         event.preventDefault();
         setViewerZoom(1);
+        setViewerPan({ x: 0, y: 0 });
         setActive(doneItems[(currentIndex - 1 + doneItems.length) % doneItems.length]);
       }
       if (event.key === "Escape") {
@@ -396,7 +416,7 @@ function App() {
       }
       if (event.key === "+" || event.key === "=") {
         event.preventDefault();
-        setViewerZoom((value) => Math.min(4, Number((value + 0.25).toFixed(2))));
+        setViewerZoom((value) => Math.min(5, Number((value + 0.25).toFixed(2))));
       }
       if (event.key === "-" || event.key === "_") {
         event.preventDefault();
@@ -405,6 +425,7 @@ function App() {
       if (event.key === "0") {
         event.preventDefault();
         setViewerZoom(1);
+        setViewerPan({ x: 0, y: 0 });
       }
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
@@ -626,10 +647,41 @@ function App() {
     await fetch(`/api/gallery/${encodeURIComponent(item.id)}`, { method: "DELETE" }).catch(() => null);
   }
 
-  function openItem(item: GalleryItem) {
+  function resetViewer() {
     setViewerZoom(1);
+    setViewerPan({ x: 0, y: 0 });
+  }
+
+  function openItem(item: GalleryItem) {
+    resetViewer();
     setShowDetails(false);
     setActive(item);
+  }
+
+  function zoomViewer(nextZoom: number) {
+    setViewerZoom(Math.max(0.5, Math.min(5, Number(nextZoom.toFixed(2)))));
+    if (nextZoom <= 1) setViewerPan({ x: 0, y: 0 });
+  }
+
+  function wheelViewer(event: React.WheelEvent) {
+    event.preventDefault();
+    zoomViewer(viewerZoom + (event.deltaY < 0 ? 0.18 : -0.18));
+  }
+
+  function startViewerDrag(event: React.PointerEvent) {
+    if (viewerZoom <= 1) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    viewerDragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, panX: viewerPan.x, panY: viewerPan.y };
+  }
+
+  function dragViewer(event: React.PointerEvent) {
+    const drag = viewerDragRef.current;
+    if (!drag || drag.id !== event.pointerId) return;
+    setViewerPan({ x: drag.panX + event.clientX - drag.x, y: drag.panY + event.clientY - drag.y });
+  }
+
+  function stopViewerDrag(event: React.PointerEvent) {
+    if (viewerDragRef.current?.id === event.pointerId) viewerDragRef.current = null;
   }
 
   async function shutdown() {
@@ -745,7 +797,7 @@ function App() {
           <div className="status-pill">{mode === "image" ? `${count} variation${count === 1 ? "" : "s"}` : `${frames} frames`}</div>
           <div className="status-pill">{runningCount} running</div>
           {runningCount ? <button className="queue-button" onClick={cancelQueue}>Cancel queue</button> : null}
-          <button className="icon-button" title="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
+          <button className="icon-button has-tip" data-tip="Settings" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
         </div>
 
         <section className="gallery">
@@ -850,32 +902,43 @@ function App() {
 
       {active ? (
         <div className="viewer" onClick={() => setActive(null)}>
-          <button className="viewer-close" onClick={(event) => { event.stopPropagation(); setActive(null); }}><X size={16} /></button>
+          <button className="viewer-close has-tip" data-tip="Close" aria-label="Close" onClick={(event) => { event.stopPropagation(); setActive(null); }}><X size={16} /></button>
           <div className="viewer-bar" onClick={(event) => event.stopPropagation()}>
-            <button className="icon-button" title="Zoom out" onClick={() => setViewerZoom((value) => Math.max(0.5, Number((value - 0.25).toFixed(2))))}><ZoomOut size={15} /></button>
-            <button className="icon-button" title="Reset zoom" onClick={() => setViewerZoom(1)}><RotateCcw size={15} /></button>
-            <button className="icon-button" title="Zoom in" onClick={() => setViewerZoom((value) => Math.min(4, Number((value + 0.25).toFixed(2))))}><ZoomIn size={15} /></button>
-            <button className="icon-button" title="Details" onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={15} /></button>
-            <button className="icon-button" title="Copy prompt" onClick={() => navigator.clipboard.writeText(active.prompt || "")}><Copy size={15} /></button>
-            <button className="text-button" title="Copy full generation settings" onClick={() => navigator.clipboard.writeText(fullGenerationText(active))}>Copy full</button>
-            <button className="icon-button" title="Copy output link" onClick={() => navigator.clipboard.writeText(active.url)}><Copy size={15} /></button>
-            <a className="icon-button" href={active.url} download><Download size={15} /></a>
-            <button className="icon-button" title="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button>
+            <button className="icon-button has-tip" data-tip="Zoom out" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)}><ZoomOut size={15} /></button>
+            <button className="text-button has-tip" data-tip="Reset zoom and position" onClick={resetViewer}><RotateCcw size={14} /> 100%</button>
+            <button className="icon-button has-tip" data-tip="Zoom in" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)}><ZoomIn size={15} /></button>
+            <button className="text-button has-tip" data-tip="Prompt and settings" onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={14} /> Details</button>
+            <button className="icon-button has-tip" data-tip="Copy output link" aria-label="Copy output link" onClick={() => copyText(active.url)}><Copy size={15} /></button>
+            <a className="icon-button has-tip" data-tip="Download file" aria-label="Download file" href={active.url} download><Download size={15} /></a>
+            <button className="icon-button has-tip" data-tip="Delete from gallery" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button>
           </div>
           <div className="viewer-layout" onClick={(event) => event.stopPropagation()}>
-            <div className="viewer-media" style={{ "--zoom": viewerZoom } as React.CSSProperties}><Media item={active} /></div>
+            <div
+              className={cn("viewer-media", viewerZoom > 1 && "is-zoomed")}
+              style={{ "--zoom": viewerZoom, "--pan-x": `${viewerPan.x}px`, "--pan-y": `${viewerPan.y}px` } as React.CSSProperties}
+              onWheel={wheelViewer}
+              onPointerDown={startViewerDrag}
+              onPointerMove={dragViewer}
+              onPointerUp={stopViewerDrag}
+              onPointerCancel={stopViewerDrag}
+            >
+              <Media item={active} />
+            </div>
             {showDetails ? (
               <aside className="viewer-details">
-                <h3>{titleFromPrompt(active.prompt || active.filename)}</h3>
-                <label>
+                <div className="detail-copy-row">
+                  <button onClick={() => copyText(active.prompt || "")}>Copy prompt</button>
+                  <button onClick={() => copyText(fullGenerationText(active))}>Copy full</button>
+                </div>
+                <div className="prompt-readout">
                   <span>Prompt</span>
-                  <textarea readOnly value={active.prompt || ""} />
-                </label>
+                  <p>{active.prompt || ""}</p>
+                </div>
                 {active.negative ? (
-                  <label>
+                  <div className="prompt-readout">
                     <span>Negative</span>
-                    <textarea readOnly value={active.negative} />
-                  </label>
+                    <p>{active.negative}</p>
+                  </div>
                 ) : null}
                 <div className="detail-grid">
                   <span>Aspect</span><strong>{active.width || "?"}x{active.height || "?"}</strong>

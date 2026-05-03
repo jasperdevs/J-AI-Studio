@@ -5,6 +5,8 @@ import "@fontsource/inter/latin-500.css";
 import "@fontsource/inter/latin-600.css";
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Download,
   Power,
@@ -107,6 +109,8 @@ const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
 
 const fallbackSamplers = ["euler_ancestral", "euler", "uni_pc", "dpmpp_2m", "dpmpp_sde"];
 const fallbackSchedulers = ["beta", "simple", "normal", "karras", "sgm_uniform"];
+const promptLimit = 1800;
+const negativeLimit = 1200;
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
@@ -338,7 +342,7 @@ function App() {
   const [scheduler, setScheduler] = useState(String(initialDraft.scheduler || "beta"));
   const [advanced, setAdvanced] = useState(false);
   const [settings, setSettings] = useState(false);
-  const [zenControls, setZenControls] = useState(false);
+  const [zenControls, setZenControls] = useState(true);
   const [zenSelectedId, setZenSelectedId] = useState("");
   const [status, setStatus] = useState("Ready");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
@@ -370,6 +374,28 @@ function App() {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (settings) {
+        event.preventDefault();
+        setSettings(false);
+        return;
+      }
+      if (active) {
+        event.preventDefault();
+        setActive(null);
+        return;
+      }
+      if (zenControls) {
+        event.preventDefault();
+        setZenControls(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [settings, active, zenControls]);
 
   useEffect(() => {
     localStorage.setItem("j-ai-studio-draft", JSON.stringify({
@@ -415,10 +441,6 @@ function App() {
         setViewerPan({ x: 0, y: 0 });
         setActive(doneItems[(currentIndex - 1 + doneItems.length) % doneItems.length]);
       }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setActive(null);
-      }
       if (event.key === "+" || event.key === "=") {
         event.preventDefault();
         setViewerZoom((value) => Math.min(5, Number((value + 0.25).toFixed(2))));
@@ -454,10 +476,6 @@ function App() {
       if (event.key === "ArrowLeft" && doneItems.length) {
         event.preventDefault();
         setZenSelectedId(doneItems[(currentIndex - 1 + doneItems.length) % doneItems.length].id);
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setPrefs({ zenMode: false });
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -690,6 +708,21 @@ function App() {
     setActive(item);
   }
 
+  function moveZen(direction: 1 | -1) {
+    if (!doneGallery.length) return;
+    const currentIndex = Math.max(0, doneGallery.findIndex((item) => item.id === zenItem?.id));
+    setZenSelectedId(doneGallery[(currentIndex + direction + doneGallery.length) % doneGallery.length].id);
+  }
+
+  function moveViewer(direction: 1 | -1) {
+    if (!active) return;
+    const doneItems = visibleGallery.filter((item) => item.status === "done");
+    const currentIndex = doneItems.findIndex((item) => item.id === active.id);
+    if (currentIndex < 0 || doneItems.length < 2) return;
+    resetViewer();
+    setActive(doneItems[(currentIndex + direction + doneItems.length) % doneItems.length]);
+  }
+
   function zoomViewer(nextZoom: number) {
     setViewerZoom(Math.max(0.5, Math.min(5, Number(nextZoom.toFixed(2)))));
     if (nextZoom <= 1) setViewerPan({ x: 0, y: 0 });
@@ -738,6 +771,13 @@ function App() {
             )}
             <div className="zen-fade" />
           </div>
+
+          {doneGallery.length > 1 ? (
+            <div className="zen-arrows">
+              <button aria-label="Previous output" onClick={() => moveZen(-1)}><ChevronLeft size={22} /></button>
+              <button aria-label="Next output" onClick={() => moveZen(1)}><ChevronRight size={22} /></button>
+            </div>
+          ) : null}
 
           <button className="zen-control-button has-tip" data-tip="Controls" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
             <PanelLeft size={16} />
@@ -800,7 +840,7 @@ function App() {
           </aside>
 
           <section className="zen-prompt">
-            <textarea value={prompt} placeholder="Describe what to make..." onChange={(event) => setPrompt(event.target.value)} />
+            <textarea maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
             <div className="zen-prompt-actions">
               <button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />
@@ -811,8 +851,8 @@ function App() {
           </section>
 
           <section className="zen-negative">
-            <span>Negative</span>
-            <textarea value={negative} placeholder="Things to avoid..." onChange={(event) => setNegative(event.target.value)} />
+            <span>Negative {negative.length}/{negativeLimit}</span>
+            <textarea maxLength={negativeLimit} value={negative} placeholder="Things to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
           </section>
 
           <div className="zen-gallery-strip">
@@ -841,12 +881,12 @@ function App() {
             <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} />
           </Field>
           <Field label="Prompt">
-            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />
-            <span className="field-meta">{prompt.length} characters</span>
+            <textarea maxLength={promptLimit} value={prompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
+            <span className="field-meta">{prompt.length}/{promptLimit} characters</span>
           </Field>
           <Field label="Negative prompt">
-            <textarea className="short" value={negative} onChange={(event) => setNegative(event.target.value)} />
-            <span className="field-meta">{negative.length} characters</span>
+            <textarea maxLength={negativeLimit} className="short" value={negative} onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
+            <span className="field-meta">{negative.length}/{negativeLimit} characters</span>
           </Field>
         </section>
 
@@ -1049,6 +1089,12 @@ function App() {
       {active ? (
         <div className="viewer" onClick={() => setActive(null)}>
           <button className="viewer-close has-tip" data-tip="Close" aria-label="Close" onClick={(event) => { event.stopPropagation(); setActive(null); }}><X size={16} /></button>
+          {visibleGallery.filter((item) => item.status === "done").length > 1 ? (
+            <div className="viewer-arrows" onClick={(event) => event.stopPropagation()}>
+              <button aria-label="Previous output" onClick={() => moveViewer(-1)}><ChevronLeft size={24} /></button>
+              <button aria-label="Next output" onClick={() => moveViewer(1)}><ChevronRight size={24} /></button>
+            </div>
+          ) : null}
           <div className="viewer-bar" onClick={(event) => event.stopPropagation()}>
             <button className="icon-button has-tip" data-tip="Zoom out" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)}><ZoomOut size={15} /></button>
             <button className="text-button has-tip" data-tip="Reset zoom and position" onClick={resetViewer}><RotateCcw size={14} /> 100%</button>

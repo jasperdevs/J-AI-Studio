@@ -499,6 +499,21 @@ function dedupeGallery(items) {
   });
 }
 
+function cleanupGalleryState() {
+  const doneKeys = new Set(
+    gallery
+      .filter((item) => item.status === "done")
+      .map((item) => `${item.jobId || ""}|${item.prompt || ""}|${item.model || ""}|${item.width || ""}|${item.height || ""}`)
+  );
+  gallery = gallery.filter((item) => {
+    if (item.status !== "pending") return true;
+    if (gallery.some((next) => next.status === "done" && next.jobId && next.jobId === item.jobId)) return false;
+    const key = `${item.jobId || ""}|${item.prompt || ""}|${item.model || ""}|${item.width || ""}|${item.height || ""}`;
+    if (item.jobId && doneKeys.has(key)) return false;
+    return true;
+  });
+}
+
 function generationSettings(body) {
   return {
     workflow: body.workflow || "",
@@ -666,6 +681,7 @@ app.get("/api/paths", (_req, res) => {
 });
 
 app.get("/api/gallery", async (_req, res) => {
+  cleanupGalleryState();
   if (!gallery.some((item) => item.status === "done")) {
     const history = await comfy("/history?max_items=100").catch(() => ({}));
     const recovered = recordsFromComfyHistory(history);
@@ -674,6 +690,7 @@ app.get("/api/gallery", async (_req, res) => {
       saveGallery();
     }
   }
+  gallery = dedupeGallery(gallery);
   res.json({ outputs: gallery });
 });
 

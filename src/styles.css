@@ -1237,7 +1237,39 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   .status-pill { min-height: 30px; }
   .gallery { columns: 1 240px; column-gap: 4px; }
   .tile { margin-bottom: 4px; }
-  .aspect-menu, .model-menu { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; max-height: 62vh; overflow: auto; z-index: 30; }
+  .aspect-menu, .model-menu {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: 10px;
+    width: auto;
+    max-height: min(72vh, 560px);
+    overflow: auto;
+    z-index: 40;
+    border-radius: calc(var(--radius) + 8px);
+    padding: 8px;
+  }
+  .model-trigger {
+    min-height: 44px;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .model-option {
+    min-height: 64px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    padding: 10px;
+  }
+  .model-copy strong,
+  .model-copy em {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .model-copy em { -webkit-line-clamp: 1; }
+  .model-badge { display: none !important; }
+  .aspect-option { min-height: 44px; }
   .settings-card { width: calc(100vw - 20px); max-height: calc(100vh - 20px); border-radius: calc(var(--radius) + 4px); }
   .settings-card header { padding: 14px; }
   .settings-grid { grid-template-columns: 1fr; }
@@ -1250,11 +1282,12 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   .zen-top-actions { top: 10px; right: 10px; }
   .zen-controls { left: 10px; right: 10px; top: 58px; bottom: 10px; width: auto; }
   .zen-output { padding: 68px 12px 190px; }
-  .zen-prompt { width: calc(100vw - 24px); min-width: 0; bottom: 18px; padding: 12px; }
+  .zen-prompt { width: calc(100vw - 20px); min-width: 0; bottom: 12px; padding: 12px; }
   .zen-prompt textarea { min-height: 50px; font-size: 16px; }
   .zen-prompt-actions { flex-wrap: wrap; }
   .zen-prompt-actions .generate { margin-left: 0; flex: 1 1 100%; justify-content: center; }
   .zen-inline-settings { flex: 1 1 100%; justify-content: space-between; }
+  .zen-inline-settings .aspect-picker { flex: 1 1 auto; min-width: 0; }
   .zen-status { flex: 1 1 auto; }
   .zen-gallery-wrap { top: 10px; max-width: calc(100vw - 20px); grid-template-columns: auto auto minmax(0, 1fr); }
   .zen-gallery-strip button { width: 46px; height: 46px; }

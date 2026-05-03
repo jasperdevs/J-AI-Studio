@@ -78,6 +78,7 @@ type Preferences = {
   defaultFps: number;
   variationQueueMode: "batch" | "separate";
   zenMode: boolean;
+  mobileZenDefaulted?: boolean;
 };
 
 const defaultPrefs: Preferences = {
@@ -149,6 +150,11 @@ function formatGeneratedAt(value?: string) {
     hour: "numeric",
     minute: "2-digit"
   });
+}
+
+function characterMeta(length: number, limit: number) {
+  const remaining = Math.max(0, limit - length);
+  return remaining === 0 ? "Limit reached" : `${remaining.toLocaleString()} left`;
 }
 
 function fullGenerationText(item: GalleryItem) {
@@ -239,9 +245,18 @@ async function copyImage(item: GalleryItem) {
 
 function loadPrefs(): Preferences {
   try {
-    return { ...defaultPrefs, ...JSON.parse(localStorage.getItem("j-ai-studio-prefs") || "{}") };
+    const saved = localStorage.getItem("j-ai-studio-prefs");
+    const mobileDefault = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
+    if (!saved) return { ...defaultPrefs, zenMode: mobileDefault || defaultPrefs.zenMode };
+    const parsed = JSON.parse(saved);
+    const merged = { ...defaultPrefs, ...parsed };
+    if (mobileDefault && !parsed.mobileZenDefaulted) {
+      return { ...merged, zenMode: true, mobileZenDefaulted: true };
+    }
+    return merged;
   } catch {
-    return defaultPrefs;
+    const mobileDefault = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
+    return { ...defaultPrefs, zenMode: mobileDefault || defaultPrefs.zenMode };
   }
 }
 
@@ -1102,7 +1117,7 @@ function App() {
             </div>
             <Field label="Negative prompt">
               <textarea maxLength={negativeLimit} className="short" value={negative} onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
-              <span className="field-meta">{negative.length}/{negativeLimit} characters</span>
+              <span className="field-meta">{characterMeta(negative.length, negativeLimit)}</span>
             </Field>
             <button className="advanced-toggle" onClick={() => setAdvanced((value) => !value)}>
               <span>Advanced</span>
@@ -1178,11 +1193,11 @@ function App() {
           </Field>
           <Field label="Prompt">
             <textarea maxLength={promptLimit} value={prompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
-            <span className="field-meta">{prompt.length}/{promptLimit} characters</span>
+            <span className="field-meta">{characterMeta(prompt.length, promptLimit)}</span>
           </Field>
           <Field label="Negative prompt">
             <textarea maxLength={negativeLimit} className="short" value={negative} onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
-            <span className="field-meta">{negative.length}/{negativeLimit} characters</span>
+            <span className="field-meta">{characterMeta(negative.length, negativeLimit)}</span>
           </Field>
         </section>
 

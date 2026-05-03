@@ -26,9 +26,10 @@ type Mode = "image" | "video";
 type Progress = { value: number; max: number; node?: string };
 type Output = { url: string; filename: string; type: "image" | "video"; prompt?: string; negative?: string; outputName?: string };
 type GenerationSettings = Record<string, string | number | boolean | null | undefined>;
-type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; width?: number; height?: number; createdAt?: string; durationMs?: number; model?: string; settings?: GenerationSettings };
+type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; width?: number; height?: number; createdAt?: string; durationMs?: number; model?: string; settings?: GenerationSettings; referenceImage?: string; referenceImageName?: string };
 type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress };
 type SelectOption = { label: string; value: string };
+type Toast = { id: string; message: string; tone?: "default" | "success" | "error" };
 type Profile = {
   id: string;
   kind: Mode;
@@ -171,16 +172,22 @@ function fullGenerationText(item: GalleryItem) {
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
+    return true;
   } catch {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    document.execCommand("copy");
-    textarea.remove();
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand("copy");
+      textarea.remove();
+      return copied;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -357,8 +364,10 @@ function App() {
   const [advanced, setAdvanced] = useState(false);
   const [settings, setSettings] = useState(false);
   const [zenControls, setZenControls] = useState(false);
+  const [zenGalleryOpen, setZenGalleryOpen] = useState(true);
   const [zenSelectedId, setZenSelectedId] = useState("");
   const [status, setStatus] = useState("Ready");
+  const [toasts, setToasts] = useState<Toast[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [active, setActive] = useState<GalleryItem | null>(null);
   const [viewerZoom, setViewerZoom] = useState(1);
@@ -369,14 +378,15 @@ function App() {
   const [startImage, setStartImage] = useState("");
   const [startImageName, setStartImageName] = useState("");
   const generatePostingRef = useRef(false);
-  const viewerDragRef = useRef<{ id: number; x: number; y: number; panX: number; panY: number } | null>(null);
+  const viewerDragRef = useRef<{ id: number; x: number; y: number; panX: number; panY: number; moved: boolean } | null>(null);
+  const [isDraggingViewer, setIsDraggingViewer] = useState(false);
   const zenPromptRef = useRef<HTMLTextAreaElement | null>(null);
   const zenStripRef = useRef<HTMLDivElement | null>(null);
-  const zenStripDragRef = useRef<{ id: number; x: number; scrollLeft: number } | null>(null);
+  const zenStripDragRef = useRef<{ id: number; x: number; scrollLeft: number; moved: boolean } | null>(null);
   const latestZenIdRef = useRef("");
 
   useEffect(() => {
-    refreshModels();
+    refreshModels(false);
     refreshPaths();
     loadGallery();
   }, []);
@@ -392,6 +402,13 @@ function App() {
     if (!prefs.zenMode || active || settings || zenControls) return;
     window.setTimeout(() => zenPromptRef.current?.focus(), 0);
   }, [prefs.zenMode, active, settings, zenControls]);
+
+  useEffect(() => {
+    if (prefs.zenMode) return;
+    setZenControls(false);
+    setActive(null);
+    resetViewer();
+  }, [prefs.zenMode]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -534,7 +551,33 @@ function App() {
     localStorage.setItem("j-ai-studio-prefs", JSON.stringify(merged));
   }
 
-  function refreshModels() {
+  function setZenMode(enabled: boolean) {
+    if (!enabled) {
+      setZenControls(false);
+      setActive(null);
+      resetViewer();
+    }
+    setPrefs({ zenMode: enabled });
+  }
+
+  function showToast(message: string, tone: Toast["tone"] = "default") {
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setToasts((current) => [{ id, message, tone }, ...current].slice(0, 4));
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+    }, 2400);
+  }
+
+  async function copyAndToast(text: string, message = "Copied") {
+    if (!text) {
+      showToast("Nothing to copy", "error");
+      return;
+    }
+    const copied = await copyText(text);
+    showToast(copied ? message : "Copy failed", copied ? "success" : "error");
+  }
+
+  function refreshModels(notify = true) {
     fetch("/api/models")
       .then((res) => res.json())
       .then((data: Models) => {
@@ -542,8 +585,12 @@ function App() {
         const profileId = model || "";
         const profile = data.profiles.find((item) => item.id === profileId);
         if (profile) applyProfile(profile, false);
+        if (notify) showToast("Models refreshed", "success");
       })
-      .catch((error) => setStatus(error.message));
+      .catch((error) => {
+        setStatus(error.message);
+        if (notify) showToast("Model refresh failed", "error");
+      });
   }
 
   function refreshPaths() {
@@ -666,7 +713,8 @@ function App() {
         count,
         frames,
         fps,
-        startImage: canUseStartImage ? startImage : ""
+        startImage: canUseStartImage ? startImage : "",
+        startImageName
       };
       const queuedJobs: string[] = [];
       for (let index = 0; index < imageRuns; index += 1) {
@@ -678,6 +726,7 @@ function App() {
         queuedJobs.push(jobId);
         if (items?.length) setGallery((current) => dedupeGalleryItems([...items, ...current]));
       }
+      showToast(mode === "image" ? `Queued ${count} image${count === 1 ? "" : "s"}` : "Queued video", "success");
       generatePostingRef.current = false;
 
       await Promise.all(queuedJobs.map(async (jobId) => {
@@ -704,6 +753,7 @@ function App() {
       setStatus("Outputs updated");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Generation failed");
+      showToast("Generation failed", "error");
     } finally {
       generatePostingRef.current = false;
     }
@@ -715,6 +765,7 @@ function App() {
     await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).catch(() => null);
     loadGallery();
     setStatus("Canceled");
+    showToast("Generation canceled");
   }
 
   async function cancelQueue() {
@@ -722,23 +773,27 @@ function App() {
     await fetch("/api/queue/cancel", { method: "POST" }).catch(() => null);
     loadGallery();
     setStatus("Queue canceled");
+    showToast("Queue canceled");
   }
 
   async function clearGallery() {
     if (!window.confirm("Clear finished gallery items from this app?")) return;
     const data = await fetch("/api/gallery/clear", { method: "POST" }).then((res) => res.json()).catch(() => null);
     if (data?.outputs) setGallery(data.outputs);
+    showToast("Gallery cleared");
   }
 
   async function openOutputFolder() {
-    await fetch("/api/open-output-folder", { method: "POST" }).catch(() => null);
+    const response = await fetch("/api/open-output-folder", { method: "POST" }).catch(() => null);
+    showToast(response?.ok ? "Opened output folder" : "Could not open folder", response?.ok ? "success" : "error");
   }
 
   async function deleteItem(item: GalleryItem, confirmed = false) {
     if (!confirmed && !window.confirm("Delete this generation from the gallery?")) return;
     setGallery((current) => current.filter((next) => next.id !== item.id));
     if (active?.id === item.id) setActive(null);
-    await fetch(`/api/gallery/${encodeURIComponent(item.id)}`, { method: "DELETE" }).catch(() => null);
+    const response = await fetch(`/api/gallery/${encodeURIComponent(item.id)}`, { method: "DELETE" }).catch(() => null);
+    showToast(response?.ok ? "Deleted from gallery" : "Delete failed", response?.ok ? "success" : "error");
   }
 
   function resetViewer() {
@@ -751,6 +806,37 @@ function App() {
     setZenSelectedId(item.id);
     setShowDetails(true);
     setActive(item);
+  }
+
+  function applyAllSettings(item: GalleryItem) {
+    const itemSettings = item.settings || {};
+    const nextMode = item.type;
+    const matchingProfile = models?.profiles.find((profile) => profile.kind === nextMode && profile.model === item.model);
+    const matchingAspects = matchingProfile?.aspectPresets?.length ? matchingProfile.aspectPresets : fallbackAspectPresets[nextMode];
+    setMode(nextMode);
+    if (matchingProfile) setModel(matchingProfile.id);
+    setPrompt((item.prompt || "").slice(0, promptLimit));
+    setNegative((item.negative || "").slice(0, negativeLimit));
+    setWidth(Number(item.width || itemSettings.width || width));
+    setHeight(Number(item.height || itemSettings.height || height));
+    if (itemSettings.steps) setSteps(Number(itemSettings.steps));
+    if (itemSettings.cfg) setCfg(Number(itemSettings.cfg));
+    if (itemSettings.denoise) setDenoise(Number(itemSettings.denoise));
+    if (itemSettings.seed && itemSettings.seed !== "Random") setSeed(String(itemSettings.seed));
+    else setSeed("");
+    if (itemSettings.count) setCount(Number(itemSettings.count));
+    if (itemSettings.frames) setFrames(Number(itemSettings.frames));
+    if (itemSettings.fps) setFps(Number(itemSettings.fps));
+    if (itemSettings.sampler) setSampler(String(itemSettings.sampler));
+    if (itemSettings.scheduler) setScheduler(String(itemSettings.scheduler));
+    if (itemSettings.textEncoder) setTextEncoder(String(itemSettings.textEncoder));
+    if (itemSettings.vae) setVae(String(itemSettings.vae));
+    if (itemSettings.clipType) setClipType(String(itemSettings.clipType));
+    if (itemSettings.weightDtype) setWeightDtype(String(itemSettings.weightDtype));
+    setStartImage(item.referenceImage || "");
+    setStartImageName(item.referenceImageName || String(itemSettings.referenceImageName || ""));
+    setCustomSize(!matchingAspects.some((option) => option.w === Number(item.width) && option.h === Number(item.height)));
+    showToast("All settings applied", "success");
   }
 
   function moveZen(direction: 1 | -1) {
@@ -782,44 +868,73 @@ function App() {
   function startZenStripDrag(event: React.PointerEvent<HTMLDivElement>) {
     if (!zenStripRef.current) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    zenStripDragRef.current = { id: event.pointerId, x: event.clientX, scrollLeft: zenStripRef.current.scrollLeft };
+    zenStripDragRef.current = { id: event.pointerId, x: event.clientX, scrollLeft: zenStripRef.current.scrollLeft, moved: false };
   }
 
   function dragZenStrip(event: React.PointerEvent<HTMLDivElement>) {
     const drag = zenStripDragRef.current;
     if (!drag || drag.id !== event.pointerId || !zenStripRef.current) return;
+    if (Math.abs(event.clientX - drag.x) > 4) drag.moved = true;
     zenStripRef.current.scrollLeft = drag.scrollLeft - (event.clientX - drag.x);
   }
 
   function stopZenStripDrag(event: React.PointerEvent<HTMLDivElement>) {
-    if (zenStripDragRef.current?.id === event.pointerId) zenStripDragRef.current = null;
+    if (zenStripDragRef.current?.id === event.pointerId) {
+      window.setTimeout(() => {
+        zenStripDragRef.current = null;
+      }, 0);
+    }
+  }
+
+  function selectZenItem(itemId: string) {
+    if (zenStripDragRef.current?.moved) return;
+    setZenSelectedId(itemId);
   }
 
   function zoomViewer(nextZoom: number) {
-    setViewerZoom(Math.max(0.5, Math.min(5, Number(nextZoom.toFixed(2)))));
-    if (nextZoom <= 1) setViewerPan({ x: 0, y: 0 });
+    const clamped = Math.max(0.5, Math.min(6, Number(nextZoom.toFixed(2))));
+    setViewerZoom(clamped);
+    if (clamped <= 1) setViewerPan({ x: 0, y: 0 });
   }
 
   function wheelViewer(event: React.WheelEvent) {
     event.preventDefault();
     event.stopPropagation();
-    zoomViewer(viewerZoom + (event.deltaY < 0 ? 0.18 : -0.18));
+    const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+    zoomViewer(viewerZoom * factor);
+  }
+
+  function clickViewer(event: React.MouseEvent) {
+    event.stopPropagation();
+    if (viewerDragRef.current?.moved) return;
+    if (viewerZoom > 1) {
+      zoomViewer(1);
+    } else {
+      zoomViewer(2);
+    }
   }
 
   function startViewerDrag(event: React.PointerEvent) {
     if (viewerZoom <= 1) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    viewerDragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, panX: viewerPan.x, panY: viewerPan.y };
+    viewerDragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, panX: viewerPan.x, panY: viewerPan.y, moved: false };
+    setIsDraggingViewer(true);
   }
 
   function dragViewer(event: React.PointerEvent) {
     const drag = viewerDragRef.current;
     if (!drag || drag.id !== event.pointerId) return;
-    setViewerPan({ x: drag.panX + event.clientX - drag.x, y: drag.panY + event.clientY - drag.y });
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
+    setViewerPan({ x: drag.panX + dx, y: drag.panY + dy });
   }
 
   function stopViewerDrag(event: React.PointerEvent) {
-    if (viewerDragRef.current?.id === event.pointerId) viewerDragRef.current = null;
+    if (viewerDragRef.current?.id === event.pointerId) {
+      setIsDraggingViewer(false);
+      window.setTimeout(() => { viewerDragRef.current = null; }, 0);
+    }
   }
 
   async function shutdown() {
@@ -834,7 +949,19 @@ function App() {
         <>
           <div className="zen-stage">
             {zenItem ? (
-              <button className="zen-output" onClick={() => openItem(zenItem)} style={{ "--tile-ratio": `${zenItem.width || 1} / ${zenItem.height || 1}` } as React.CSSProperties}>
+              <button
+                className={cn("zen-output", viewerZoom > 1 && "is-zoomed")}
+                onClick={() => {
+                  if (viewerDragRef.current?.moved) return;
+                  openItem(zenItem);
+                }}
+                onWheel={wheelViewer}
+                onPointerDown={startViewerDrag}
+                onPointerMove={dragViewer}
+                onPointerUp={stopViewerDrag}
+                onPointerCancel={stopViewerDrag}
+                style={{ "--tile-ratio": `${zenItem.width || 1} / ${zenItem.height || 1}`, "--zoom": viewerZoom, "--pan-x": `${viewerPan.x}px`, "--pan-y": `${viewerPan.y}px` } as React.CSSProperties}
+              >
                 <Media item={zenItem} muted />
               </button>
             ) : (
@@ -857,7 +984,7 @@ function App() {
           </button>
           <div className="zen-top-actions">
             <button className="icon-button has-tip" data-tip="Settings" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
-            <button className="icon-button has-tip" data-tip="Exit zen" aria-label="Exit zen" onClick={() => setPrefs({ zenMode: false })}><X size={15} /></button>
+            <button className="icon-button has-tip" data-tip="Exit zen" aria-label="Exit zen" onClick={() => setZenMode(false)}><X size={15} /></button>
           </div>
 
           <aside className={cn("zen-controls", zenControls && "open")}>
@@ -917,37 +1044,44 @@ function App() {
           </aside>
 
           <section className="zen-prompt">
-            <div className="zen-inline-settings">
-              <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
-              <label><span>Steps</span><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></label>
-            </div>
             <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
             <div className="zen-prompt-actions">
+              <span>{status}</span>
+              <div className="zen-inline-settings">
+                <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
+                <label><span>Steps</span><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></label>
+              </div>
               <button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />
                 {mode === "image" ? `Generate ${count}` : "Generate video"}
               </button>
-              <span>{status}</span>
             </div>
           </section>
 
-          <div className="zen-gallery-wrap">
-            <button className="zen-latest" onClick={goLatestZen}>Latest</button>
-            <div
-              ref={zenStripRef}
-              className="zen-gallery-strip"
-              onPointerDown={startZenStripDrag}
-              onPointerMove={dragZenStrip}
-              onPointerUp={stopZenStripDrag}
-              onPointerCancel={stopZenStripDrag}
-            >
-            {doneGallery.map((item) => (
-              <button key={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={() => setZenSelectedId(item.id)}>
-                <Media item={item} muted />
-              </button>
-            ))}
+          {doneGallery.length ? (
+            <div className={cn("zen-gallery-wrap", !zenGalleryOpen && "collapsed")}>
+              <button className="zen-latest" onClick={() => setZenGalleryOpen((value) => !value)}>{zenGalleryOpen ? "Hide" : "Gallery"}</button>
+              {zenGalleryOpen ? (
+                <>
+                  {doneGallery[0]?.id !== zenItem?.id ? <button className="zen-latest" onClick={goLatestZen}>Latest</button> : null}
+                  <div
+                    ref={zenStripRef}
+                    className="zen-gallery-strip"
+                    onPointerDown={startZenStripDrag}
+                    onPointerMove={dragZenStrip}
+                    onPointerUp={stopZenStripDrag}
+                    onPointerCancel={stopZenStripDrag}
+                  >
+                    {doneGallery.map((item) => (
+                      <button key={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={() => selectZenItem(item.id)} onDragStart={(event) => event.preventDefault()}>
+                        <Media item={item} muted />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
-          </div>
+          ) : null}
         </>
       ) : (
         <>
@@ -1060,13 +1194,22 @@ function App() {
         </div>
 
         <section className="gallery">
-          {visibleGallery.length ? visibleGallery.map((item) => (
+          {visibleGallery.length ? visibleGallery.map((item) => {
+            const ratio = item.progress?.max ? Math.min(1, Math.max(0, item.progress.value / item.progress.max)) : 0;
+            const indeterminate = !item.progress?.max;
+            return (
             <button key={item.id} className={cn("tile", item.status)} style={{ "--tile-ratio": `${item.width || 1} / ${item.height || 1}` } as React.CSSProperties} onClick={() => item.status === "done" && openItem(item)}>
               {item.status === "pending" ? (
-                <div className="generating">
-                  <div className="generate-readout">
-                    <span>{item.progress?.max ? `${item.progress.value}/${item.progress.max}` : "Queued"}</span>
-                    <small>{formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString()))}</small>
+                <div className="generating" style={{ "--progress-ratio": ratio } as React.CSSProperties}>
+                  <div className="noise-layer" />
+                  <div className="grain-clear" />
+                  <div className="generate-meta">
+                    <strong>{item.progress?.max ? `${Math.round(ratio * 100)}%` : "Queued"}</strong>
+                    <span className="dot" />
+                    <em>{formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString()))}</em>
+                  </div>
+                  <div className={cn("generate-bar", indeterminate && "is-indeterminate")}>
+                    <div className="generate-bar-fill" />
                   </div>
                 </div>
               ) : item.status === "done" ? <Media item={item} muted /> : <div className="generating stopped"><span>{item.status === "canceled" ? "Canceled" : "Failed"}</span></div>}
@@ -1077,7 +1220,8 @@ function App() {
               {item.status === "pending" ? <span className="tile-action" onClick={(event) => { event.stopPropagation(); cancelJob(item.jobId); }}>Cancel</span> : null}
               {item.status !== "pending" ? <span className="tile-delete" title="Delete from gallery" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={13} /></span> : null}
             </button>
-          )) : (
+            );
+          }) : (
             <div className="empty">
               <h2>No outputs yet</h2>
             </div>
@@ -1088,13 +1232,13 @@ function App() {
       )}
 
       {settings ? (
-        <div className="viewer" onClick={() => setSettings(false)}>
+        <div className="scrim modal-scrim" onClick={() => setSettings(false)}>
           <div className="settings-card" onClick={(event) => event.stopPropagation()}>
             <header>
               <div>
                 <h2>Settings</h2>
               </div>
-              <button className="icon-button" onClick={() => setSettings(false)}><X size={15} /></button>
+              <button className="icon-button has-tip" data-tip="Close (Esc)" aria-label="Close settings" onClick={() => setSettings(false)}><X size={15} /></button>
             </header>
 
             <div className="settings-grid">
@@ -1103,8 +1247,8 @@ function App() {
                 <div className="setting-row"><span>Studio</span><strong>127.0.0.1:8787</strong></div>
                 <div className="setting-row"><span>ComfyUI</span><strong>127.0.0.1:8188</strong></div>
                 <div className="setting-actions">
-                  <button onClick={refreshModels}>Refresh models</button>
-                  <button onClick={() => window.open("http://127.0.0.1:8188", "_blank")}>Open ComfyUI</button>
+                  <button onClick={() => refreshModels()}>Refresh models</button>
+                  <button onClick={() => { window.open("http://127.0.0.1:8188", "_blank"); showToast("Opening ComfyUI"); }}>Open ComfyUI</button>
                 </div>
               </section>
 
@@ -1148,7 +1292,7 @@ function App() {
                     <strong>Zen mode</strong>
                     <em>Prompt-first fullscreen layout</em>
                   </span>
-                  <input type="checkbox" checked={prefs.zenMode} onChange={(event) => setPrefs({ zenMode: event.target.checked })} />
+                  <input type="checkbox" checked={prefs.zenMode} onChange={(event) => setZenMode(event.target.checked)} />
                 </label>
               </section>
 
@@ -1158,7 +1302,7 @@ function App() {
                 <div className="setting-row"><span>Current tab</span><strong>{visibleGallery.length} {mode === "image" ? "images" : "videos"}</strong></div>
                 <div className="setting-row"><span>Outputs</span><strong>{paths.outputDir || "Not configured"}</strong></div>
                 <div className="setting-actions">
-                  <button onClick={() => paths.outputDir && navigator.clipboard.writeText(paths.outputDir)}>Copy output path</button>
+                  <button onClick={() => copyAndToast(paths.outputDir || "", "Output path copied")}>Copy output path</button>
                   <button onClick={openOutputFolder} disabled={!paths.outputDir}>Open output folder</button>
                 </div>
                 <button className="wide-button subtle-danger" onClick={clearGallery}>Clear finished gallery</button>
@@ -1173,69 +1317,112 @@ function App() {
         </div>
       ) : null}
 
-      {active ? (
-        <div className="viewer" onClick={() => setActive(null)} onWheel={(event) => event.preventDefault()}>
-          <button className="viewer-close has-tip" data-tip="Close" aria-label="Close" onClick={(event) => { event.stopPropagation(); setActive(null); }}><X size={16} /></button>
-          {visibleGallery.filter((item) => item.status === "done").length > 1 ? (
-            <div className="viewer-arrows" onClick={(event) => event.stopPropagation()}>
-              <button aria-label="Previous output" onClick={() => moveViewer(-1)}><ChevronLeft size={24} /></button>
-              <button aria-label="Next output" onClick={() => moveViewer(1)}><ChevronRight size={24} /></button>
-            </div>
-          ) : null}
-          <div className="viewer-bar" onClick={(event) => event.stopPropagation()}>
-            <button className="icon-button has-tip" data-tip="Zoom out" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)}><ZoomOut size={15} /></button>
-            <button className="text-button has-tip" data-tip="Reset zoom and position" onClick={resetViewer}><RotateCcw size={14} /> 100%</button>
-            <button className="icon-button has-tip" data-tip="Zoom in" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)}><ZoomIn size={15} /></button>
-            <button className="text-button has-tip" data-tip="Prompt and settings" onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={14} /> Details</button>
-            <button className="icon-button has-tip" data-tip="Copy output link" aria-label="Copy output link" onClick={() => copyText(active.url)}><Copy size={15} /></button>
-            <a className="icon-button has-tip" data-tip="Download file" aria-label="Download file" href={active.url} download><Download size={15} /></a>
-            <button className="icon-button has-tip" data-tip="Delete from gallery" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button>
-          </div>
-          <div className="viewer-layout" onClick={(event) => event.stopPropagation()}>
-            <div
-              className={cn("viewer-media", viewerZoom > 1 && "is-zoomed")}
-              style={{ "--zoom": viewerZoom, "--pan-x": `${viewerPan.x}px`, "--pan-y": `${viewerPan.y}px` } as React.CSSProperties}
-              onWheel={wheelViewer}
-              onPointerDown={startViewerDrag}
-              onPointerMove={dragViewer}
-              onPointerUp={stopViewerDrag}
-              onPointerCancel={stopViewerDrag}
-            >
-              <Media item={active} />
-            </div>
-            {showDetails ? (
-              <aside className="viewer-details" onWheel={(event) => event.stopPropagation()}>
-                <div className="detail-copy-row">
-                  <button onClick={() => copyText(active.prompt || "")}>Copy prompt</button>
-                  <button onClick={() => copyText(fullGenerationText(active))}>Copy full</button>
+      {active ? (() => {
+        const doneItems = visibleGallery.filter((item) => item.status === "done");
+        const hasNeighbors = doneItems.length > 1;
+        return (
+          <div className="scrim" onClick={() => setActive(null)} onWheel={(event) => event.preventDefault()}>
+            <div className="viewer-shell" onClick={(event) => event.stopPropagation()}>
+              <header className="viewer-topbar">
+                <div className="viewer-title">
+                  <strong>{titleFromPrompt(active.prompt || active.filename) || "Untitled"}</strong>
+                  <em>{active.model || familyLabel(currentProfile) || active.type}</em>
                 </div>
-                <div className="prompt-readout">
-                  <span>Prompt</span>
-                  <p>{active.prompt || ""}</p>
+                <div className="viewer-tools">
+                  <button className="icon-button has-tip" data-tip="Zoom out (-)" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)}><ZoomOut size={15} /></button>
+                  <button className="text-button viewer-zoom has-tip" data-tip="Reset zoom (0)" onClick={resetViewer}><RotateCcw size={13} /> {Math.round(viewerZoom * 100)}%</button>
+                  <button className="icon-button has-tip" data-tip="Zoom in (+)" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)}><ZoomIn size={15} /></button>
+                  <span className="viewer-divider" />
+                  <button className="icon-button has-tip" data-tip="Copy output link" aria-label="Copy output link" onClick={() => copyAndToast(active.url, "Output link copied")}><Copy size={15} /></button>
+                  <a className="icon-button has-tip" data-tip="Download file" aria-label="Download file" href={active.url} download><Download size={15} /></a>
+                  <button className="icon-button danger-tone has-tip" data-tip="Delete (Del)" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button>
+                  <span className="viewer-divider" />
+                  <button className={cn("icon-button has-tip", showDetails && "active")} data-tip={showDetails ? "Hide details" : "Show details"} aria-label="Toggle details" aria-pressed={showDetails} onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={15} /></button>
+                  <button className="icon-button has-tip" data-tip="Close (Esc)" aria-label="Close" onClick={() => setActive(null)}><X size={16} /></button>
                 </div>
-                {active.negative ? (
-                  <div className="prompt-readout">
-                    <span>Negative</span>
-                    <p>{active.negative}</p>
-                  </div>
+              </header>
+              <div className={cn("viewer-stage", showDetails && "with-side")}>
+                <div
+                  className={cn("viewer-canvas", viewerZoom > 1 && "is-zoomed", isDraggingViewer && "is-dragging")}
+                  style={{ "--zoom": viewerZoom, "--pan-x": `${viewerPan.x}px`, "--pan-y": `${viewerPan.y}px` } as React.CSSProperties}
+                  onWheel={wheelViewer}
+                  onPointerDown={startViewerDrag}
+                  onPointerMove={dragViewer}
+                  onPointerUp={stopViewerDrag}
+                  onPointerCancel={stopViewerDrag}
+                  onClick={clickViewer}
+                  onDoubleClick={(event) => { event.stopPropagation(); zoomViewer(viewerZoom > 1 ? 1 : 2.5); }}
+                >
+                  <Media item={active} />
+                </div>
+                {hasNeighbors ? (
+                  <>
+                    <button className="viewer-arrow prev has-tip" data-tip="Previous (<-)" aria-label="Previous output" onClick={() => moveViewer(-1)}><ChevronLeft size={20} /></button>
+                    <button className="viewer-arrow next has-tip" data-tip="Next (->)" aria-label="Next output" onClick={() => moveViewer(1)}><ChevronRight size={20} /></button>
+                  </>
                 ) : null}
-                <div className="detail-grid">
-                  <span>Aspect</span><strong>{active.width || "?"}x{active.height || "?"}</strong>
-                  <span>Model</span><strong>{active.model || ""}</strong>
-                  <span>Output</span><strong>{active.outputName || active.filename}</strong>
-                  {active.createdAt ? <><span>Generated</span><strong>{formatGeneratedAt(active.createdAt)}</strong></> : null}
-                  {active.durationMs ? <><span>Time</span><strong>{formatElapsed(active.durationMs)}</strong></> : null}
-                  {Object.entries(active.settings || {}).map(([key, value]) => value ? (
-                    <React.Fragment key={key}>
-                      <span>{key}</span><strong>{String(value)}</strong>
-                    </React.Fragment>
-                  ) : null)}
-                </div>
-              </aside>
-            ) : null}
+                {showDetails ? (
+                  <aside className="viewer-side" onWheel={(event) => event.stopPropagation()}>
+                    <div className="viewer-side-head">
+                      <h3>Details</h3>
+                    </div>
+                    <div className="viewer-side-body">
+                      <div className="prompt-readout">
+                        <span>Prompt</span>
+                        <p>{active.prompt || "No prompt recorded"}</p>
+                      </div>
+                      {active.negative ? (
+                        <div className="prompt-readout">
+                          <span>Negative</span>
+                          <p>{active.negative}</p>
+                        </div>
+                      ) : null}
+                      <div className="detail-grid">
+                        <span>Aspect</span><strong>{active.width || "?"}x{active.height || "?"}</strong>
+                        <span>Model</span><strong>{active.model || "-"}</strong>
+                        <span>Output</span><strong>{active.outputName || active.filename}</strong>
+                        {active.createdAt ? <><span>Generated</span><strong>{formatGeneratedAt(active.createdAt)}</strong></> : null}
+                        {active.durationMs ? <><span>Time</span><strong>{formatElapsed(active.durationMs)}</strong></> : null}
+                        {Object.entries(active.settings || {}).map(([key, value]) => value ? (
+                          <React.Fragment key={key}>
+                            <span>{key}</span><strong>{String(value)}</strong>
+                          </React.Fragment>
+                        ) : null)}
+                      </div>
+                    </div>
+                    <div className="viewer-side-foot">
+                      <button onClick={() => copyAndToast(active.prompt || "", "Prompt copied")}>Copy prompt</button>
+                      <button onClick={() => applyAllSettings(active)}>Apply all settings</button>
+                    </div>
+                  </aside>
+                ) : null}
+              </div>
+              {hasNeighbors ? (
+                <footer className="viewer-strip" onClick={(event) => event.stopPropagation()}>
+                  {doneItems.map((item) => (
+                    <button
+                      key={item.id}
+                      className={cn("viewer-thumb", item.id === active.id && "active")}
+                      aria-label={`View ${titleFromPrompt(item.prompt || item.filename) || item.filename}`}
+                      onClick={() => { resetViewer(); setActive(item); }}
+                    >
+                      <Media item={item} muted />
+                    </button>
+                  ))}
+                </footer>
+              ) : null}
+            </div>
           </div>
-        </div>
-      ) : null}
+        );
+      })() : null}
+
+      <div className="toast-stack" role="status" aria-live="polite" aria-atomic="true">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={cn("toast", toast.tone)}>
+            {toast.message}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

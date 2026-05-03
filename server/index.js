@@ -484,6 +484,8 @@ function makePendingItems(id, body) {
     width: Number(body.width || 0),
     height: Number(body.height || 0),
     model: body.model || "",
+    referenceImage: body.startImage || "",
+    referenceImageName: body.startImageName || "",
     settings: generationSettings(body)
   }));
 }
@@ -529,7 +531,8 @@ function generationSettings(body) {
     textEncoder: body.textEncoder || "",
     vae: body.vae || "",
     clipType: body.clipType || "",
-    weightDtype: body.weightDtype || ""
+    weightDtype: body.weightDtype || "",
+    referenceImageName: body.startImageName || ""
   };
 }
 
@@ -551,6 +554,8 @@ function replaceGalleryJob(id, outputs, body, status = "done") {
     width: Number(body.width || 0),
     height: Number(body.height || 0),
     model: body.model || "",
+    referenceImage: body.startImage || "",
+    referenceImageName: body.startImageName || "",
     settings: generationSettings(body),
     outputName: item.filename,
     index

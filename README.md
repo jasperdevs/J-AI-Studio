@@ -9,6 +9,8 @@
 <p align="center">
   <a href="#quick-start">Quick start</a>
   ·
+  <a href="#ai-install-prompt">AI install prompt</a>
+  ·
   <a href="#features">Features</a>
   ·
   <a href="#comfyui">ComfyUI</a>
@@ -65,6 +67,29 @@ By default, the app connects to ComfyUI at:
 
 ```text
 http://127.0.0.1:8188
+```
+
+## AI Install Prompt
+
+Paste this into Codex, Claude Code, or another local coding agent:
+
+```text
+Install and run J AI Studio from GitHub: https://github.com/jasperdevs/J-AI-Studio
+
+Please do the full local setup for me:
+
+1. Check whether Node.js 20+ is installed.
+2. Check whether ComfyUI is installed and running at http://127.0.0.1:8188.
+3. If ComfyUI is not running, help me start my existing ComfyUI install. Do not download models unless I explicitly ask.
+4. Clone https://github.com/jasperdevs/J-AI-Studio into a normal projects folder.
+5. Run npm install.
+6. Copy .env.example to .env only if configuration changes are needed.
+7. Set COMFY_URL to my ComfyUI URL, usually http://127.0.0.1:8188.
+8. Run npm run build.
+9. Start the app with npm start.
+10. Open http://127.0.0.1:8787 and verify the app can reach ComfyUI, detect models, and load the gallery.
+
+Keep everything local. Do not expose HOST=0.0.0.0 unless I ask for phone or LAN access. If something fails, read the error, check ComfyUI /object_info and /system_stats, and fix the setup instead of guessing.
 ```
 
 ## Requirements

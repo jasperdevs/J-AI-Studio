@@ -479,6 +479,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .zen-output.is-zoomed { cursor: grab; }
 .zen-output.is-zoomed:active { cursor: grabbing; }
+.zen-output.is-pending { cursor: default; }
 .zen-output img, .zen-output video {
   width: 100%; height: 100%;
   object-fit: contain;
@@ -489,6 +490,21 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 .zen-output.is-zoomed img, .zen-output.is-zoomed video,
 .zen-output.is-dragging img, .zen-output.is-dragging video { transition: none; }
+.zen-generating {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+}
+.zen-output .zen-generating .generate-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: none;
+}
 .zen-empty { width: 100%; height: 100%; display: grid; place-items: center; background: hsl(var(--background)); }
 .zen-empty img { width: 56px; height: 56px; filter: invert(1); opacity: 0.4; }
 .zen-fade {

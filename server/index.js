@@ -786,8 +786,16 @@ function binaryPreviewBuffer(data) {
   return null;
 }
 
-function applyPreviewFrame(id, data) {
+async function previewBuffer(data) {
   const buffer = binaryPreviewBuffer(data);
+  if (buffer) return buffer;
+  if (typeof Blob !== "undefined" && data instanceof Blob) {
+    return Buffer.from(await data.arrayBuffer());
+  }
+  return null;
+}
+
+function applyPreviewBuffer(id, buffer) {
   if (!buffer || buffer.length < 8) return false;
   const eventType = buffer.readUInt32BE(0);
   if (eventType !== 1 && eventType !== 4) return false;
@@ -839,11 +847,21 @@ function waitForSocketOpen(socket) {
   });
 }
 
+function sendSocketFeatureFlags(socket) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  try {
+    socket.send(JSON.stringify({ type: "feature_flags", data: { supports_preview_metadata: true } }));
+  } catch {
+    // Preview frames are optional; generation should still continue.
+  }
+}
+
 function watchProgress(id, promptId, socket = openProgressSocket(id)) {
   if (!socket) return null;
-  socket.addEventListener("message", (event) => {
+  socket.addEventListener("message", async (event) => {
     try {
-      if (applyPreviewFrame(id, event.data)) return;
+      const buffer = await previewBuffer(event.data);
+      if (applyPreviewBuffer(id, buffer)) return;
     } catch {
       // Ignore malformed binary frames.
     }
@@ -882,6 +900,7 @@ async function runJob(id, body) {
     const prompt = body.kind === "video" ? videoGraph(body) : await imageGraph(body);
     socket = openProgressSocket(id);
     await waitForSocketOpen(socket);
+    sendSocketFeatureFlags(socket);
     const queued = await comfy("/prompt", {
       method: "POST",
       headers: { "content-type": "application/json" },

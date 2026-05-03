@@ -598,11 +598,11 @@ function AspectPicker({ value, options, onChange, currentSize }: { value: string
                 <em>{option.value}</em>
               </button></Tip>
           ))}
-          <Tip content="Free width and height"><button
+          <Tip content="Free aspect, no fixed ratio"><button
               type="button"
-              className={cn("aspect-option", value === "custom" && "active")}
+              className={cn("aspect-option", value === "free" && "active")}
               onClick={() => {
-                onChange("custom");
+                onChange("free");
                 setOpen(false);
               }}
             >
@@ -1064,7 +1064,7 @@ function App() {
   }
 
   function applyAspect(value: string, targetMode = mode) {
-    if (value === "custom") {
+    if (value === "free" || value === "custom") {
       setCustomSize(true);
       return;
     }
@@ -1096,13 +1096,15 @@ function App() {
   const promptRemaining = promptLimit ? Math.max(0, promptLimit - textLength(prompt)) : undefined;
   const profileOptions = currentProfile?.options || {};
   const aspectValue = `${width}x${height}`;
-  const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "custom" : aspectValue;
+  const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "free" : aspectValue;
   const visibleGallery = useMemo(() => sortGalleryItems(gallery.filter((item) => item.type === mode && item.status !== "canceled" && (prefs.showFailedItems || item.status !== "error"))), [gallery, mode, prefs.showFailedItems]);
   const galleryColumnCount = useGalleryColumnCount();
   const galleryColumns = useMemo(() => distributeGalleryColumns(visibleGallery, galleryColumnCount), [visibleGallery, galleryColumnCount]);
   const runningCount = visibleGallery.filter((item) => item.status === "pending").length;
   const doneGallery = visibleGallery.filter((item) => item.status === "done" || item.status === "error");
+  const zenPendingItem = visibleGallery.find((item) => item.status === "pending") || null;
   const zenItem = doneGallery.find((item) => item.id === zenSelectedId) || doneGallery[0] || null;
+  const zenDisplayItem = zenPendingItem || zenItem;
   const generateDisabled = !currentProfile || (currentProfile.capabilities.textEncoder && !textEncoder) || (currentProfile.capabilities.vae && !vae);
 
   function chooseModel(profileId: string) {
@@ -1617,13 +1619,14 @@ function App() {
       {prefs.zenMode ? (
         <>
           <div className="zen-stage">
-            {zenItem ? (
+            {zenDisplayItem ? (
               <button
-                className={cn("zen-output", viewerZoom > 1 && "is-zoomed", isDraggingViewer && "is-dragging")}
+                className={cn("zen-output", viewerZoom > 1 && "is-zoomed", isDraggingViewer && "is-dragging", zenDisplayItem.status === "pending" && "is-pending")}
                 onClick={() => {
+                  if (zenDisplayItem.status === "pending") return;
                   if (Date.now() - viewerDragEndRef.current < 220) return;
                   if (viewerDragRef.current?.moved) return;
-                  openItem(zenItem);
+                  openItem(zenDisplayItem);
                 }}
                 onWheel={wheelViewer}
                 onPointerDown={startViewerDrag}
@@ -1634,9 +1637,34 @@ function App() {
                 onTouchMove={moveViewerTouch}
                 onTouchEnd={endViewerTouch}
                 onTouchCancel={endViewerTouch}
-                style={{ "--tile-ratio": `${zenItem.width || 1} / ${zenItem.height || 1}`, "--zoom": viewerZoom, "--pan-x": `${viewerPan.x}px`, "--pan-y": `${viewerPan.y}px` } as React.CSSProperties}
+                style={{ "--tile-ratio": `${zenDisplayItem.width || 1} / ${zenDisplayItem.height || 1}`, "--zoom": viewerZoom, "--pan-x": `${viewerPan.x}px`, "--pan-y": `${viewerPan.y}px` } as React.CSSProperties}
               >
-                <Media item={zenItem} muted />
+                {zenDisplayItem.status === "pending" ? (() => {
+                  const ratio = zenDisplayItem.progress?.max ? Math.min(1, Math.max(0, zenDisplayItem.progress.value / zenDisplayItem.progress.max)) : 0;
+                  const indeterminate = !zenDisplayItem.progress?.max;
+                  return (
+                    <div className={cn("generating", "zen-generating", zenDisplayItem.preview && "has-preview")} style={{ "--progress-ratio": ratio } as React.CSSProperties}>
+                      {zenDisplayItem.preview ? <img className="generate-preview" src={zenDisplayItem.preview} alt="" draggable={false} /> : null}
+                      {!zenDisplayItem.preview ? <div className="noise-layer" /> : null}
+                      <div className="generate-overlay">
+                        <span className="generate-step">
+                          {zenDisplayItem.progress?.max ? (
+                            <>
+                              <span className="generate-step-label">Step</span>
+                              <span className="generate-step-count">{zenDisplayItem.progress.value}<i>/</i>{zenDisplayItem.progress.max}</span>
+                            </>
+                          ) : (
+                            <span className="generate-step-label is-queued">Queued</span>
+                          )}
+                        </span>
+                        <span className="generate-elapsed">{formatElapsed(now - Date.parse(zenDisplayItem.createdAt || new Date().toISOString()))}</span>
+                      </div>
+                      <div className={cn("generate-bar", indeterminate && "is-indeterminate")}>
+                        <div className="generate-bar-fill" />
+                      </div>
+                    </div>
+                  );
+                })() : <Media item={zenDisplayItem} muted />}
               </button>
             ) : !galleryLoaded ? (
               <div className="zen-empty skeleton-stage">

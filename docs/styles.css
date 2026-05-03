@@ -20,10 +20,12 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
+  overflow-x: hidden;
   background:
     linear-gradient(rgb(9 9 9 / 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgb(9 9 9 / 0.055) 1px, transparent 1px),
@@ -69,13 +71,13 @@ img {
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 24px;
-  width: min(92rem, calc(100% - 4rem));
-  margin: 0 auto;
-  padding: 1.6rem 0;
-  backdrop-filter: blur(18px);
+  width: 100%;
+  margin: 0;
+  padding: 1.35rem max(1rem, calc((100vw - 92rem) / 2));
+  background: linear-gradient(to bottom, var(--paper) 0%, rgb(244 242 236 / 0.96) 66%, rgb(244 242 236 / 0) 100%);
 }
 
 .brand,
@@ -127,7 +129,7 @@ img {
 }
 
 .site-header nav {
-  justify-self: center;
+  justify-self: end;
   gap: 2.6rem;
   color: var(--ink);
   font-size: 0.95rem;
@@ -144,11 +146,9 @@ img {
 }
 
 .star-link {
-  justify-self: end;
-  gap: 0.5rem;
   border: 1px solid var(--ink);
   border-radius: 0.45rem;
-  padding: 0.55rem 0.75rem;
+  padding: 0.55rem 0.85rem;
   background: rgb(255 255 255 / 0.42);
 }
 
@@ -178,6 +178,7 @@ main {
   min-height: calc(100dvh - 5.9rem);
   padding: 5.5rem 0 8rem;
   border-top: 1px solid var(--rule);
+  overflow: visible;
 }
 
 .hero-copy {
@@ -274,8 +275,8 @@ footer a:focus-visible {
 
 .hero-plate {
   position: relative;
-  margin: 0 -9vw 0 0;
-  transform: rotate(-2.3deg);
+  margin: 0;
+  transform: rotate(-1.2deg);
   transform-origin: center;
   border-radius: 0.8rem;
 }
@@ -285,15 +286,6 @@ footer a:focus-visible {
   width: 100%;
   object-fit: contain;
   object-position: center top;
-}
-
-.hero-plate figcaption {
-  margin: 0;
-  border-top: 1px solid rgb(255 255 255 / 0.2);
-  padding: 1rem 1.2rem;
-  color: rgb(255 255 255 / 0.65);
-  font-size: 0.95rem;
-  font-weight: 600;
 }
 
 .feature-band,
@@ -334,7 +326,7 @@ footer a:focus-visible {
 
 .plate-stack {
   position: relative;
-  min-height: 45rem;
+  min-height: 35rem;
 }
 
 .stack-plate {
@@ -353,25 +345,17 @@ footer a:focus-visible {
 .stack-plate.top {
   top: 0;
   left: 1rem;
-  width: 76%;
-  height: 18rem;
+  width: 78%;
+  height: 20rem;
   transform: rotate(-3deg);
 }
 
 .stack-plate.middle {
-  top: 12.7rem;
+  top: 14rem;
   right: 0;
   width: 76%;
-  height: 18rem;
+  height: 20rem;
   transform: rotate(1.5deg);
-}
-
-.stack-plate.bottom {
-  bottom: 0;
-  left: 0;
-  width: 69%;
-  height: 18rem;
-  transform: rotate(2.5deg);
 }
 
 .feature-list {
@@ -505,9 +489,9 @@ footer a:focus-visible {
   left: 50%;
   bottom: -5.2rem;
   display: grid;
-  grid-template-columns: repeat(3, minmax(20rem, 1fr));
+  grid-template-columns: repeat(2, minmax(20rem, 1fr));
   gap: 0.7rem;
-  width: min(110rem, 124vw);
+  width: min(92rem, 100%);
   padding: 0.7rem;
   background: var(--black);
   transform: translateX(-50%) rotate(-1.5deg);
@@ -538,7 +522,7 @@ footer a:hover {
 @media (max-width: 980px) {
   .site-header {
     grid-template-columns: 1fr;
-    width: min(100% - 2rem, 92rem);
+    width: 100%;
   }
 
   .brand,
@@ -573,7 +557,7 @@ footer a:hover {
   }
 
   .plate-stack {
-    min-height: 37rem;
+    min-height: 35rem;
   }
 
   .faq-intro {
@@ -638,7 +622,8 @@ footer a:hover {
   }
 
   .contact-sheet {
-    width: 220vw;
+    width: 100%;
+    grid-template-columns: 1fr;
   }
 
   footer {

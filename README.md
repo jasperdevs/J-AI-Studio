@@ -80,21 +80,16 @@ J AI Studio does not download models, include models, or publish generated outpu
 
 ## ComfyUI
 
-The model picker lists supported workflow profiles, not every raw model file. A model appears when J AI Studio can match it to a workflow the app knows how to run.
+J AI Studio runs on top of ComfyUI. It reads available models, samplers, schedulers, size limits, prompt limits, text encoders, and VAEs from your local ComfyUI server where ComfyUI exposes them.
 
 <details>
-<summary>Supported workflow profiles</summary>
+<summary>Model support</summary>
 
-Image workflows:
+The app is meant to be a simpler front end for common ComfyUI image and video generation, not a replacement for the graph editor.
 
-- Z-Image / Z-Anime-style UNET workflows using `UNETLoader`, `CLIPLoader`, `VAELoader`, `EmptySD3LatentImage`, `KSampler`, `VAEDecode`, and `SaveImage`
-- Checkpoint workflows using `CheckpointLoaderSimple`, `EmptyLatentImage`, `KSampler`, `VAEDecode`, and `SaveImage`
+Models appear when J AI Studio can detect enough ComfyUI metadata to build a generation workflow for them. If a model needs a custom graph, custom nodes, or special wiring, open it in ComfyUI first and confirm the required nodes are installed.
 
-Video workflows:
-
-- Wan-style video workflows using `Wan22ImageToVideoLatent`, `CreateVideo`, and `SaveVideo`
-
-The app detects available text encoders, VAEs, CLIP types, weight dtypes, samplers, schedulers, size ranges, and prompt limits from ComfyUI's `/object_info` response where ComfyUI exposes them.
+Generated files and model files stay local in your ComfyUI setup.
 
 </details>
 
@@ -164,6 +159,6 @@ The dev command starts Vite and the local API server together.
 
 If no models appear, make sure ComfyUI is running and that `COMFY_URL` points to the right server.
 
-If generation fails, confirm the selected model works with the selected text encoder and VAE in ComfyUI.
+If generation fails, confirm the selected model works in ComfyUI and that any required custom nodes are installed.
 
-If video is missing, confirm your ComfyUI install has the required Wan video nodes available.
+If video is missing, confirm your ComfyUI install has video generation nodes available.

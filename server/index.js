@@ -984,13 +984,12 @@ app.get("/api/paths", (_req, res) => {
 
 app.get("/api/gallery", async (_req, res) => {
   cleanupGalleryState();
-  if (!gallery.some((item) => item.status === "done")) {
-    const history = await comfy(`/history?max_items=${Math.min(galleryLimit, 500)}`).catch(() => ({}));
-    const recovered = recordsFromComfyHistory(history);
-    if (recovered.length) {
-      gallery = [...gallery.filter((item) => item.status === "pending"), ...recovered].slice(0, galleryLimit);
-      saveGallery();
-    }
+  const history = await comfy(`/history?max_items=${Math.min(galleryLimit, 500)}`).catch(() => ({}));
+  const recovered = recordsFromComfyHistory(history);
+  if (recovered.length) {
+    const pending = gallery.filter((item) => item.status === "pending");
+    gallery = dedupeGallery([...pending, ...gallery, ...recovered]).slice(0, galleryLimit);
+    saveGallery();
   }
   gallery = dedupeGallery(gallery);
   res.json({ outputs: gallery });

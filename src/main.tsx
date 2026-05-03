@@ -1075,7 +1075,7 @@ function App() {
 
   function applyAspect(value: string, targetMode = mode) {
     if (value === "free" || value === "custom") {
-      setCustomSize(true);
+      setCustomSize(false);
       return;
     }
     const preset = aspectOptions.find((item) => item.value === value) || fallbackAspectPresets[targetMode].find((item) => item.value === value);
@@ -1965,11 +1965,11 @@ function App() {
                     value={prefs.variationQueueMode}
                     onChange={(value) => setPrefs({ variationQueueMode: value === "separate" ? "separate" : "batch" })}
                     options={[
-                      { label: "Run them all in one batch", value: "batch" },
+                      { label: "One Comfy batch", value: "batch" },
                       { label: "Queue them as separate jobs", value: "separate" }
                     ]}
                   />
-                  <span className="field-meta">{prefs.variationQueueMode === "batch" ? "Faster overall, but you can only cancel the whole batch." : "Each image is its own job, so you can cancel them individually."}</span>
+                  <span className="field-meta">{prefs.variationQueueMode === "batch" ? "One Comfy prompt with a larger latent batch. It is not separate parallel queue workers." : "Multiple Comfy prompts. They still follow ComfyUI's normal queue order."}</span>
                 </Field>
                 <label className="toggle-row">
                   <span>

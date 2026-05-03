@@ -191,7 +191,7 @@ function inferModels(info) {
       ]),
       options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
       constraints: { width: sd3Range.width, height: sd3Range.height },
-      capabilities: { textEncoder: true, vae: true, clipType: true, weightDtype: true }
+      capabilities: { textEncoder: true, vae: true, weightDtype: true }
     }));
   }
 
@@ -262,7 +262,7 @@ function inferModels(info) {
       ]),
       options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
       constraints: { width: wanRange.width, height: wanRange.height, frames: wanRange.frames },
-      capabilities: { negativePrompt: true, textEncoder: true, vae: true, clipType: true, weightDtype: true }
+      capabilities: { negativePrompt: true, textEncoder: true, vae: true, weightDtype: true }
     }));
   }
 
@@ -487,6 +487,17 @@ function makePendingItems(id, body) {
   }));
 }
 
+function dedupeGallery(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = item.url || item.id;
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function generationSettings(body) {
   return {
     workflow: body.workflow || "",
@@ -527,7 +538,7 @@ function replaceGalleryJob(id, outputs, body, status = "done") {
     outputName: item.filename,
     index
   }));
-  gallery = [...completed, ...gallery.filter((item) => item.jobId !== id && !completed.some((next) => next.id === item.id))].slice(0, 200);
+  gallery = dedupeGallery([...completed, ...gallery.filter((item) => item.jobId !== id && !completed.some((next) => next.id === item.id))]).slice(0, 200);
   saveGallery();
   return completed;
 }
@@ -657,7 +668,7 @@ app.get("/api/gallery", async (_req, res) => {
 app.post("/api/generate", (req, res) => {
   const id = crypto.randomUUID();
   const items = makePendingItems(id, req.body);
-  gallery = [...items, ...gallery].slice(0, 200);
+  gallery = dedupeGallery([...items, ...gallery]).slice(0, 200);
   saveGallery();
   jobs.set(id, { status: "queued", kind: req.body.kind, prompt: req.body.prompt, outputs: [], items, startedAt: Date.now() });
   runJob(id, req.body);

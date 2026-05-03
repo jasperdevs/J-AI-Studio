@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-500.css";
@@ -162,6 +162,17 @@ function loadDraft() {
   }
 }
 
+function dedupeGalleryItems(items: GalleryItem[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = item.url || item.id;
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="field">
@@ -316,6 +327,7 @@ function App() {
   const [now, setNow] = useState(Date.now());
   const [startImage, setStartImage] = useState("");
   const [startImageName, setStartImageName] = useState("");
+  const generatePostingRef = useRef(false);
 
   useEffect(() => {
     refreshModels();
@@ -363,7 +375,7 @@ function App() {
   useEffect(() => {
     if (!active) return;
     const activeItem = active;
-    const doneItems = gallery.filter((item) => item.status === "done");
+    const doneItems = visibleGallery.filter((item) => item.status === "done");
     const currentIndex = doneItems.findIndex((item) => item.id === activeItem.id);
     function onKeyDown(event: KeyboardEvent) {
       if (event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement) return;
@@ -400,7 +412,7 @@ function App() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [active, gallery]);
+  }, [active, gallery, mode]);
 
   function loadGallery() {
     fetch("/api/gallery")
@@ -496,7 +508,8 @@ function App() {
   const profileOptions = currentProfile?.options || {};
   const aspectValue = `${width}x${height}`;
   const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "custom" : aspectValue;
-  const runningCount = gallery.filter((item) => item.status === "pending").length;
+  const visibleGallery = gallery.filter((item) => item.type === mode);
+  const runningCount = visibleGallery.filter((item) => item.status === "pending").length;
 
   function chooseModel(profileId: string) {
     const profile = models?.profiles.find((item) => item.id === profileId);
@@ -517,9 +530,11 @@ function App() {
   }
 
   async function generate() {
+    if (generatePostingRef.current) return;
+    generatePostingRef.current = true;
     setStatus(mode === "image" ? `Queued ${count} image${count === 1 ? "" : "s"}` : "Queued video");
 
-    const response = await fetch("/api/generate", {
+    const { jobId, items } = await fetch("/api/generate", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -545,9 +560,10 @@ function App() {
         fps,
         startImage: canUseStartImage ? startImage : ""
       })
+    }).then((response) => response.json()).finally(() => {
+      generatePostingRef.current = false;
     });
-    const { jobId, items } = await response.json();
-    if (items?.length) setGallery((current) => [...items, ...current.filter((item) => !items.some((next: GalleryItem) => next.id === item.id))]);
+    if (items?.length) setGallery((current) => dedupeGalleryItems([...items, ...current]));
 
     while (true) {
       await new Promise((resolve) => setTimeout(resolve, 1600));
@@ -703,7 +719,6 @@ function App() {
             <div className="advanced-grid">
               {currentProfile?.capabilities.textEncoder ? <Field label="Text encoder"><Select value={textEncoder} onChange={setTextEncoder} options={profileOptions.textEncoders || models?.textEncoders || []} /></Field> : null}
               {currentProfile?.capabilities.vae ? <Field label="VAE"><Select value={vae} onChange={setVae} options={profileOptions.vaes || models?.vaes || []} /></Field> : null}
-              {currentProfile?.capabilities.clipType ? <Field label="CLIP type"><Select value={clipType} onChange={setClipType} options={profileOptions.clipTypes || models?.clipTypes || []} /></Field> : null}
               {currentProfile?.capabilities.weightDtype ? <Field label="Weight dtype"><Select value={weightDtype} onChange={setWeightDtype} options={profileOptions.weightDtypes || models?.weightDtypes || []} /></Field> : null}
               <Field label="CFG"><input type="number" value={cfg} step="0.1" onChange={(event) => setCfg(Number(event.target.value))} /></Field>
               <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={profileOptions.samplers?.length ? profileOptions.samplers : models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
@@ -732,7 +747,7 @@ function App() {
         </div>
 
         <section className="gallery">
-          {gallery.length ? gallery.map((item) => (
+          {visibleGallery.length ? visibleGallery.map((item) => (
             <button key={item.id} className={cn("tile", item.status)} style={{ "--tile-ratio": `${item.width || 1} / ${item.height || 1}` } as React.CSSProperties} onClick={() => item.status === "done" && openItem(item)}>
               {item.status === "pending" ? (
                 <div className="generating">
@@ -803,6 +818,7 @@ function App() {
               <section>
                 <h3>Gallery</h3>
                 <div className="setting-row"><span>Visible items</span><strong>{gallery.length}</strong></div>
+                <div className="setting-row"><span>{mode === "image" ? "Images" : "Videos"}</span><strong>{visibleGallery.length}</strong></div>
                 <div className="setting-row"><span>Outputs</span><strong>{paths.outputDir || "Not configured"}</strong></div>
                 <div className="setting-actions">
                   <button onClick={() => paths.outputDir && navigator.clipboard.writeText(paths.outputDir)}>Copy output path</button>
@@ -822,6 +838,7 @@ function App() {
 
       {active ? (
         <div className="viewer" onClick={() => setActive(null)}>
+          <button className="viewer-close" onClick={(event) => { event.stopPropagation(); setActive(null); }}><X size={16} /></button>
           <div className="viewer-bar" onClick={(event) => event.stopPropagation()}>
             <button className="icon-button" title="Zoom out" onClick={() => setViewerZoom((value) => Math.max(0.5, Number((value - 0.25).toFixed(2))))}><ZoomOut size={15} /></button>
             <button className="icon-button" title="Reset zoom" onClick={() => setViewerZoom(1)}><RotateCcw size={15} /></button>
@@ -832,7 +849,6 @@ function App() {
             <button className="icon-button" title="Copy output link" onClick={() => navigator.clipboard.writeText(active.url)}><Copy size={15} /></button>
             <a className="icon-button" href={active.url} download><Download size={15} /></a>
             <button className="icon-button" title="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button>
-            <button className="icon-button" onClick={() => setActive(null)}><X size={15} /></button>
           </div>
           <div className="viewer-layout" onClick={(event) => event.stopPropagation()}>
             <div className="viewer-media" style={{ "--zoom": viewerZoom } as React.CSSProperties}><Media item={active} /></div>

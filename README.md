@@ -24,7 +24,7 @@
 
 | Fullscreen details | Realtime generation |
 | --- | --- |
-| <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="520" /> | <img src="./docs/screenshots/realtime-generation.gif" alt="Realtime generation preview" width="520" /> |
+| <img src="./docs/screenshots/fullscreen.png" alt="Fullscreen details screenshot" width="520" /> | <video src="./docs/screenshots/realtime-generation.mp4" width="520" autoplay loop muted playsinline controls></video> |
 
 ## Features
 

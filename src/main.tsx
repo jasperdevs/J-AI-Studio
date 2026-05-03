@@ -384,7 +384,7 @@ function ModelPicker({ value, profiles, onChange }: { value: string; profiles: P
 
 function App() {
   const initialDraft = useMemo(() => loadDraft(), []);
-  const [mode, setMode] = useState<Mode>("image");
+  const [mode, setMode] = useState<Mode>(initialDraft.mode === "video" ? "video" : "image");
   const [models, setModels] = useState<Models | null>(null);
   const [prefs, setPrefsState] = useState<Preferences>(() => loadPrefs());
   const [prompt, setPrompt] = useState(String(initialDraft.prompt || ""));
@@ -406,21 +406,21 @@ function App() {
   const [fps, setFps] = useState(Number(initialDraft.fps || prefs.defaultFps));
   const [sampler, setSampler] = useState(String(initialDraft.sampler || "euler_ancestral"));
   const [scheduler, setScheduler] = useState(String(initialDraft.scheduler || "beta"));
-  const [advanced, setAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(Boolean(initialDraft.advanced));
   const [settings, setSettings] = useState(false);
   const [zenControls, setZenControls] = useState(false);
-  const [zenGalleryOpen, setZenGalleryOpen] = useState(true);
+  const [zenGalleryOpen, setZenGalleryOpen] = useState(initialDraft.zenGalleryOpen !== false);
   const [zenSelectedId, setZenSelectedId] = useState("");
   const [status, setStatus] = useState("Ready");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [active, setActive] = useState<GalleryItem | null>(null);
   const [viewerZoom, setViewerZoom] = useState(1);
   const [viewerPan, setViewerPan] = useState({ x: 0, y: 0 });
-  const [showDetails, setShowDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState(Boolean(initialDraft.showDetails));
   const [customSize, setCustomSize] = useState(Boolean(initialDraft.customSize));
   const [now, setNow] = useState(Date.now());
-  const [startImage, setStartImage] = useState("");
-  const [startImageName, setStartImageName] = useState("");
+  const [startImage, setStartImage] = useState(String(initialDraft.startImage || ""));
+  const [startImageName, setStartImageName] = useState(String(initialDraft.startImageName || ""));
   const generatePostingRef = useRef(false);
   const viewerDragRef = useRef<{ id: number; x: number; y: number; panX: number; panY: number; moved: boolean } | null>(null);
   const [isDraggingViewer, setIsDraggingViewer] = useState(false);
@@ -491,7 +491,7 @@ function App() {
   }, [settings, active, zenControls]);
 
   useEffect(() => {
-    localStorage.setItem("j-ai-studio-draft", JSON.stringify({
+    const draft = {
       mode,
       prompt,
       negative,
@@ -511,9 +511,19 @@ function App() {
       fps,
       sampler,
       scheduler,
-      customSize
-    }));
-  }, [mode, prompt, negative, model, textEncoder, vae, clipType, weightDtype, width, height, steps, cfg, denoise, seed, count, frames, fps, sampler, scheduler, customSize]);
+      customSize,
+      startImage,
+      startImageName,
+      advanced,
+      showDetails,
+      zenGalleryOpen
+    };
+    try {
+      localStorage.setItem("j-ai-studio-draft", JSON.stringify(draft));
+    } catch {
+      localStorage.setItem("j-ai-studio-draft", JSON.stringify({ ...draft, startImage: "" }));
+    }
+  }, [mode, prompt, negative, model, textEncoder, vae, clipType, weightDtype, width, height, steps, cfg, denoise, seed, count, frames, fps, sampler, scheduler, customSize, startImage, startImageName, advanced, showDetails, zenGalleryOpen]);
 
   useEffect(() => {
     if (!active) return;
@@ -630,8 +640,10 @@ function App() {
       .then((data: Models) => {
         setModels(data);
         const profileId = model || "";
-        const profile = data.profiles.find((item) => item.id === profileId);
-        if (profile) applyProfile(profile, false);
+        if (!profileId && !notify) {
+          const defaultProfile = data.profiles.find((item) => item.id === data.defaults.imageModel) || data.profiles[0];
+          if (defaultProfile) applyProfile(defaultProfile);
+        }
         if (notify) showToast("Models refreshed", "success");
       })
       .catch((error) => {
@@ -1460,7 +1472,7 @@ function App() {
         );
       })() : null}
 
-      <Toaster theme="dark" position="bottom-right" richColors closeButton toastOptions={{ className: "sonner-toast" }} />
+      <Toaster theme="dark" position="bottom-left" richColors closeButton toastOptions={{ className: "sonner-toast" }} />
     </div>
   );
 }

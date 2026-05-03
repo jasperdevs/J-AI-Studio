@@ -137,15 +137,20 @@ input:focus, textarea:focus, select:focus { border-color: var(--soft); }
 .tile.error { border-color: #555; opacity: .75; }
 .tile.canceled { opacity: .58; }
 
-.generating { position: relative; color: var(--soft); gap: 8px; background: linear-gradient(135deg, #050505, #151515); border: 1px solid #181818; }
-.generating::before { content: ""; position: absolute; inset: 0; opacity: .22; background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent); transform: translateX(-100%); animation: shimmer 1.6s ease-in-out infinite; }
+.generating { position: relative; color: var(--soft); gap: 8px; background: #080808; border: 1px solid #181818; }
+.generating::before { content: ""; position: absolute; inset: 0; opacity: .34; background-image: radial-gradient(circle at 20% 20%, rgba(255,255,255,.28) 0 1px, transparent 1px), radial-gradient(circle at 60% 40%, rgba(255,255,255,.18) 0 1px, transparent 1px), linear-gradient(115deg, transparent 20%, rgba(255,255,255,.18), transparent 70%); background-size: 18px 18px, 27px 27px, 220% 100%; animation: galleryNoise 1.1s steps(4) infinite, shimmer 2s ease-in-out infinite; }
+.generating::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent, rgba(0,0,0,.62)); }
 .generating svg, .generating span { position: relative; z-index: 1; }
 .generating small { position: relative; z-index: 1; color: var(--muted); font-size: 11px; }
 .generating.stopped::before { display: none; }
+.generate-readout { position: relative; z-index: 2; display: grid; justify-items: center; gap: 5px; padding: 8px 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; background: rgba(0,0,0,.42); }
+.generate-readout span { margin: 0; color: #fff; font-weight: 600; }
+.generate-readout small { color: #c7c7c7; }
 .pulse-mark { position: relative; z-index: 1; width: 34px; height: 34px; border: 1px solid var(--line-strong); border-radius: 999px; display: grid; place-items: center; background: #090909; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes shimmer { to { transform: translateX(100%); } }
+@keyframes galleryNoise { to { background-position: -11px 7px, 13px -9px, 100% 0; } }
 
 .empty { grid-column: 1 / -1; text-align: center; align-self: center; justify-self: center; max-width: 360px; color: var(--muted); }
 .empty h2 { color: var(--text); font-size: 19px; font-weight: 600; margin: 12px 0 5px; letter-spacing: 0; }

@@ -3,12 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
+import { execFile } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 const comfyUrl = process.env.COMFY_URL || "http://127.0.0.1:8188";
 const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 8787);
+const comfyOutputDir = process.env.COMFY_OUTPUT_DIR || "";
 const app = express();
 const jobs = new Map();
 const dataDir = process.env.JAI_DATA_DIR ? path.resolve(process.env.JAI_DATA_DIR) : path.join(root, "data");
@@ -531,8 +533,16 @@ function replaceGalleryJob(id, outputs, body, status = "done") {
 }
 
 function updateGalleryJob(id, patch) {
-  gallery = gallery.map((item) => (item.jobId === id ? { ...item, ...patch } : item));
-  saveGallery();
+  let changed = false;
+  gallery = gallery.map((item) => {
+    if (item.jobId === id || item.id === id || item.url === id) {
+      changed = true;
+      return { ...item, ...patch };
+    }
+    return item;
+  });
+  if (changed) saveGallery();
+  return changed;
 }
 
 function watchProgress(id, promptId) {
@@ -592,16 +602,16 @@ async function runJob(id, body) {
     jobs.set(id, { ...jobs.get(id), status: "running", promptId: queued.prompt_id });
     socket = watchProgress(id, queued.prompt_id);
     while (true) {
+      if (jobs.get(id)?.status === "canceling" || jobs.get(id)?.status === "canceled") {
+        updateGalleryJob(id, { status: "canceled" });
+        socket?.close();
+        return;
+      }
       const history = await comfy(`/history/${queued.prompt_id}`);
       if (history[queued.prompt_id]) {
         const outputs = outputsFrom(history[queued.prompt_id]);
         const completed = replaceGalleryJob(id, outputs, body);
         jobs.set(id, { ...jobs.get(id), status: "done", outputs: completed });
-        socket?.close();
-        return;
-      }
-      if (jobs.get(id)?.status === "canceling" || jobs.get(id)?.status === "canceled") {
-        updateGalleryJob(id, { status: "canceled" });
         socket?.close();
         return;
       }
@@ -626,6 +636,10 @@ app.get("/api/health", async (_req, res) => {
 app.get("/api/models", async (_req, res) => {
   const info = await comfy("/object_info");
   res.json(inferModels(info));
+});
+
+app.get("/api/paths", (_req, res) => {
+  res.json({ outputDir: comfyOutputDir, galleryDir: dataDir });
 });
 
 app.get("/api/gallery", async (_req, res) => {
@@ -657,7 +671,9 @@ app.get("/api/jobs/:id", (req, res) => {
 app.post("/api/jobs/:id/cancel", async (req, res) => {
   const job = jobs.get(req.params.id);
   if (!job) {
-    res.status(404).json({ ok: false, error: "Job not found" });
+    const changed = updateGalleryJob(req.params.id, { status: "canceled" });
+    await comfy("/interrupt", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => null);
+    res.json({ ok: true, stale: true, changed });
     return;
   }
   jobs.set(req.params.id, { ...job, status: "canceling" });
@@ -688,6 +704,8 @@ app.post("/api/queue/cancel", async (_req, res) => {
       updateGalleryJob(id, { status: "canceled" });
     }
   }
+  gallery = gallery.map((item) => (item.status === "pending" ? { ...item, status: "canceled" } : item));
+  saveGallery();
   await comfy("/queue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ clear: true }) }).catch(() => null);
   await comfy("/interrupt", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => null);
   res.json({ ok: true });
@@ -705,6 +723,20 @@ app.delete("/api/gallery/:id", (req, res) => {
   gallery = gallery.filter((item) => item.id !== id && item.url !== id);
   if (gallery.length !== before) saveGallery();
   res.json({ ok: true, removed: before - gallery.length, outputs: gallery });
+});
+
+app.post("/api/open-output-folder", (req, res) => {
+  const remote = req.socket.remoteAddress || "";
+  if (!localHosts.has(remote)) {
+    res.status(403).json({ ok: false, error: "Opening folders is only allowed from this computer." });
+    return;
+  }
+  if (!comfyOutputDir || !fs.existsSync(comfyOutputDir)) {
+    res.status(404).json({ ok: false, error: "Output folder is not configured." });
+    return;
+  }
+  execFile("explorer.exe", [comfyOutputDir]);
+  res.json({ ok: true, outputDir: comfyOutputDir });
 });
 
 app.post("/api/shutdown", (_req, res) => {

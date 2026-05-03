@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Copy,
   Download,
-  Loader2,
   Power,
   RefreshCw,
   RotateCcw,
@@ -64,6 +63,7 @@ type Models = {
   defaults: Record<string, string>;
   capabilities: Record<string, boolean>;
 };
+type Paths = { outputDir?: string; galleryDir?: string };
 type AspectPreset = { label: string; value: string; w: number; h: number };
 
 type Preferences = {
@@ -277,9 +277,10 @@ function App() {
   const [mode, setMode] = useState<Mode>("image");
   const [models, setModels] = useState<Models | null>(null);
   const [prefs, setPrefsState] = useState<Preferences>(() => loadPrefs());
-  const [prompt, setPrompt] = useState("anime portrait, silver hair, golden eyes, clean linework, soft warm lighting");
-  const [negative, setNegative] = useState("low quality, blurry, bad anatomy, text, watermark");
+  const [prompt, setPrompt] = useState("");
+  const [negative, setNegative] = useState("");
   const [model, setModel] = useState("");
+  const [paths, setPaths] = useState<Paths>({});
   const [textEncoder, setTextEncoder] = useState("");
   const [vae, setVae] = useState("");
   const [clipType, setClipType] = useState("");
@@ -309,6 +310,7 @@ function App() {
 
   useEffect(() => {
     refreshModels();
+    refreshPaths();
     loadGallery();
   }, []);
 
@@ -323,6 +325,25 @@ function App() {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    const doneItems = gallery.filter((item) => item.status === "done");
+    const currentIndex = doneItems.findIndex((item) => item.id === active.id);
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowRight" && currentIndex >= 0) {
+        setViewerZoom(1);
+        setActive(doneItems[(currentIndex + 1) % doneItems.length]);
+      }
+      if (event.key === "ArrowLeft" && currentIndex >= 0) {
+        setViewerZoom(1);
+        setActive(doneItems[(currentIndex - 1 + doneItems.length) % doneItems.length]);
+      }
+      if (event.key === "Escape") setActive(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [active, gallery]);
 
   function loadGallery() {
     fetch("/api/gallery")
@@ -344,12 +365,18 @@ function App() {
       .then((res) => res.json())
       .then((data: Models) => {
         setModels(data);
-        const profileId = model || data.defaults.imageModel || "";
+        const profileId = model || "";
         const profile = data.profiles.find((item) => item.id === profileId);
-        if (!model && profileId) setModel(profileId);
         if (profile) applyProfile(profile, false);
       })
       .catch((error) => setStatus(error.message));
+  }
+
+  function refreshPaths() {
+    fetch("/api/paths")
+      .then((res) => res.json())
+      .then(setPaths)
+      .catch(() => null);
   }
 
   function applyProfile(profile: Profile, setModelId = true) {
@@ -509,6 +536,10 @@ function App() {
     if (data?.outputs) setGallery(data.outputs);
   }
 
+  async function openOutputFolder() {
+    await fetch("/api/open-output-folder", { method: "POST" }).catch(() => null);
+  }
+
   async function deleteItem(item: GalleryItem) {
     setGallery((current) => current.filter((next) => next.id !== item.id));
     if (active?.id === item.id) setActive(null);
@@ -641,9 +672,10 @@ function App() {
             <button key={item.id} className={cn("tile", item.status)} style={{ "--tile-ratio": `${item.width || 1} / ${item.height || 1}` } as React.CSSProperties} onClick={() => item.status === "done" && openItem(item)}>
               {item.status === "pending" ? (
                 <div className="generating">
-                  <div className="pulse-mark"><Loader2 size={16} className="spin" /></div>
-                  <span>{item.progress?.max ? `${item.progress.value}/${item.progress.max}` : "Queued"}</span>
-                  <small>{formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString()))}</small>
+                  <div className="generate-readout">
+                    <span>{item.progress?.max ? `${item.progress.value}/${item.progress.max}` : "Queued"}</span>
+                    <small>{formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString()))}</small>
+                  </div>
                 </div>
               ) : item.status === "done" ? <Media item={item} muted /> : <div className="generating stopped"><span>{item.status === "canceled" ? "Canceled" : "Failed"}</span></div>}
               <span className="tile-caption">
@@ -707,6 +739,11 @@ function App() {
               <section>
                 <h3>Gallery</h3>
                 <div className="setting-row"><span>Visible items</span><strong>{gallery.length}</strong></div>
+                <div className="setting-row"><span>Outputs</span><strong>{paths.outputDir || "Not configured"}</strong></div>
+                <div className="setting-actions">
+                  <button onClick={() => paths.outputDir && navigator.clipboard.writeText(paths.outputDir)}>Copy output path</button>
+                  <button onClick={openOutputFolder} disabled={!paths.outputDir}>Open output folder</button>
+                </div>
                 <button className="wide-button" onClick={clearGallery}>Clear finished gallery</button>
               </section>
 

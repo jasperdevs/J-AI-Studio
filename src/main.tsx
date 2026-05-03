@@ -558,7 +558,7 @@ function NumberPicker({
   );
 }
 
-function AspectPicker({ value, options, onChange }: { value: string; options: AspectPreset[]; onChange: (value: string) => void }) {
+function AspectPicker({ value, options, onChange, currentSize }: { value: string; options: AspectPreset[]; onChange: (value: string) => void; currentSize: string }) {
   const [open, setOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((item) => item.value === value);
@@ -603,7 +603,7 @@ function AspectPicker({ value, options, onChange }: { value: string; options: As
             >
               <span className="aspect-shape custom" />
               <span>Custom</span>
-              <em>Width x height</em>
+              <em>{currentSize}</em>
             </button></Tip>
         </div>
       ) : null}
@@ -1686,7 +1686,13 @@ function App() {
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative
                 </button></Tip>
-                <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
+                <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} currentSize={aspectValue} />
+                {customSize ? (
+                  <>
+                    <NumberPicker label="Width" value={width} onChange={setWidth} min={widthMeta.min ?? 64} max={widthMeta.max ?? 4096} step={widthMeta.step || (mode === "video" ? 32 : 64)} size="sm" />
+                    <NumberPicker label="Height" value={height} onChange={setHeight} min={heightMeta.min ?? 64} max={heightMeta.max ?? 4096} step={heightMeta.step || (mode === "video" ? 32 : 64)} size="sm" />
+                  </>
+                ) : null}
                 <NumberPicker label="Steps" value={steps} onChange={setSteps} min={stepsMeta.min || 1} max={stepsMeta.max || 150} step={stepsMeta.step || 1} size="sm" />
                 {mode === "image" ? <NumberPicker label="Variants" value={count} onChange={setCount} min={countMeta.min || 1} max={countMeta.max ?? 8} step={countMeta.step || 1} size="sm" /> : null}
               </div>
@@ -1805,7 +1811,13 @@ function App() {
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative
                 </button></Tip>
-                <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
+                <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} currentSize={aspectValue} />
+                {customSize ? (
+                  <>
+                    <NumberPicker label="Width" value={width} onChange={setWidth} min={widthMeta.min ?? 64} max={widthMeta.max ?? 4096} step={widthMeta.step || (mode === "video" ? 32 : 64)} size="sm" />
+                    <NumberPicker label="Height" value={height} onChange={setHeight} min={heightMeta.min ?? 64} max={heightMeta.max ?? 4096} step={heightMeta.step || (mode === "video" ? 32 : 64)} size="sm" />
+                  </>
+                ) : null}
                 <NumberPicker label="Steps" value={steps} onChange={setSteps} min={stepsMeta.min || 1} max={stepsMeta.max || 150} step={stepsMeta.step || 1} size="sm" />
                 {mode === "image" ? <NumberPicker label="Variants" value={count} onChange={setCount} min={countMeta.min || 1} max={countMeta.max ?? 8} step={countMeta.step || 1} size="sm" /> : null}
               </div>

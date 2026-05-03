@@ -157,8 +157,26 @@ function textRange(info, node, key) {
   };
 }
 
-function aspectSet(defaults, ratios) {
-  return ratios.map(([label, w, h]) => ({ label, value: `${w}x${h}`, w, h, default: w === defaults.width && h === defaults.height }));
+function snapDimension(value, meta = {}) {
+  const step = Number(meta.step || 1) || 1;
+  const min = Number(meta.min || step) || step;
+  const max = Number(meta.max || 16384) || 16384;
+  const snapped = Math.round(value / step) * step;
+  return Math.max(min, Math.min(max, snapped));
+}
+
+function aspectSet(defaults, ratios, ranges = {}) {
+  const defaultArea = Math.max(1, Number(defaults.width || 1024) * Number(defaults.height || 1024));
+  const seen = new Set();
+  return ratios.map(([label, ratioW, ratioH]) => {
+    const scale = Math.sqrt(defaultArea / Math.max(1, ratioW * ratioH));
+    const w = snapDimension(ratioW * scale, ranges.width);
+    const h = snapDimension(ratioH * scale, ranges.height);
+    const value = `${w}x${h}`;
+    if (seen.has(value)) return null;
+    seen.add(value);
+    return { label, value, w, h, default: w === defaults.width && h === defaults.height };
+  }).filter(Boolean);
 }
 
 function buildProfile({ id, kind, label, displayName, description, model, workflow, family, defaults, aspects, options = {}, capabilities = {}, constraints = {} }) {
@@ -255,13 +273,13 @@ function inferModels(info) {
         weightDtype: weightDtypes.includes("default") ? "default" : weightDtypes[0] || "default"
       },
       aspects: aspectSet({ width: 1024, height: 1024 }, [
-        ["1:1", 1024, 1024],
-        ["16:9", 1344, 768],
-        ["9:16", 768, 1344],
-        ["4:3", 1152, 864],
-        ["3:4", 864, 1152],
-        ["2.35:1", 1536, 640]
-      ]),
+        ["1:1", 1, 1],
+        ["16:9", 16, 9],
+        ["9:16", 9, 16],
+        ["4:3", 4, 3],
+        ["3:4", 3, 4],
+        ["2.35:1", 235, 100]
+      ], { width: sd3Range.width, height: sd3Range.height }),
       options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
       constraints: { prompt: textMeta, negative: textMeta, width: sd3Range.width, height: sd3Range.height, count: sd3Range.count, ...samplerRange },
       capabilities: { textEncoder: true, vae: true, weightDtype: true }
@@ -288,13 +306,13 @@ function inferModels(info) {
         denoise: 0.65
       },
       aspects: aspectSet({ width: 1024, height: 1024 }, [
-        ["1:1", 1024, 1024],
-        ["16:9", 1344, 768],
-        ["9:16", 768, 1344],
-        ["4:3", 1152, 864],
-        ["3:4", 864, 1152],
-        ["2.35:1", 1536, 640]
-      ]),
+        ["1:1", 1, 1],
+        ["16:9", 16, 9],
+        ["9:16", 9, 16],
+        ["4:3", 4, 3],
+        ["3:4", 3, 4],
+        ["2.35:1", 235, 100]
+      ], { width: imageRange.width, height: imageRange.height }),
       options: { samplers, schedulers },
       constraints: { prompt: textMeta, negative: textMeta, width: imageRange.width, height: imageRange.height, count: imageRange.count, ...samplerRange },
       capabilities: { startImage: Boolean(info.LoadImage && info.VAEEncode), denoise: Boolean(info.LoadImage && info.VAEEncode) }
@@ -326,13 +344,13 @@ function inferModels(info) {
         weightDtype: weightDtypes.includes("default") ? "default" : weightDtypes[0] || "default"
       },
       aspects: aspectSet({ width: 512, height: 288 }, [
-        ["16:9", 512, 288],
-        ["9:16", 288, 512],
-        ["1:1", 384, 384],
-        ["4:3", 448, 336],
-        ["3:4", 336, 448],
-        ["2.35:1", 640, 272]
-      ]),
+        ["16:9", 16, 9],
+        ["9:16", 9, 16],
+        ["1:1", 1, 1],
+        ["4:3", 4, 3],
+        ["3:4", 3, 4],
+        ["2.35:1", 235, 100]
+      ], { width: wanRange.width, height: wanRange.height }),
       options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
       constraints: { prompt: textMeta, negative: textMeta, width: wanRange.width, height: wanRange.height, frames: wanRange.frames, fps: wanRange.fps, ...samplerRange },
       capabilities: { negativePrompt: true, textEncoder: true, vae: true, weightDtype: true }

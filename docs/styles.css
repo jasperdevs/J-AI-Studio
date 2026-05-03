@@ -74,7 +74,8 @@ img {
 
 .brand,
 .site-header nav,
-.star-link {
+.star-link,
+.with-icon {
   display: flex;
   align-items: center;
 }
@@ -140,6 +141,18 @@ img {
   border-color: var(--line) !important;
   background: rgb(255 255 255 / 0.055);
   color: var(--text) !important;
+}
+
+.with-icon,
+.button {
+  gap: 8px;
+}
+
+.github-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  fill: currentColor;
 }
 
 .star-link strong {

@@ -283,9 +283,8 @@ footer a:focus-visible {
 .hero-plate img {
   aspect-ratio: 16 / 10;
   width: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center top;
-  filter: saturate(0) contrast(1.12) brightness(0.82);
 }
 
 .hero-plate figcaption {
@@ -347,8 +346,8 @@ footer a:focus-visible {
 .stack-plate img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  filter: saturate(0) contrast(1.08) brightness(0.84);
+  object-fit: contain;
+  background: var(--black);
 }
 
 .stack-plate.top {
@@ -518,7 +517,7 @@ footer a:focus-visible {
   height: 13rem;
   width: 100%;
   object-fit: cover;
-  filter: saturate(0) contrast(1.12) brightness(0.72);
+  object-position: center top;
 }
 
 footer {

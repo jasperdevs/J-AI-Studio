@@ -922,7 +922,7 @@ async function runJob(id, body) {
     const queued = await comfy("/prompt", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt, client_id: id })
+      body: JSON.stringify({ prompt, client_id: id, extra_data: { preview_method: "auto" } })
     });
     if (jobs.get(id)?.status === "canceling" || jobs.get(id)?.status === "canceled") {
       await comfy("/queue", {

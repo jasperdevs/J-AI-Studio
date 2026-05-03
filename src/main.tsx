@@ -298,17 +298,11 @@ async function apiJson<T>(url: string, options?: RequestInit): Promise<T> {
 function loadPrefs(): Preferences {
   try {
     const saved = localStorage.getItem("j-ai-studio-prefs");
-    const mobileDefault = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
-    if (!saved) return { ...defaultPrefs, zenMode: mobileDefault || defaultPrefs.zenMode };
+    if (!saved) return { ...defaultPrefs };
     const parsed = JSON.parse(saved);
-    const merged = { ...defaultPrefs, ...parsed };
-    if (mobileDefault && !parsed.mobileZenDefaulted) {
-      return { ...merged, zenMode: true, mobileZenDefaulted: true };
-    }
-    return merged;
+    return { ...defaultPrefs, ...parsed };
   } catch {
-    const mobileDefault = typeof window !== "undefined" && window.matchMedia("(max-width: 620px)").matches;
-    return { ...defaultPrefs, zenMode: mobileDefault || defaultPrefs.zenMode };
+    return { ...defaultPrefs };
   }
 }
 
@@ -720,6 +714,9 @@ function App() {
   const [scheduler, setScheduler] = useState(String(initialDraft.scheduler || "beta"));
   const advanced = true;
   const [settings, setSettings] = useState(false);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 620px)").matches : false
+  );
   const [zenControls, setZenControls] = useState(Boolean(initialDraft.zenControls));
   const [showNegativePrompt, setShowNegativePrompt] = useState(Boolean(initialDraft.showNegativePrompt));
   const [zenGalleryOpen, setZenGalleryOpen] = useState(initialDraft.zenGalleryOpen !== false);
@@ -752,6 +749,14 @@ function App() {
     refreshModels(false);
     refreshPaths();
     loadGallery();
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 620px)");
+    const update = () => setIsMobile(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
   }, []);
 
   useEffect(() => {
@@ -2101,7 +2106,7 @@ function App() {
         );
       })() : null}
 
-      <Toaster theme="dark" position="bottom-left" richColors closeButton toastOptions={{ className: "sonner-toast" }} />
+      <Toaster theme="dark" position={isMobile ? "top-center" : "bottom-left"} richColors closeButton toastOptions={{ className: "sonner-toast" }} />
     </div>
   );
 }

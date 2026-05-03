@@ -159,7 +159,8 @@ function inferModels(info) {
     frames: nodeRange(info, "Wan22ImageToVideoLatent", "length", { default: 49, min: 1, max: 16384, step: 4 })
   };
 
-  for (const name of unets.filter(isZImageModel)) {
+  const zImageNames = new Set(unets.filter(isZImageModel));
+  for (const name of zImageNames) {
     profiles.push(buildProfile({
       id: `image:unet-z:${name}`,
       kind: "image",
@@ -195,7 +196,7 @@ function inferModels(info) {
     }));
   }
 
-  for (const name of checkpoints) {
+  for (const name of checkpoints.filter((name) => !zImageNames.has(name))) {
     profiles.push(buildProfile({
       id: `image:checkpoint:${name}`,
       kind: "image",

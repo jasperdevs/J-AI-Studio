@@ -779,7 +779,45 @@ function updateGalleryJob(id, patch, options = {}) {
   return changed;
 }
 
-function watchProgress(id, promptId) {
+function binaryPreviewBuffer(data) {
+  if (data instanceof ArrayBuffer) return Buffer.from(data);
+  if (ArrayBuffer.isView(data)) return Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  if (Buffer.isBuffer(data)) return data;
+  return null;
+}
+
+function applyPreviewFrame(id, data) {
+  const buffer = binaryPreviewBuffer(data);
+  if (!buffer || buffer.length < 8) return false;
+  const eventType = buffer.readUInt32BE(0);
+  if (eventType !== 1 && eventType !== 4) return false;
+  let mime = "image/jpeg";
+  let image = buffer.subarray(8);
+  if (eventType === 1) {
+    const imageType = buffer.readUInt32BE(4);
+    mime = imageType === 2 ? "image/png" : "image/jpeg";
+  } else {
+    const metadataLength = buffer.readUInt32BE(4);
+    const metadataStart = 8;
+    const imageStart = metadataStart + metadataLength;
+    if (imageStart > buffer.length) return true;
+    try {
+      const metadata = JSON.parse(buffer.subarray(metadataStart, imageStart).toString("utf8"));
+      if (typeof metadata.image_type === "string") mime = metadata.image_type;
+    } catch {
+      // Keep default mime when metadata is not parseable.
+    }
+    image = buffer.subarray(imageStart);
+  }
+  if (image.length < 16) return true;
+  const preview = `data:${mime};base64,${image.toString("base64")}`;
+  const current = jobs.get(id) || {};
+  jobs.set(id, { ...current, preview });
+  updateGalleryJob(id, { preview }, { persist: false });
+  return true;
+}
+
+function openProgressSocket(id) {
   const wsUrl = comfyUrl.replace(/^http/i, "ws");
   let socket;
   try {
@@ -788,23 +826,28 @@ function watchProgress(id, promptId) {
     return null;
   }
   socket.binaryType = "arraybuffer";
+  return socket;
+}
+
+function waitForSocketOpen(socket) {
+  if (!socket || socket.readyState === WebSocket.OPEN) return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => resolve();
+    socket.addEventListener("open", done, { once: true });
+    socket.addEventListener("error", done, { once: true });
+    setTimeout(done, 1200);
+  });
+}
+
+function watchProgress(id, promptId, socket = openProgressSocket(id)) {
+  if (!socket) return null;
   socket.addEventListener("message", (event) => {
-    if (event.data instanceof ArrayBuffer) {
-      try {
-        const view = new DataView(event.data);
-        if (view.byteLength < 8) return;
-        const eventType = view.getUint32(0);
-        if (eventType !== 1) return;
-        const imageType = view.getUint32(4);
-        const mime = imageType === 2 ? "image/png" : "image/jpeg";
-        const base64 = Buffer.from(event.data, 8).toString("base64");
-        const preview = `data:${mime};base64,${base64}`;
-        const current = jobs.get(id) || {};
-        jobs.set(id, { ...current, preview });
-        updateGalleryJob(id, { preview }, { persist: false });
-      } catch {
-        // Ignore malformed binary frames.
-      }
+    try {
+      if (applyPreviewFrame(id, event.data)) return;
+    } catch {
+      // Ignore malformed binary frames.
+    }
+    if (typeof event.data !== "string") {
       return;
     }
     try {
@@ -837,6 +880,8 @@ async function runJob(id, body) {
   let socket = null;
   try {
     const prompt = body.kind === "video" ? videoGraph(body) : await imageGraph(body);
+    socket = openProgressSocket(id);
+    await waitForSocketOpen(socket);
     const queued = await comfy("/prompt", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -853,7 +898,7 @@ async function runJob(id, body) {
       return;
     }
     jobs.set(id, { ...jobs.get(id), status: "running", promptId: queued.prompt_id });
-    socket = watchProgress(id, queued.prompt_id);
+    watchProgress(id, queued.prompt_id, socket);
     while (true) {
       if (jobs.get(id)?.status === "canceling" || jobs.get(id)?.status === "canceled") {
         updateGalleryJob(id, { status: "canceled" });

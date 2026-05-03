@@ -90,6 +90,7 @@ function Tooltip({
               sideOffset={sideOffset}
               forceMount
               className="z-50"
+              style={{ pointerEvents: "none" }}
             >
               <motion.div
                 className={cn(

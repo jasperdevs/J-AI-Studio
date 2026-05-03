@@ -574,7 +574,7 @@ function AspectPicker({ value, options, onChange, currentSize }: { value: string
     <div className="aspect-picker" ref={pickerRef} data-open-surface={open || undefined}>
       <Tip content="Aspect ratio"><button type="button" data-open-trigger className="aspect-trigger" onClick={() => setOpen((next) => !next)}>
           {selected ? <span className="aspect-shape" style={aspectIconStyle(selected)} /> : <span className="aspect-shape custom" />}
-          <span>{selected ? selected.label : "Custom"}</span>
+          <span>{selected ? selected.label : "Free"}</span>
           <ChevronDown size={14} className={cn(open && "flip")} />
         </button></Tip>
       {open ? (
@@ -593,7 +593,7 @@ function AspectPicker({ value, options, onChange, currentSize }: { value: string
                 <em>{option.value}</em>
               </button></Tip>
           ))}
-          <Tip content="Custom width and height"><button
+          <Tip content="Free width and height"><button
               type="button"
               className={cn("aspect-option", value === "custom" && "active")}
               onClick={() => {
@@ -602,7 +602,7 @@ function AspectPicker({ value, options, onChange, currentSize }: { value: string
               }}
             >
               <span className="aspect-shape custom" />
-              <span>Custom</span>
+              <span>Free</span>
               <em>{currentSize}</em>
             </button></Tip>
         </div>

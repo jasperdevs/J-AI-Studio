@@ -397,7 +397,7 @@ h1 {
 
 .faq-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   background: var(--line);
   border-top: 1px solid var(--line);
@@ -482,6 +482,10 @@ footer a:hover {
 
   .showcase img {
     height: auto;
+  }
+
+  .faq-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

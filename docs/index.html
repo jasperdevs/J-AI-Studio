@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>J AI Studio</title>
-    <meta name="description" content="A calm image and video generation studio for your own machine." />
+    <meta name="description" content="A cleaner image and video UI for ComfyUI." />
     <meta property="og:title" content="J AI Studio" />
-    <meta property="og:description" content="A calm image and video generation studio for your own machine." />
+    <meta property="og:description" content="A cleaner image and video UI for ComfyUI." />
     <meta property="og:image" content="https://jasperdevs.github.io/J-AI-Studio/screenshots/hero.jpg" />
     <link rel="icon" href="./j-ai-logo.png" />
     <link rel="stylesheet" href="./styles.css" />
@@ -40,8 +40,8 @@
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow">Image and video generation</p>
-          <h1>A quiet studio for making images.</h1>
-          <p class="lead">J AI Studio gives everyday generation a cleaner surface: prompt first, useful controls, live progress, and a gallery that stays out of the way.</p>
+          <h1>A cleaner UI for image generation.</h1>
+          <p class="lead">Run ComfyUI, open J AI Studio, and generate from a simpler page: prompt, model controls, live progress, and a gallery.</p>
           <div class="actions">
             <a class="button primary" href="https://github.com/jasperdevs/J-AI-Studio">
               <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -54,35 +54,35 @@
         </div>
         <figure class="hero-frame">
           <img src="./screenshots/hero.jpg" alt="J AI Studio gallery and controls" />
-          <figcaption>Prompt, preview, review, repeat.</figcaption>
+          <figcaption>A smaller front end for a local ComfyUI setup.</figcaption>
         </figure>
       </section>
 
       <section class="feature-band" id="features" aria-labelledby="features-title">
         <div class="section-heading">
-          <p class="eyebrow">Less surface area</p>
-          <h2 id="features-title">Built for the part you actually repeat.</h2>
+          <p class="eyebrow">ComfyUI front end</p>
+          <h2 id="features-title">Generate from a simple page, keep graph work in ComfyUI.</h2>
         </div>
         <div class="feature-grid">
           <article>
             <span>01</span>
             <h3>Prompt-first workspace</h3>
-            <p>Start with the image you want, then adjust only the controls that matter for the selected model.</p>
+            <p>Write the prompt first, then adjust model, size, steps, seed, sampler, and other useful controls.</p>
           </article>
           <article>
             <span>02</span>
             <h3>Live queue previews</h3>
-            <p>Watch running work update with readable progress cards, previews, and cancel controls.</p>
+            <p>See queue status, progress, previews, and cancel controls while ComfyUI is running the job.</p>
           </article>
           <article>
             <span>03</span>
             <h3>Zen mode</h3>
-            <p>Switch into a fullscreen view when the prompt and latest output should take over.</p>
+            <p>Use a fullscreen prompt and output view when you do not need the full controls panel.</p>
           </article>
           <article>
             <span>04</span>
             <h3>Workflow templates</h3>
-            <p>Use built-in image and video paths, or import workflow templates for custom setups.</p>
+            <p>Use built-in image and video paths, or import ComfyUI API workflows for custom setups.</p>
           </article>
         </div>
       </section>
@@ -95,32 +95,40 @@
       <section class="faq" id="faq" aria-labelledby="faq-title">
         <div class="section-heading">
           <p class="eyebrow">FAQ</p>
-          <h2 id="faq-title">Small answers before you run it.</h2>
+          <h2 id="faq-title">Useful answers before you run it.</h2>
         </div>
         <div class="faq-list">
           <article>
-            <h3>Does it include a model runtime?</h3>
-            <p>No. It is a focused interface for an existing generation setup and keeps the heavy runtime separate.</p>
+            <h3>What is it?</h3>
+            <p>J AI Studio is a simple browser UI for ComfyUI. It is for generating and reviewing outputs, not editing node graphs.</p>
           </article>
           <article>
-            <h3>Where do generated files go?</h3>
-            <p>They stay with your own setup. J AI Studio reads the outputs and keeps gallery metadata for review.</p>
+            <h3>What do I need installed?</h3>
+            <p>Node.js 20 or newer, plus a working ComfyUI install. By default it looks for ComfyUI at http://127.0.0.1:8188.</p>
           </article>
           <article>
-            <h3>Does it support video?</h3>
-            <p>Yes, when your installed generation stack exposes compatible video workflows.</p>
+            <h3>Where do files go?</h3>
+            <p>Generated media stays in your local ComfyUI output setup. J AI Studio keeps gallery metadata in its own data folder.</p>
+          </article>
+          <article>
+            <h3>Does video work?</h3>
+            <p>Yes, if your ComfyUI setup has compatible video nodes and workflows installed.</p>
+          </article>
+          <article>
+            <h3>Can I use my own workflow?</h3>
+            <p>Yes. Export a ComfyUI API workflow, add the J AI Studio control mapping, then import it from Settings.</p>
           </article>
           <article>
             <h3>How do updates work?</h3>
-            <p>Use Settings -> Update in a Git checkout, or run git pull, npm install, and npm run build.</p>
+            <p>Use Settings -> Update in a Git checkout. The manual path is git pull, npm install, npm run build, then restart.</p>
           </article>
         </div>
       </section>
 
       <section class="final-cta">
         <span class="brand-mark large" aria-hidden="true"><img src="./j-ai-logo.png" alt="" /></span>
-        <h2>Keep the workflow calm.</h2>
-        <p>Open a smaller, cleaner surface for everyday image and video generation.</p>
+        <h2>Use ComfyUI without living in the graph.</h2>
+        <p>Keep the node editor for setup. Use J AI Studio for the daily generation loop.</p>
         <a class="button primary" href="https://github.com/jasperdevs/J-AI-Studio">
           <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.4-4-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.3 11.3 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.4 5.9.4.4.8 1.1.8 2.2v3.1c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />

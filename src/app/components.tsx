@@ -223,10 +223,11 @@ export function NumberPicker({
   );
 }
 
-export function AspectPicker({ value, options, onChange, currentSize }: { value: string; options: AspectPreset[]; onChange: (value: string) => void; currentSize: string }) {
+export function AspectPicker({ value, options, onChange, currentSize, defaultSize }: { value: string; options: AspectPreset[]; onChange: (value: string) => void; currentSize: string; defaultSize: string }) {
   const [open, setOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((item) => item.value === value);
+  const isDefault = value === "default";
   useEffect(() => {
     if (!open) return;
     function closeOnOutside(event: PointerEvent) {
@@ -238,12 +239,24 @@ export function AspectPicker({ value, options, onChange, currentSize }: { value:
   return (
     <div className="aspect-picker" ref={pickerRef} data-open-surface={open || undefined}>
       <Tip content="Aspect ratio"><button type="button" data-open-trigger className="aspect-trigger" onClick={() => setOpen((next) => !next)}>
-          {selected ? <span className="aspect-shape" style={aspectIconStyle(selected)} /> : <span className="aspect-shape custom" />}
-          <span>{selected ? selected.label : "Free"}</span>
+          {selected ? <span className="aspect-shape" style={aspectIconStyle(selected)} /> : <span className={cn("aspect-shape", isDefault ? "default" : "custom")} />}
+          <span>{selected ? selected.label : isDefault ? "Default" : "Free"}</span>
           <ChevronDown size={14} className={cn(open && "flip")} />
         </button></Tip>
       {open ? (
         <div className="aspect-menu" data-open-surface>
+          <Tip content="Use the model's detected default size"><button
+              type="button"
+              className={cn("aspect-option", value === "default" && "active")}
+              onClick={() => {
+                onChange("default");
+                setOpen(false);
+              }}
+            >
+              <span className="aspect-shape default" />
+              <span>Default</span>
+              <em>{defaultSize}</em>
+            </button></Tip>
           {options.map((option) => (
             <Tip key={option.value} content={`${option.label} ${option.value}`}><button
                 type="button"
@@ -258,18 +271,7 @@ export function AspectPicker({ value, options, onChange, currentSize }: { value:
                 <em>{option.value}</em>
               </button></Tip>
           ))}
-          <Tip content="Free aspect, no fixed ratio"><button
-              type="button"
-              className={cn("aspect-option", value === "free" && "active")}
-              onClick={() => {
-                onChange("free");
-                setOpen(false);
-              }}
-            >
-              <span className="aspect-shape custom" />
-              <span>Free</span>
-              <em>{currentSize}</em>
-            </button></Tip>
+          {value === "free" ? <div className="aspect-option active is-readonly"><span className="aspect-shape custom" /><span>Free</span><em>{currentSize}</em></div> : null}
         </div>
       ) : null}
     </div>

@@ -362,6 +362,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .aspect-option em { color: hsl(var(--muted-foreground)); font-size: 11px; font-style: normal; text-align: right; white-space: nowrap; font-weight: 500; font-variant-numeric: tabular-nums; }
 .aspect-option.active em { color: hsl(var(--primary-foreground) / 0.7); }
 .aspect-shape { justify-self: center; display: block; border: 1.5px solid currentColor; border-radius: 2px; opacity: 0.88; }
+.aspect-shape.default { width: 18px; height: 18px; }
 .aspect-shape.custom { width: 22px; height: 22px; border-style: dashed; }
 
 .split, .advanced-grid, .control-grid {
@@ -431,4 +432,3 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .generate:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .status-row { color: hsl(var(--muted-foreground)); font-size: 12px; padding: 12px 2px 0; min-height: 28px; }
-

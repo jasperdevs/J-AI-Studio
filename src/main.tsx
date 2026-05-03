@@ -431,8 +431,15 @@ function App() {
   }
 
   function applyAspect(value: string, targetMode = mode) {
-    if (value === "free" || value === "custom") {
+    if (value === "default") {
+      const defaults = currentProfile?.defaults || {};
       setCustomSize(false);
+      setWidth(Number(defaults.width || (targetMode === "video" ? 512 : 1024)));
+      setHeight(Number(defaults.height || (targetMode === "video" ? 288 : 1024)));
+      return;
+    }
+    if (value === "free" || value === "custom") {
+      setCustomSize(true);
       return;
     }
     const preset = aspectOptions.find((item) => item.value === value) || fallbackAspectPresets[targetMode].find((item) => item.value === value);
@@ -463,7 +470,8 @@ function App() {
   const promptRemaining = promptLimit ? Math.max(0, promptLimit - textLength(prompt)) : undefined;
   const profileOptions = currentProfile?.options || {};
   const aspectValue = `${width}x${height}`;
-  const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "free" : aspectValue;
+  const defaultAspectSize = `${Number(currentProfile?.defaults.width || (mode === "video" ? 512 : 1024))}x${Number(currentProfile?.defaults.height || (mode === "video" ? 288 : 1024))}`;
+  const aspectPickerValue = aspectValue === defaultAspectSize ? "default" : customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "free" : aspectValue;
   const visibleGallery = useMemo(() => sortGalleryItems(gallery.filter((item) => item.type === mode && item.status !== "canceled" && (prefs.showFailedItems || item.status !== "error"))), [gallery, mode, prefs.showFailedItems]);
   const renderedGallery = useMemo(() => visibleGallery.slice(0, galleryRenderCount), [visibleGallery, galleryRenderCount]);
   const galleryColumnCount = useGalleryColumnCount();
@@ -528,7 +536,7 @@ function App() {
 
   const sidebarControls = <SidebarControls view={{ canUseStartImage, cfg, cfgMeta, changeMode, clipType, confirmAction, currentProfile, customSize, denoise, denoiseMeta, fps, fpsMeta, frameMeta, frames, height, heightMeta, mode, models, profileOptions, readStartImage, sampler, scheduler, seed, setCfg, setDenoise, setFps, setFrames, setHeight, setSampler, setScheduler, setSeed, setStartImage, setStartImageName, setTextEncoder, setVae, setWeightDtype, setWidth, startImageName, textEncoder, vae, weightDtype, width, widthMeta }} />;
 
-  const view = { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, canUseStartImage, cancelJob, cancelQueue, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, doneGallery, gallery, galleryColumnCount, galleryColumns, galleryLoaded, galleryStageRef, generate, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, status, steps, stepsMeta, stopViewerDrag, submitZenPrompt, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenSelectedId, zenStripDragRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, characterMeta, formatElapsed, generationDetailEntries, titleFromPrompt , zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, settings, setPrefs };
+  const view = { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, doneGallery, gallery, galleryColumnCount, galleryColumns, galleryLoaded, galleryStageRef, generate, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, status, steps, stepsMeta, stopViewerDrag, submitZenPrompt, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenSelectedId, zenStripDragRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, characterMeta, formatElapsed, generationDetailEntries, titleFromPrompt , zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, settings, setPrefs };
 
   return <StudioView view={view} />;
 }

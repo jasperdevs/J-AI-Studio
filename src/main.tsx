@@ -1614,7 +1614,7 @@ function App() {
           <div className="zen-stage">
             {zenItem ? (
               <button
-                className={cn("zen-output", viewerZoom > 1 && "is-zoomed")}
+                className={cn("zen-output", viewerZoom > 1 && "is-zoomed", isDraggingViewer && "is-dragging")}
                 onClick={() => {
                   if (Date.now() - viewerDragEndRef.current < 220) return;
                   if (viewerDragRef.current?.moved) return;
@@ -1687,12 +1687,14 @@ function App() {
               <span>{characterMeta(negative.length, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
-              <div className="zen-inline-settings">
-                {models ? <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} compact /> : <Skeleton className="skeleton-control" />}
+              <div className="prompt-left-actions">
                 <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative
                 </button></Tip>
+              </div>
+              <div className="zen-inline-settings">
+                {models ? <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} compact /> : <Skeleton className="skeleton-control" />}
                 <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} currentSize={aspectValue} />
                 {customSize ? (
                   <>
@@ -1812,12 +1814,14 @@ function App() {
               <span>{characterMeta(negative.length, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
-              <div className="zen-inline-settings">
-                {models ? <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} compact /> : <Skeleton className="skeleton-control" />}
+              <div className="prompt-left-actions">
                 <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative
                 </button></Tip>
+              </div>
+              <div className="zen-inline-settings">
+                {models ? <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} compact /> : <Skeleton className="skeleton-control" />}
                 <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} currentSize={aspectValue} />
                 {customSize ? (
                   <>

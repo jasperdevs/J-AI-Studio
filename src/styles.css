@@ -89,7 +89,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 .bottom-fade {
   position: fixed; left: 0; right: 0; bottom: 0;
-  height: 220px;
+  height: 170px;
   pointer-events: none;
   z-index: 5;
 }
@@ -102,36 +102,35 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .bottom-fade::before {
   background: linear-gradient(
     to top,
-    hsl(var(--background) / 0.96) 0%,
-    hsl(var(--background) / 0.86) 18%,
-    hsl(var(--background) / 0.66) 36%,
-    hsl(var(--background) / 0.4) 56%,
-    hsl(var(--background) / 0.18) 76%,
-    hsl(var(--background) / 0.04) 90%,
+    hsl(var(--background) / 0.98) 0%,
+    hsl(var(--background) / 0.9) 26%,
+    hsl(var(--background) / 0.7) 48%,
+    hsl(var(--background) / 0.34) 72%,
+    hsl(var(--background) / 0.08) 92%,
     transparent 100%
   );
 }
 .bottom-fade::after {
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  background: radial-gradient(100% 70% at 50% 100%, hsl(var(--background) / 0.4), transparent 70%);
+  opacity: 0.7;
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .bottom-fade::after {
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   -webkit-mask-image: linear-gradient(
     to top,
-    rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.95) 22%,
-    rgba(0, 0, 0, 0.78) 44%,
-    rgba(0, 0, 0, 0.48) 64%,
-    rgba(0, 0, 0, 0.2) 82%,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.45) 46%,
     rgba(0, 0, 0, 0) 100%
   );
   mask-image: linear-gradient(
     to top,
-    rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.95) 22%,
-    rgba(0, 0, 0, 0.78) 44%,
-    rgba(0, 0, 0, 0.48) 64%,
-    rgba(0, 0, 0, 0.2) 82%,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.45) 46%,
     rgba(0, 0, 0, 0) 100%
   );
+  }
 }
 .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
 .brand img { width: 22px; height: 22px; display: block; filter: invert(1); opacity: 0.92; }
@@ -486,8 +485,10 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   display: block;
   transform: translate(var(--pan-x, 0), var(--pan-y, 0)) scale(var(--zoom, 1));
   transform-origin: center;
-  transition: transform 100ms var(--ease-soft);
+  transition: transform 80ms var(--ease-soft);
 }
+.zen-output.is-zoomed img, .zen-output.is-zoomed video,
+.zen-output.is-dragging img, .zen-output.is-dragging video { transition: none; }
 .zen-empty { width: 100%; height: 100%; display: grid; place-items: center; background: hsl(var(--background)); }
 .zen-empty img { width: 56px; height: 56px; filter: invert(1); opacity: 0.4; }
 .zen-fade {
@@ -733,9 +734,9 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 
 .zen-prompt-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 0;
   border-top: 0;
 }
@@ -754,28 +755,34 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .zen-prompt-actions .generate {
   margin-left: 0;
   flex: 0 0 auto;
-  height: 34px;
+  height: 36px;
   padding: 0 16px;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.005em;
+}
+.prompt-left-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .zen-inline-settings {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
   min-width: 0;
-  overflow-x: auto;
+  overflow: visible;
   scrollbar-width: none;
 }
 .zen-inline-settings::-webkit-scrollbar { display: none; }
 .zen-inline-settings > * { flex: 0 0 auto; }
 .zen-inline-settings .aspect-picker { width: auto; }
 .zen-inline-settings .aspect-picker > button {
-  height: 32px;
-  min-height: 32px;
+  height: 36px;
+  min-height: 36px;
   grid-template-columns: 18px minmax(0, 1fr) 12px;
   padding: 0 10px;
   font-size: 12px;
@@ -787,7 +794,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .zen-inline-settings .aspect-shape { transform: scale(0.7); }
 
 .negative-toggle {
-  height: 32px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -815,10 +822,10 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .negative-toggle svg { transition: transform 160ms var(--ease-out); }
 .negative-toggle svg.flip { transform: rotate(180deg); }
 
-.zen-inline-settings .number-picker { height: 32px; }
-.zen-inline-settings .number-picker-btn { width: 24px; height: 26px; }
+.zen-inline-settings .number-picker { height: 36px; }
+.zen-inline-settings .number-picker-btn { width: 28px; height: 30px; }
 .zen-inline-settings .number-picker-value,
-.zen-inline-settings .number-picker-input { height: 26px; min-width: 24px; padding: 0 4px; font-size: 13px; }
+.zen-inline-settings .number-picker-input { height: 30px; min-width: 26px; padding: 0 5px; font-size: 13px; }
 .zen-inline-settings .number-picker-input { width: 40px; min-width: 40px; }
 .zen-inline-settings .number-picker-label { padding: 0 4px 0 7px; }
 
@@ -1289,11 +1296,11 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .generate-overlay .generate-elapsed {
   background-image: linear-gradient(
     90deg,
-    hsl(var(--muted-foreground) / 0.5) 0%,
-    hsl(var(--muted-foreground) / 0.5) 35%,
+    hsl(var(--muted-foreground) / 0.86) 0%,
+    hsl(var(--muted-foreground) / 0.86) 38%,
     hsl(var(--foreground)) 50%,
-    hsl(var(--muted-foreground) / 0.5) 65%,
-    hsl(var(--muted-foreground) / 0.5) 100%
+    hsl(var(--muted-foreground) / 0.86) 62%,
+    hsl(var(--muted-foreground) / 0.86) 100%
   );
   background-size: 200% 100%;
   background-repeat: no-repeat;
@@ -1306,11 +1313,11 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .generate-overlay .generate-step-count {
   background-image: linear-gradient(
     90deg,
-    hsl(var(--foreground) / 0.55) 0%,
-    hsl(var(--foreground) / 0.55) 35%,
+    hsl(var(--foreground) / 0.78) 0%,
+    hsl(var(--foreground) / 0.78) 38%,
     hsl(var(--foreground)) 50%,
-    hsl(var(--foreground) / 0.55) 65%,
-    hsl(var(--foreground) / 0.55) 100%
+    hsl(var(--foreground) / 0.78) 62%,
+    hsl(var(--foreground) / 0.78) 100%
   );
   background-size: 200% 100%;
   background-repeat: no-repeat;
@@ -1507,13 +1514,13 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   border-radius: var(--radius);
   transform: translate3d(var(--pan-x, 0), var(--pan-y, 0), 0) scale(var(--zoom, 1));
   transform-origin: center;
-  transition: transform 140ms var(--ease-soft);
+  transition: transform 80ms var(--ease-soft);
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: none;
   will-change: transform;
 }
-.viewer-canvas.is-zoomed img, .viewer-canvas.is-zoomed video { cursor: grab; }
+.viewer-canvas.is-zoomed img, .viewer-canvas.is-zoomed video { cursor: grab; transition: none; }
 .viewer-canvas.is-dragging img, .viewer-canvas.is-dragging video { transition: none; }
 
 .viewer-side {
@@ -1950,7 +1957,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   .negative-drawer.open { max-height: 82px; }
   .negative-drawer textarea { height: 56px; font-size: 14px; }
   .zen-prompt-actions {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 8px;
   }
   .zen-prompt-actions .generate {
@@ -1962,9 +1969,10 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
     grid-column: 1 / -1;
     grid-row: 1;
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 6px;
-    overflow-x: auto;
+    overflow: visible;
     scrollbar-width: none;
     padding-bottom: 2px;
   }
@@ -1989,7 +1997,8 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
     min-width: 0;
     align-self: center;
   }
-  .zen-prompt-actions .generate { grid-column: 2; grid-row: 2; }
+  .prompt-left-actions { grid-column: 1; grid-row: 2; }
+  .zen-prompt-actions .generate { grid-column: 3; grid-row: 2; }
   .zen-gallery-wrap { top: 8px; max-width: calc(100vw - 16px); grid-template-columns: auto auto minmax(0, 1fr); }
   .zen-gallery-strip button { width: 46px; height: 46px; }
   .scrim { overflow: hidden; }

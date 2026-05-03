@@ -1,5 +1,6 @@
 import { missingNodes, nodeRange, optionsFor } from './comfy.js';
 import { inferModels } from './models.js';
+import { workflowFor, workflowIds } from './workflow-registry.js';
 
 export function clampNumber(value, fallback, min, max) {
   const number = Number(value);
@@ -36,42 +37,36 @@ export function ensureOption(info, node, key, value, label) {
   }
 }
 
-function requiredNodesForWorkflow(workflow) {
-  if (workflow === "checkpoint-image") return ["CheckpointLoaderSimple", "CLIPTextEncode", "EmptyLatentImage", "KSampler", "VAEDecode", "SaveImage"];
-  if (workflow === "unet-image") return ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "EmptySD3LatentImage", "KSampler", "VAEDecode", "SaveImage"];
-  if (workflow === "wan-video") return ["UNETLoader", "CLIPLoader", "VAELoader", "CLIPTextEncode", "Wan22ImageToVideoLatent", "KSampler", "VAEDecode", "CreateVideo", "SaveVideo"];
-  return [];
-}
-
 export function sanitizeGenerateBody(input = {}, info = {}, stats = {}) {
   const kind = input.kind === "video" ? "video" : "image";
   const workflow = String(input.workflow || "");
+  const workflowInfo = workflowFor(workflow);
   const prompt = String(input.prompt || "").trim();
   if (!prompt) throw new Error("Prompt is required.");
   if (!String(input.model || "").trim()) throw new Error("Choose a supported model first.");
-  if (!["unet-image", "checkpoint-image", "wan-video"].includes(workflow)) throw new Error("This model does not have a supported workflow.");
-  if (kind === "video" && workflow !== "wan-video") throw new Error("The selected model is not a video workflow.");
-  if (kind === "image" && workflow === "wan-video") throw new Error("The selected model is not an image workflow.");
-  const missing = missingNodes(info, requiredNodesForWorkflow(workflow));
+  if (!workflowInfo) throw new Error("This model does not have a supported workflow.");
+  if (!workflowIds().includes(workflow)) throw new Error("This model does not have a supported workflow.");
+  if (kind !== workflowInfo.kind) throw new Error(`The selected model is not a ${kind} workflow.`);
+  const missing = missingNodes(info, workflowInfo.requiredNodes);
   if (missing.length) throw new Error(`ComfyUI is missing required nodes for this model: ${missing.join(", ")}`);
   const profiles = inferModels(info, stats).profiles || [];
   const profile = profiles.find((item) => item.kind === kind && item.workflow === workflow && item.model === input.model);
   if (!profile) throw new Error("ComfyUI does not currently expose this model as a runnable workflow.");
-  if ((workflow === "unet-image" || workflow === "wan-video") && (!input.textEncoder || !input.vae)) {
+  if ((workflowInfo.needsTextEncoder && !input.textEncoder) || (workflowInfo.needsVae && !input.vae)) {
     throw new Error("This workflow needs a text encoder and VAE.");
   }
 
-  if (workflow === "checkpoint-image") {
-    ensureOption(info, "CheckpointLoaderSimple", "ckpt_name", input.model, "Model");
-  } else {
-    ensureOption(info, "UNETLoader", "unet_name", input.model, "Model");
+  ensureOption(info, workflowInfo.modelNode, workflowInfo.modelKey, input.model, "Model");
+  if (workflowInfo.needsTextEncoder) {
     ensureOption(info, "CLIPLoader", "clip_name", input.textEncoder, "Text encoder");
+  }
+  if (workflowInfo.needsVae) {
     ensureOption(info, "VAELoader", "vae_name", input.vae, "VAE");
   }
   if (input.sampler) ensureOption(info, "KSampler", "sampler_name", input.sampler, "Sampler");
   if (input.scheduler) ensureOption(info, "KSampler", "scheduler", input.scheduler, "Scheduler");
 
-  const latentNode = workflow === "wan-video" ? "Wan22ImageToVideoLatent" : workflow === "unet-image" ? "EmptySD3LatentImage" : "EmptyLatentImage";
+  const latentNode = workflowInfo.latentNode;
   const widthRange = nodeRange(info, latentNode, "width", { default: kind === "video" ? 512 : 1024, min: 16, max: 16384 });
   const heightRange = nodeRange(info, latentNode, "height", { default: kind === "video" ? 288 : 1024, min: 16, max: 16384 });
   const countRange = nodeRange(info, latentNode, "batch_size", { default: 1, min: 1, max: 8 });

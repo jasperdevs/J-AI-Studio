@@ -1,4 +1,5 @@
 import { missingNodes, nodeRange, optionsFor, textRange } from './comfy.js';
+import { workflowFor } from './workflow-registry.js';
 
 export function modelBasename(name = "") {
   return String(name).split(/[\\/]/).pop() || name;
@@ -130,9 +131,12 @@ export function inferModels(info, stats = {}) {
     denoise: nodeRange(info, "KSampler", "denoise", { default: 1, min: 0, max: 1, step: 0.01 })
   };
   const profiles = [];
-  const canRunUnetImage = missingNodes(info, ["UNETLoader", "CLIPLoader", "VAELoader", "EmptySD3LatentImage"]).length === 0;
-  const canRunCheckpointImage = missingNodes(info, ["CheckpointLoaderSimple", "EmptyLatentImage"]).length === 0;
-  const canRunWanVideo = missingNodes(info, ["UNETLoader", "CLIPLoader", "VAELoader", "Wan22ImageToVideoLatent", "CreateVideo", "SaveVideo"]).length === 0;
+  const unetImageWorkflow = workflowFor("unet-image");
+  const checkpointImageWorkflow = workflowFor("checkpoint-image");
+  const wanVideoWorkflow = workflowFor("wan-video");
+  const canRunUnetImage = missingNodes(info, unetImageWorkflow.requiredNodes).length === 0;
+  const canRunCheckpointImage = missingNodes(info, checkpointImageWorkflow.requiredNodes).length === 0;
+  const canRunWanVideo = missingNodes(info, wanVideoWorkflow.requiredNodes).length === 0;
   const sd3Range = {
     width: nodeRange(info, "EmptySD3LatentImage", "width", { default: 1024, min: 16, max: 16384, step: 16 }),
     height: nodeRange(info, "EmptySD3LatentImage", "height", { default: 1024, min: 16, max: 16384, step: 16 }),
@@ -159,8 +163,8 @@ export function inferModels(info, stats = {}) {
       displayName: prettyModelName(name),
       description: "Z image workflow",
       model: name,
-      workflow: "unet-image",
-      family: "z-image",
+      workflow: unetImageWorkflow.id,
+      family: unetImageWorkflow.family,
       defaults: {
         width: detectedDefault(sd3Range.width, 1024),
         height: detectedDefault(sd3Range.height, 1024),
@@ -195,8 +199,8 @@ export function inferModels(info, stats = {}) {
       displayName: prettyModelName(name),
       description: "Checkpoint workflow",
       model: name,
-      workflow: "checkpoint-image",
-      family: "checkpoint",
+      workflow: checkpointImageWorkflow.id,
+      family: checkpointImageWorkflow.family,
       defaults: {
         width: detectedDefault(imageRange.width, 512),
         height: detectedDefault(imageRange.height, 512),
@@ -228,8 +232,8 @@ export function inferModels(info, stats = {}) {
       displayName: prettyModelName(name),
       description: "Wan video workflow",
       model: name,
-      workflow: "wan-video",
-      family: "wan",
+      workflow: wanVideoWorkflow.id,
+      family: wanVideoWorkflow.family,
       defaults: {
         width: detectedDefault(wanRange.width, 512),
         height: detectedDefault(wanRange.height, 288),
@@ -274,8 +278,8 @@ export function inferModels(info, stats = {}) {
     samplers,
     schedulers,
     defaults: {
-      imageModel: imageProfiles.find((profile) => /anime/i.test(profile.model))?.id || imageProfiles[0]?.id || "",
-      videoModel: videoProfiles.find((profile) => /wan2\.2.*5b|wan/i.test(profile.model))?.id || videoProfiles[0]?.id || ""
+      imageModel: imageProfiles[0]?.id || "",
+      videoModel: videoProfiles[0]?.id || ""
     },
     capabilities: {
       image: imageProfiles.length > 0,

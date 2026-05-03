@@ -134,6 +134,8 @@ The app is meant to be a simpler front end for common ComfyUI image and video ge
 
 Models appear when J AI Studio can detect enough ComfyUI metadata to build a generation workflow for them. If a model needs a custom graph, custom nodes, or special wiring, open it in ComfyUI first and confirm the required nodes are installed.
 
+Workflow support is template-based. To add or change a workflow, add its required ComfyUI nodes and capability metadata in `server/workflow-registry.js`, then wire the prompt graph in `server/graphs.js`.
+
 Start-image controls only appear when the selected workflow exposes the required image input path through ComfyUI.
 
 Generated files and model files stay local in your ComfyUI setup.

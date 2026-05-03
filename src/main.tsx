@@ -18,6 +18,8 @@ import {
   ChevronUp,
   Copy,
   Download,
+  Minus,
+  Plus,
   RotateCcw,
   Maximize2,
   Minimize2,
@@ -124,6 +126,7 @@ const fallbackSchedulers = ["beta", "simple", "normal", "karras", "sgm_uniform"]
 const githubUrl = "https://github.com/jasperdevs/J-AI-Studio";
 const promptLimit = 1800;
 const negativeLimit = 1200;
+const visiblePromptLimit = 1200;
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
@@ -382,11 +385,116 @@ function Tip({ content, side = "bottom", children }: { content: React.ReactNode;
   );
 }
 
+function StepsPicker({ value, onChange, min = 1, max = 150 }: { value: number; onChange: (next: number) => void; min?: number; max?: number }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const valueRef = useRef(value);
+  const holdRef = useRef<{ timer: number | null; interval: number | null }>({ timer: null, interval: null });
+
+  useEffect(() => { valueRef.current = value; }, [value]);
+  useEffect(() => { if (!editing) setDraft(String(value)); }, [value, editing]);
+
+  const clamp = (n: number) => Math.max(min, Math.min(max, n));
+  const stepBy = (delta: number) => {
+    const next = clamp(valueRef.current + delta);
+    if (next !== valueRef.current) onChange(next);
+  };
+
+  const clearHold = () => {
+    if (holdRef.current.timer) window.clearTimeout(holdRef.current.timer);
+    if (holdRef.current.interval) window.clearInterval(holdRef.current.interval);
+    holdRef.current = { timer: null, interval: null };
+  };
+
+  const startHold = (delta: number) => {
+    stepBy(delta);
+    holdRef.current.timer = window.setTimeout(() => {
+      holdRef.current.interval = window.setInterval(() => stepBy(delta), 55);
+    }, 320);
+  };
+
+  useEffect(() => () => clearHold(), []);
+
+  const beginEdit = () => {
+    setDraft(String(value));
+    setEditing(true);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+  };
+
+  const commitEdit = () => {
+    const parsed = Number(draft);
+    if (Number.isFinite(parsed)) onChange(clamp(Math.round(parsed)));
+    setEditing(false);
+  };
+
+  return (
+    <div
+      className="zen-steps"
+      onWheel={(event) => { event.preventDefault(); stepBy(event.deltaY < 0 ? 1 : -1); }}
+    >
+      <Tip content="Decrease steps"><button
+        type="button"
+        className="zen-steps-btn"
+        aria-label="Decrease steps"
+        disabled={value <= min}
+        onPointerDown={(event) => { event.preventDefault(); startHold(-1); }}
+        onPointerUp={clearHold}
+        onPointerLeave={clearHold}
+        onPointerCancel={clearHold}
+      ><Minus size={12} /></button></Tip>
+      <span className="zen-steps-label">Steps</span>
+      {editing ? (
+        <input
+          ref={inputRef}
+          className="zen-steps-input"
+          type="number"
+          min={min}
+          max={max}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") { event.preventDefault(); commitEdit(); }
+            else if (event.key === "Escape") { setDraft(String(value)); setEditing(false); }
+            else if (event.key === "ArrowUp") { event.preventDefault(); stepBy(1); }
+            else if (event.key === "ArrowDown") { event.preventDefault(); stepBy(-1); }
+          }}
+        />
+      ) : (
+        <button type="button" className="zen-steps-value" onClick={beginEdit} aria-label={`Steps: ${value}, click to edit`}>{value}</button>
+      )}
+      <Tip content="Increase steps"><button
+        type="button"
+        className="zen-steps-btn"
+        aria-label="Increase steps"
+        disabled={value >= max}
+        onPointerDown={(event) => { event.preventDefault(); startHold(1); }}
+        onPointerUp={clearHold}
+        onPointerLeave={clearHold}
+        onPointerCancel={clearHold}
+      ><Plus size={12} /></button></Tip>
+    </div>
+  );
+}
+
 function AspectPicker({ value, options, onChange }: { value: string; options: AspectPreset[]; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((item) => item.value === value);
+  useEffect(() => {
+    if (!open) return;
+    function closeOnOutside(event: PointerEvent) {
+      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    window.addEventListener("pointerdown", closeOnOutside, true);
+    return () => window.removeEventListener("pointerdown", closeOnOutside, true);
+  }, [open]);
   return (
-    <div className="aspect-picker">
+    <div className="aspect-picker" ref={pickerRef}>
       <Tip content="Aspect ratio"><button type="button" className="aspect-trigger" onClick={() => setOpen((next) => !next)}>
           {selected ? <span className="aspect-shape" style={aspectIconStyle(selected)} /> : <span className="aspect-shape custom" />}
           <span>{selected ? selected.label : "Custom"}</span>
@@ -436,9 +544,18 @@ function familyLabel(profile: Profile | null) {
 
 function ModelPicker({ value, profiles, onChange }: { value: string; profiles: Profile[]; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
   const selected = profiles.find((profile) => profile.id === value) || profiles[0] || null;
+  useEffect(() => {
+    if (!open) return;
+    function closeOnOutside(event: PointerEvent) {
+      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    window.addEventListener("pointerdown", closeOnOutside, true);
+    return () => window.removeEventListener("pointerdown", closeOnOutside, true);
+  }, [open]);
   return (
-    <div className="model-picker">
+    <div className="model-picker" ref={pickerRef}>
       <Tip content="Choose model"><button type="button" className="model-trigger" onClick={() => setOpen((next) => !next)}>
           <span className="model-glyph">{selected?.kind === "video" ? "V" : "I"}</span>
           <span className="model-copy">
@@ -522,6 +639,7 @@ function App() {
   const latestZenIdRef = useRef("");
   const touchGestureRef = useRef<TouchGesture | null>(null);
   const lastTapRef = useRef(0);
+  const promptRemaining = Math.max(0, visiblePromptLimit - prompt.length);
 
   useEffect(() => {
     refreshModels(false);
@@ -916,6 +1034,10 @@ function App() {
         while (true) {
           await new Promise((resolve) => setTimeout(resolve, 1600));
           const job: Job = await fetch(`/api/jobs/${jobId}`).then((res) => res.json());
+          if (job.status === "missing") {
+            setGallery((current) => current.map((item) => item.jobId === jobId ? { ...item, status: "error", filename: "Generation interrupted" } : item));
+            return job;
+          }
           if (job.status === "done" || job.status === "error" || job.status === "canceled") return job;
           if (job.preview || job.progress?.max) {
             setGallery((current) => current.map((item) => item.jobId === jobId ? {
@@ -1149,6 +1271,16 @@ function App() {
     event.stopPropagation();
     if (Date.now() - viewerDragEndRef.current < 220) return;
     if (viewerDragRef.current?.moved) return;
+    const canvas = event.currentTarget as HTMLElement;
+    const media = canvas.querySelector("img, video") as HTMLElement | null;
+    if (media) {
+      const rect = media.getBoundingClientRect();
+      const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+      if (!inside) {
+        setActive(null);
+        return;
+      }
+    }
     if (viewerZoom > 1) {
       zoomViewer(1);
     } else {
@@ -1375,7 +1507,8 @@ function App() {
           </aside>
 
           <section className="zen-prompt">
-            <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
+            <textarea ref={zenPromptRef} maxLength={visiblePromptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, visiblePromptLimit))} />
+            <span className={cn("prompt-count", promptRemaining <= 0 && "limit")}>{characterMeta(prompt.length, visiblePromptLimit)}</span>
             <div className={cn("negative-drawer", showNegativePrompt && "open")}>
               <label className="negative-drawer-label">Negative prompt</label>
               <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
@@ -1389,10 +1522,7 @@ function App() {
                   Negative
                 </button></Tip>
                 <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
-                <label className="zen-steps">
-                  <span>Steps</span>
-                  <input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} />
-                </label>
+                <StepsPicker value={steps} onChange={setSteps} />
               </div>
               <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />
@@ -1489,7 +1619,8 @@ function App() {
           </aside>
 
           <section className="zen-prompt">
-            <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
+            <textarea ref={zenPromptRef} maxLength={visiblePromptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, visiblePromptLimit))} />
+            <span className={cn("prompt-count", promptRemaining <= 0 && "limit")}>{characterMeta(prompt.length, visiblePromptLimit)}</span>
             <div className={cn("negative-drawer", showNegativePrompt && "open")}>
               <label className="negative-drawer-label">Negative prompt</label>
               <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
@@ -1503,10 +1634,7 @@ function App() {
                   Negative
                 </button></Tip>
                 <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
-                <label className="zen-steps">
-                  <span>Steps</span>
-                  <input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} />
-                </label>
+                <StepsPicker value={steps} onChange={setSteps} />
               </div>
               <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />

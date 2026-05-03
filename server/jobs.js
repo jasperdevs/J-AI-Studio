@@ -122,7 +122,7 @@ function watchProgress(id, promptId, socket = openProgressSocket(id)) {
 async function runJob(id, body) {
   let socket = null;
   try {
-    const prompt = body.kind === "video" ? videoGraph(body) : await imageGraph(body);
+    const prompt = body.kind === "video" ? await videoGraph(body) : await imageGraph(body);
     socket = openProgressSocket(id);
     await waitForSocketOpen(socket);
     sendSocketFeatureFlags(socket);

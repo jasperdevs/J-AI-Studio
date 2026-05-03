@@ -1,5 +1,6 @@
 import { missingNodes, nodeRange, optionsFor, textRange } from './comfy.js';
 import { workflowFor } from './workflow-registry.js';
+import { loadCustomWorkflows } from './custom-workflows.js';
 
 export function modelBasename(name = "") {
   return String(name).split(/[\\/]/).pop() || name;
@@ -71,6 +72,20 @@ export function aspectSet(defaults, ratios, ranges = {}) {
     seen.add(value);
     return { label, value, w, h, default: w === defaults.width && h === defaults.height };
   }).filter(Boolean);
+}
+
+function customAspectSet(defaults, ratios = [], ranges = {}) {
+  if (!Array.isArray(ratios) || !ratios.length) return aspectSet(defaults, [
+    ["1:1", 1, 1],
+    ["16:9", 16, 9],
+    ["9:16", 9, 16],
+    ["4:3", 4, 3],
+    ["3:4", 3, 4]
+  ], ranges);
+  return ratios.map((item) => {
+    if (Array.isArray(item)) return item;
+    return [item.label || item.value || "Custom", Number(item.w || 1), Number(item.h || 1)];
+  }).length ? aspectSet(defaults, ratios.map((item) => Array.isArray(item) ? item : [item.label || item.value || "Custom", Number(item.w || 1), Number(item.h || 1)]), ranges) : [];
 }
 
 export function buildProfile({ id, kind, label, displayName, description, model, workflow, family, defaults, aspects, options = {}, capabilities = {}, constraints = {} }) {
@@ -259,6 +274,47 @@ export function inferModels(info, stats = {}) {
       options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
       constraints: { prompt: textMeta, negative: textMeta, width: wanRange.width, height: wanRange.height, frames: wanRange.frames, fps: wanRange.fps, ...samplerRange },
       capabilities: { negativePrompt: true, textEncoder: true, vae: true, weightDtype: true }
+    }));
+  }
+
+  for (const workflow of loadCustomWorkflows()) {
+    const missing = missingNodes(info, workflow.requiredNodes);
+    if (missing.length) continue;
+    const defaults = workflow.defaults || {};
+    const controls = workflow.controls || {};
+    const widthRange = controls.width ? nodeRange(info, workflow.graph?.[controls.width.node]?.class_type, controls.width.input, { default: Number(defaults.width || 1024), min: 16, max: 16384, step: 8 }) : {};
+    const heightRange = controls.height ? nodeRange(info, workflow.graph?.[controls.height.node]?.class_type, controls.height.input, { default: Number(defaults.height || 1024), min: 16, max: 16384, step: 8 }) : {};
+    const countRange = controls.count ? nodeRange(info, workflow.graph?.[controls.count.node]?.class_type, controls.count.input, { default: Number(defaults.count || 1), min: 1, max: 4096, step: 1 }) : {};
+    const frameRange = controls.frames ? nodeRange(info, workflow.graph?.[controls.frames.node]?.class_type, controls.frames.input, { default: Number(defaults.frames || 33), min: 1, max: 16384, step: 1 }) : {};
+    const fpsRange = controls.fps ? nodeRange(info, workflow.graph?.[controls.fps.node]?.class_type, controls.fps.input, { default: Number(defaults.fps || 16), min: 1, max: 120, step: 1 }) : {};
+    profiles.push(buildProfile({
+      id: workflow.profileId,
+      kind: workflow.kind,
+      label: workflow.name,
+      displayName: workflow.name,
+      description: workflow.description,
+      model: workflow.profileId,
+      workflow: workflow.profileId,
+      family: workflow.family,
+      defaults: {
+        width: detectedDefault(widthRange, Number(defaults.width || 1024)),
+        height: detectedDefault(heightRange, Number(defaults.height || 1024)),
+        steps: Number(defaults.steps || detectedDefault(samplerRange.steps, workflow.kind === "video" ? 12 : 20)),
+        cfg: Number(defaults.cfg || detectedDefault(samplerRange.cfg, workflow.kind === "video" ? 5 : 7)),
+        sampler: defaults.sampler || samplers[0] || "",
+        scheduler: defaults.scheduler || schedulers[0] || "",
+        textEncoder: defaults.textEncoder || "",
+        vae: defaults.vae || "",
+        clipType: defaults.clipType || "",
+        weightDtype: defaults.weightDtype || "default",
+        frames: detectedDefault(frameRange, Number(defaults.frames || 33)),
+        fps: detectedDefault(fpsRange, Number(defaults.fps || 16)),
+        denoise: Number(defaults.denoise || 1)
+      },
+      aspects: customAspectSet({ width: detectedDefault(widthRange, Number(defaults.width || 1024)), height: detectedDefault(heightRange, Number(defaults.height || 1024)) }, workflow.aspectRatios, { width: widthRange, height: heightRange }),
+      options: { textEncoders: clips, vaes, clipTypes, weightDtypes, samplers, schedulers },
+      constraints: { prompt: textMeta, negative: textMeta, width: widthRange, height: heightRange, count: countRange, frames: frameRange, fps: fpsRange, ...samplerRange },
+      capabilities: workflow.capabilities
     }));
   }
 

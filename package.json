@@ -10,7 +10,7 @@
   "bugs": {
     "url": "https://github.com/jasperdevs/J-AI-Studio/issues"
   },
-  "homepage": "https://github.com/jasperdevs/J-AI-Studio#readme",
+  "homepage": "https://jasperdevs.github.io/J-AI-Studio/",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite --host 127.0.0.1 --port 5173\" \"node server/index.js\"",

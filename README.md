@@ -15,6 +15,8 @@
   ·
   <a href="#features">Features</a>
   ·
+  <a href="https://jasperdevs.github.io/J-AI-Studio/">Website</a>
+  ·
   <a href="#comfyui">ComfyUI</a>
   ·
   <a href="#license">License</a>
@@ -49,6 +51,7 @@ Live ComfyUI previews while an image is running.
 - Live queue/progress cards with cancel controls
 - Persistent local gallery metadata
 - Start-image reuse when the selected ComfyUI workflow supports it
+- Importable ComfyUI API workflow templates
 
 ## Quick Start
 
@@ -134,7 +137,9 @@ The app is meant to be a simpler front end for common ComfyUI image and video ge
 
 Models appear when J AI Studio can detect enough ComfyUI metadata to build a generation workflow for them. If a model needs a custom graph, custom nodes, or special wiring, open it in ComfyUI first and confirm the required nodes are installed.
 
-Workflow support is template-based. To add or change a workflow, add its required ComfyUI nodes and capability metadata in `server/workflow-registry.js`, then wire the prompt graph in `server/graphs.js`.
+Workflow support is template-based. Built-in defaults cover common image/checkpoint/video paths. For anything else, export a ComfyUI API workflow and import it in Settings -> Workflows. Imported workflows appear only when their required ComfyUI nodes are installed.
+
+For custom workflow files, see [`workflows/README.md`](./workflows/README.md).
 
 Start-image controls only appear when the selected workflow exposes the required image input path through ComfyUI.
 

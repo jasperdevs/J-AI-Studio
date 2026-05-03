@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>J AI Studio</title>
+    <meta name="description" content="A simple local image and video UI for ComfyUI, without the graph editor." />
+    <link rel="icon" href="./j-ai-logo.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="J AI Studio home">
+        <img src="./j-ai-logo.png" alt="" />
+        <span>J AI Studio</span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/jasperdevs/J-AI-Studio">GitHub</a>
+        <a class="star-link" href="https://github.com/jasperdevs/J-AI-Studio/stargazers">
+          <span aria-hidden="true">Star</span>
+          <strong id="stars">GitHub</strong>
+        </a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Local ComfyUI studio</p>
+          <h1>A cleaner front end for ComfyUI.</h1>
+          <p class="lead">Generate images and video locally with model-aware controls, live previews, and a gallery built for focus.</p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/jasperdevs/J-AI-Studio">View on GitHub</a>
+            <a class="button secondary" href="https://github.com/jasperdevs/J-AI-Studio#quick-start">Read setup</a>
+          </div>
+        </div>
+        <figure class="hero-frame">
+          <img src="./screenshots/hero.jpg" alt="J AI Studio gallery and controls" />
+        </figure>
+      </section>
+
+      <section class="feature-band" id="features" aria-labelledby="features-title">
+        <div class="section-heading">
+          <p class="eyebrow">Focused by default</p>
+          <h2 id="features-title">The graph stays in ComfyUI. The workspace stays simple.</h2>
+        </div>
+        <div class="feature-grid">
+          <article>
+            <span>01</span>
+            <h3>Prompt-first workspace</h3>
+            <p>Start with the output you want, then tune the controls that matter for the selected model.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Live queue previews</h3>
+            <p>Watch running jobs update from ComfyUI with progress cards and cancel controls.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Zen mode</h3>
+            <p>Switch into a fullscreen flow when you want the prompt and the latest output to take over.</p>
+          </article>
+          <article>
+            <span>04</span>
+            <h3>Workflow templates</h3>
+            <p>Use built-in image and video paths, or import ComfyUI API workflows for custom setups.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="showcase" aria-label="Preview screenshots">
+        <img src="./screenshots/zen.jpg" alt="Zen mode in J AI Studio" />
+        <img src="./screenshots/fullscreen.jpg" alt="Fullscreen output details in J AI Studio" />
+      </section>
+
+      <section class="faq" id="faq" aria-labelledby="faq-title">
+        <div class="section-heading">
+          <p class="eyebrow">FAQ</p>
+          <h2 id="faq-title">Small answers before you install.</h2>
+        </div>
+        <div class="faq-list">
+          <details open>
+            <summary>Does it replace ComfyUI?</summary>
+            <p>No. ComfyUI remains the runtime, graph editor, node source, and model source of truth.</p>
+          </details>
+          <details>
+            <summary>Is it local?</summary>
+            <p>Yes. J AI Studio connects to your local ComfyUI server and keeps generated files in your local setup.</p>
+          </details>
+          <details>
+            <summary>Does it support video?</summary>
+            <p>Yes, when your ComfyUI install exposes compatible video generation nodes and workflow templates.</p>
+          </details>
+          <details>
+            <summary>How do updates work?</summary>
+            <p>Use Settings -> Update in a Git checkout, or run git pull, npm install, and npm run build.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="final-cta">
+        <img src="./j-ai-logo.png" alt="" />
+        <h2>Run it next to ComfyUI.</h2>
+        <p>Open a smaller surface for everyday generation without losing access to the full graph editor.</p>
+        <a class="button primary" href="https://github.com/jasperdevs/J-AI-Studio">Get the source</a>
+      </section>
+    </main>
+
+    <footer>
+      <span>J AI Studio</span>
+      <a href="https://github.com/jasperdevs/J-AI-Studio">GitHub</a>
+      <span>MIT License</span>
+    </footer>
+
+    <script>
+      fetch("https://api.github.com/repos/jasperdevs/J-AI-Studio")
+        .then((response) => response.ok ? response.json() : null)
+        .then((repo) => {
+          if (!repo) return;
+          const stars = document.getElementById("stars");
+          if (stars) stars.textContent = `${repo.stargazers_count} stars`;
+        })
+        .catch(() => {});
+    </script>
+  </body>
+</html>

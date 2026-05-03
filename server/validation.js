@@ -1,6 +1,7 @@
 import { missingNodes, nodeRange, optionsFor } from './comfy.js';
 import { inferModels } from './models.js';
 import { workflowFor, workflowIds } from './workflow-registry.js';
+import { getCustomWorkflow } from './custom-workflows.js';
 
 export function clampNumber(value, fallback, min, max) {
   const number = Number(value);
@@ -40,12 +41,13 @@ export function ensureOption(info, node, key, value, label) {
 export function sanitizeGenerateBody(input = {}, info = {}, stats = {}) {
   const kind = input.kind === "video" ? "video" : "image";
   const workflow = String(input.workflow || "");
-  const workflowInfo = workflowFor(workflow);
+  const customWorkflow = workflow.startsWith("custom:") ? getCustomWorkflow(workflow) : null;
+  const workflowInfo = workflowFor(workflow) || customWorkflow;
   const prompt = String(input.prompt || "").trim();
   if (!prompt) throw new Error("Prompt is required.");
   if (!String(input.model || "").trim()) throw new Error("Choose a supported model first.");
   if (!workflowInfo) throw new Error("This model does not have a supported workflow.");
-  if (!workflowIds().includes(workflow)) throw new Error("This model does not have a supported workflow.");
+  if (!customWorkflow && !workflowIds().includes(workflow)) throw new Error("This model does not have a supported workflow.");
   if (kind !== workflowInfo.kind) throw new Error(`The selected model is not a ${kind} workflow.`);
   const missing = missingNodes(info, workflowInfo.requiredNodes);
   if (missing.length) throw new Error(`ComfyUI is missing required nodes for this model: ${missing.join(", ")}`);
@@ -56,17 +58,23 @@ export function sanitizeGenerateBody(input = {}, info = {}, stats = {}) {
     throw new Error("This workflow needs a text encoder and VAE.");
   }
 
-  ensureOption(info, workflowInfo.modelNode, workflowInfo.modelKey, input.model, "Model");
-  if (workflowInfo.needsTextEncoder) {
+  if (workflowInfo.modelNode && workflowInfo.modelKey) {
+    ensureOption(info, workflowInfo.modelNode, workflowInfo.modelKey, input.model, "Model");
+  }
+  if (customWorkflow?.controls?.model?.node && customWorkflow?.controls?.model?.input && (input.modelName || customWorkflow.defaults?.model)) {
+    const classType = customWorkflow.graph?.[customWorkflow.controls.model.node]?.class_type;
+    ensureOption(info, classType, customWorkflow.controls.model.input, input.modelName || customWorkflow.defaults.model, "Model");
+  }
+  if (workflowInfo.needsTextEncoder || workflowInfo.capabilities?.textEncoder) {
     ensureOption(info, "CLIPLoader", "clip_name", input.textEncoder, "Text encoder");
   }
-  if (workflowInfo.needsVae) {
+  if (workflowInfo.needsVae || workflowInfo.capabilities?.vae) {
     ensureOption(info, "VAELoader", "vae_name", input.vae, "VAE");
   }
   if (input.sampler) ensureOption(info, "KSampler", "sampler_name", input.sampler, "Sampler");
   if (input.scheduler) ensureOption(info, "KSampler", "scheduler", input.scheduler, "Scheduler");
 
-  const latentNode = workflowInfo.latentNode;
+  const latentNode = workflowInfo.latentNode || "EmptyLatentImage";
   const widthRange = nodeRange(info, latentNode, "width", { default: kind === "video" ? 512 : 1024, min: 16, max: 16384 });
   const heightRange = nodeRange(info, latentNode, "height", { default: kind === "video" ? 288 : 1024, min: 16, max: 16384 });
   const countRange = nodeRange(info, latentNode, "batch_size", { default: 1, min: 1, max: 8 });
@@ -83,6 +91,7 @@ export function sanitizeGenerateBody(input = {}, info = {}, stats = {}) {
     prompt,
     negative: String(input.negative || ""),
     model: String(input.model || ""),
+    modelName: String(input.modelName || customWorkflow?.defaults?.model || ""),
     textEncoder: String(input.textEncoder || ""),
     vae: String(input.vae || ""),
     clipType: String(input.clipType || "wan"),

@@ -9,6 +9,7 @@ import { inferModels } from './models.js';
 import { sanitizeGenerateBody } from './validation.js';
 import { dedupeGallery, deleteGalleryFiles, filterVisibleGallery, gallery, galleryLimit, dataDir, hideGalleryItems, makePendingItems, recordsFromComfyHistory, saveGallery, setGallery, cleanupGalleryState, updateGalleryJob } from './gallery-store.js';
 import { jobs, runJob } from './jobs.js';
+import { loadCustomWorkflows, saveCustomWorkflow, userWorkflowsDir } from './custom-workflows.js';
 
 const app = express();
 app.use(express.json({ limit: "25mb" }));
@@ -71,7 +72,23 @@ app.get("/api/models", async (_req, res) => {
 });
 
 app.get("/api/paths", (_req, res) => {
-  res.json({ outputDir: comfyOutputDir, galleryDir: dataDir });
+  res.json({ outputDir: comfyOutputDir, galleryDir: dataDir, workflowsDir: userWorkflowsDir });
+});
+
+app.get("/api/workflows", (_req, res) => {
+  res.json({ workflows: loadCustomWorkflows().map(({ graph, ...workflow }) => workflow) });
+});
+
+app.post("/api/workflows/import", (req, res) => {
+  if (!requireLocal(req, res)) return;
+  try {
+    const raw = req.body?.workflow || req.body;
+    const workflow = saveCustomWorkflow(raw);
+    const { graph, ...summary } = workflow;
+    res.json({ ok: true, workflow: summary });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error.message });
+  }
 });
 
 app.get("/api/gallery", async (_req, res) => {

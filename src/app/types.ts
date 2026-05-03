@@ -42,7 +42,7 @@ export type Models = {
   defaults: Record<string, string>;
   capabilities: Record<string, boolean>;
 };
-export type Paths = { outputDir?: string; galleryDir?: string };
+export type Paths = { outputDir?: string; galleryDir?: string; workflowsDir?: string };
 export type Health = { ok: boolean; comfyUrl?: string; error?: string };
 export type UpdateStatus = { ok: boolean; available?: boolean; current?: string; latest?: string; branch?: string; behind?: number; updated?: boolean; restartRequired?: boolean; message?: string; error?: string };
 export type AspectPreset = { label: string; value: string; w: number; h: number };

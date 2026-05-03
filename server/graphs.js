@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { comfy } from './comfy.js';
+import { getCustomWorkflow } from './custom-workflows.js';
 
 export async function uploadReferenceImage(dataUrl) {
   if (!dataUrl || !dataUrl.includes(",")) return "";
@@ -17,8 +18,58 @@ export async function uploadReferenceImage(dataUrl) {
 }
 
 export async function imageGraph(body) {
+  if (body.workflow?.startsWith("custom:")) return customWorkflowGraph(body);
   if (body.workflow === "checkpoint-image") return checkpointImageGraph(body);
   return unetImageGraph(body);
+}
+
+function cloneGraph(graph) {
+  return JSON.parse(JSON.stringify(graph || {}));
+}
+
+function setMappedInput(graph, mapping, value) {
+  if (!mapping?.node || !mapping?.input || !graph[mapping.node]) return;
+  graph[mapping.node].inputs ||= {};
+  graph[mapping.node].inputs[mapping.input] = value;
+}
+
+async function applyMappedInputs(graph, workflow, body) {
+  const controls = workflow.controls || {};
+  const defaults = workflow.defaults || {};
+  const values = {
+    prompt: body.prompt || "",
+    negative: body.negative || "",
+    model: body.modelName || defaults.model || "",
+    textEncoder: body.textEncoder || defaults.textEncoder || "",
+    vae: body.vae || defaults.vae || "",
+    clipType: body.clipType || defaults.clipType || "",
+    weightDtype: body.weightDtype || defaults.weightDtype || "default",
+    width: Number(body.width || 0),
+    height: Number(body.height || 0),
+    steps: Number(body.steps || 0),
+    cfg: Number(body.cfg || 0),
+    denoise: Number(body.denoise || 1),
+    sampler: body.sampler || "",
+    scheduler: body.scheduler || "",
+    seed: Number(body.seed || crypto.randomInt(1, 2 ** 31)),
+    count: Number(body.count || 1),
+    frames: Number(body.frames || 0),
+    fps: Number(body.fps || 0)
+  };
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== "" && value !== 0) setMappedInput(graph, controls[key], value);
+  }
+  if (body.startImage && controls.startImage) {
+    setMappedInput(graph, controls.startImage, await uploadReferenceImage(body.startImage));
+  }
+}
+
+export async function customWorkflowGraph(body) {
+  const workflow = getCustomWorkflow(body.workflow);
+  if (!workflow) throw new Error("Custom workflow is not installed.");
+  const graph = cloneGraph(workflow.graph);
+  await applyMappedInputs(graph, workflow, body);
+  return graph;
 }
 
 export async function unetImageGraph(body) {
@@ -93,6 +144,7 @@ export async function checkpointImageGraph(body) {
 }
 
 export function videoGraph(body) {
+  if (body.workflow?.startsWith("custom:")) return customWorkflowGraph(body);
   const seed = Number(body.seed || crypto.randomInt(1, 2 ** 31));
   return {
     "1": { class_type: "UNETLoader", inputs: { unet_name: body.model, weight_dtype: body.weightDtype || "default" } },

@@ -49,8 +49,20 @@ export function useGalleryColumnCount() {
 
 export function distributeGalleryColumns(items: GalleryItem[], count: number) {
   const columns = Array.from({ length: Math.max(1, count) }, () => [] as GalleryItem[]);
-  items.forEach((item, index) => columns[index % columns.length].push(item));
+  const heights = columns.map(() => 0);
+  items.forEach((item) => {
+    const target = heights.indexOf(Math.min(...heights));
+    columns[target].push(item);
+    heights[target] += estimatedTileHeight(item);
+  });
   return columns;
+}
+
+function estimatedTileHeight(item: GalleryItem) {
+  const width = Number(item.width || 1);
+  const height = Number(item.height || 1);
+  const ratio = width > 0 && height > 0 ? height / width : 1;
+  return Math.max(0.35, Math.min(2.4, ratio));
 }
 
 export function touchDistance(touches: React.TouchList) {

@@ -974,8 +974,8 @@ function App() {
             <div className="settings-grid">
               <section>
                 <h3>Connection</h3>
-                <div className="setting-row"><span>App</span><strong>http://127.0.0.1:8787</strong></div>
-                <div className="setting-row"><span>ComfyUI</span><strong>http://127.0.0.1:8188</strong></div>
+                <div className="setting-row"><span>Studio</span><strong>127.0.0.1:8787</strong></div>
+                <div className="setting-row"><span>ComfyUI</span><strong>127.0.0.1:8188</strong></div>
                 <div className="setting-actions">
                   <button onClick={refreshModels}>Refresh models</button>
                   <button onClick={() => window.open("http://127.0.0.1:8188", "_blank")}>Open ComfyUI</button>
@@ -986,9 +986,9 @@ function App() {
                 <h3>Installed</h3>
                 <div className="setting-row"><span>Image models</span><strong>{models?.imageModels.length || 0}</strong></div>
                 <div className="setting-row"><span>Video models</span><strong>{models?.videoModels.length || 0}</strong></div>
-                <div className="setting-row"><span>Unsupported</span><strong>{models?.unsupportedModels?.length || 0}</strong></div>
                 <div className="setting-row"><span>Workflow</span><strong>{currentProfile?.family || "None"}</strong></div>
                 <div className="setting-row"><span>Start image</span><strong>{canUseStartImage ? "Available" : "Hidden for this model"}</strong></div>
+                {(models?.unsupportedModels?.length || 0) > 0 ? <div className="setting-row"><span>Unsupported</span><strong>{models?.unsupportedModels?.length || 0}</strong></div> : null}
               </section>
 
               <section>
@@ -1016,22 +1016,25 @@ function App() {
 
               <section>
                 <h3>Experience</h3>
-                <label className="check-row">
+                <label className="toggle-row">
+                  <span>
+                    <strong>Zen mode</strong>
+                    <em>Prompt-first fullscreen layout</em>
+                  </span>
                   <input type="checkbox" checked={prefs.zenMode} onChange={(event) => setPrefs({ zenMode: event.target.checked })} />
-                  Zen mode
                 </label>
               </section>
 
               <section>
                 <h3>Gallery</h3>
-                <div className="setting-row"><span>Visible items</span><strong>{gallery.length}</strong></div>
-                <div className="setting-row"><span>{mode === "image" ? "Images" : "Videos"}</span><strong>{visibleGallery.length}</strong></div>
+                <div className="setting-row"><span>Total items</span><strong>{gallery.length}</strong></div>
+                <div className="setting-row"><span>Current tab</span><strong>{visibleGallery.length} {mode === "image" ? "images" : "videos"}</strong></div>
                 <div className="setting-row"><span>Outputs</span><strong>{paths.outputDir || "Not configured"}</strong></div>
                 <div className="setting-actions">
                   <button onClick={() => paths.outputDir && navigator.clipboard.writeText(paths.outputDir)}>Copy output path</button>
                   <button onClick={openOutputFolder} disabled={!paths.outputDir}>Open output folder</button>
                 </div>
-                <button className="wide-button" onClick={clearGallery}>Clear finished gallery</button>
+                <button className="wide-button subtle-danger" onClick={clearGallery}>Clear finished gallery</button>
               </section>
 
               <section>

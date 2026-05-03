@@ -956,7 +956,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 }
 
 .settings-card {
-  width: min(820px, calc(100vw - 32px));
+  width: min(560px, calc(100vw - 32px));
   max-height: 88vh;
   overflow-y: auto;
   overflow-x: hidden;
@@ -985,13 +985,21 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .settings-card p { color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.5; margin: 4px 0 12px; }
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  padding: 1px;
-  background: hsl(var(--border));
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding: 0;
+  background: hsl(var(--card));
 }
-.settings-grid section { min-width: 0; max-width: 100%; padding: 18px; background: hsl(var(--card)); overflow: hidden; }
-.settings-grid section:nth-last-child(1):nth-child(odd) { grid-column: 1 / -1; }
+.settings-grid section {
+  min-width: 0;
+  max-width: 100%;
+  padding: 18px;
+  background: hsl(var(--card));
+  overflow: hidden;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.settings-grid section:last-child { border-bottom: 0; }
+.settings-grid section:nth-last-child(1):nth-child(odd) { grid-column: auto; }
 
 .setting-row {
   display: grid;

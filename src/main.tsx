@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Settings2,
   SlidersHorizontal,
+  PanelLeft,
   Trash2,
   Wand2,
   X,
@@ -72,6 +73,7 @@ type Preferences = {
   defaultVideoSteps: number;
   defaultFps: number;
   variationQueueMode: "batch" | "separate";
+  zenMode: boolean;
 };
 
 const defaultPrefs: Preferences = {
@@ -80,7 +82,8 @@ const defaultPrefs: Preferences = {
   defaultVideoFrames: 33,
   defaultVideoSteps: 12,
   defaultFps: 16,
-  variationQueueMode: "batch"
+  variationQueueMode: "batch",
+  zenMode: false
 };
 
 const fallbackAspectPresets: Record<Mode, AspectPreset[]> = {
@@ -335,6 +338,8 @@ function App() {
   const [scheduler, setScheduler] = useState(String(initialDraft.scheduler || "beta"));
   const [advanced, setAdvanced] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [zenControls, setZenControls] = useState(false);
+  const [zenSelectedId, setZenSelectedId] = useState("");
   const [status, setStatus] = useState("Ready");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [active, setActive] = useState<GalleryItem | null>(null);
@@ -436,6 +441,29 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [active, gallery, mode]);
 
+  useEffect(() => {
+    if (!prefs.zenMode || active || settings) return;
+    const doneItems = visibleGallery.filter((item) => item.status === "done");
+    const currentIndex = Math.max(0, doneItems.findIndex((item) => item.id === zenSelectedId));
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement) return;
+      if (event.key === "ArrowRight" && doneItems.length) {
+        event.preventDefault();
+        setZenSelectedId(doneItems[(currentIndex + 1) % doneItems.length].id);
+      }
+      if (event.key === "ArrowLeft" && doneItems.length) {
+        event.preventDefault();
+        setZenSelectedId(doneItems[(currentIndex - 1 + doneItems.length) % doneItems.length].id);
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPrefs({ zenMode: false });
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [prefs.zenMode, active, settings, gallery, mode, zenSelectedId]);
+
   function loadGallery() {
     fetch("/api/gallery")
       .then((res) => res.json())
@@ -532,6 +560,9 @@ function App() {
   const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "custom" : aspectValue;
   const visibleGallery = gallery.filter((item) => item.type === mode);
   const runningCount = visibleGallery.filter((item) => item.status === "pending").length;
+  const doneGallery = visibleGallery.filter((item) => item.status === "done");
+  const zenItem = doneGallery.find((item) => item.id === zenSelectedId) || doneGallery[0] || null;
+  const generateDisabled = !currentProfile || (currentProfile.capabilities.textEncoder && !textEncoder) || (currentProfile.capabilities.vae && !vae);
 
   function chooseModel(profileId: string) {
     const profile = models?.profiles.find((item) => item.id === profileId);
@@ -654,6 +685,7 @@ function App() {
 
   function openItem(item: GalleryItem) {
     resetViewer();
+    setZenSelectedId(item.id);
     setShowDetails(false);
     setActive(item);
   }
@@ -691,7 +723,108 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={prefs.zenMode ? "zen-shell" : "app-shell"}>
+      {prefs.zenMode ? (
+        <>
+          <div className="zen-stage">
+            {zenItem ? (
+              <button className="zen-output" onClick={() => openItem(zenItem)} style={{ "--tile-ratio": `${zenItem.width || 1} / ${zenItem.height || 1}` } as React.CSSProperties}>
+                <Media item={zenItem} muted />
+              </button>
+            ) : (
+              <div className="zen-empty">
+                <img src="/j-ai-logo.png" alt="" />
+              </div>
+            )}
+            <div className="zen-fade" />
+          </div>
+
+          <button className="zen-control-button has-tip" data-tip="Controls" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
+            <PanelLeft size={16} />
+          </button>
+          <div className="zen-top-actions">
+            <button className="icon-button has-tip" data-tip="Settings" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
+            <button className="icon-button has-tip" data-tip="Exit zen" aria-label="Exit zen" onClick={() => setPrefs({ zenMode: false })}><X size={15} /></button>
+          </div>
+
+          <aside className={cn("zen-controls", zenControls && "open")}>
+            <div className="mode-tabs" role="tablist" aria-label="Generation mode">
+              <button className={cn(mode === "image" && "active")} onClick={() => changeMode("image")}>Image</button>
+              <button className={cn(mode === "video" && "active")} onClick={() => changeMode("video")}>Video</button>
+            </div>
+            <Field label={mode === "image" ? "Image model" : "Video model"}>
+              <ModelPicker value={model} profiles={modelProfiles} onChange={chooseModel} />
+            </Field>
+            <div className="control-grid">
+              <Field label="Aspect">
+                <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
+              </Field>
+              {mode === "image" ? (
+                <Field label="Variations">
+                  <input type="number" min={1} max={8} value={count} onChange={(event) => setCount(Math.max(1, Math.min(8, Number(event.target.value))))} />
+                </Field>
+              ) : (
+                <Field label="Frames">
+                  <input type="number" min={frameMeta.min || 1} max={frameMeta.max} value={frames} step={frameMeta.step || 4} onChange={(event) => setFrames(Number(event.target.value))} />
+                </Field>
+              )}
+            </div>
+            {customSize ? (
+              <div className="control-grid">
+                <Field label="Width"><input type="number" min={widthMeta.min} max={widthMeta.max} value={width} step={widthMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setWidth(Number(event.target.value))} /></Field>
+                <Field label="Height"><input type="number" min={heightMeta.min} max={heightMeta.max} value={height} step={heightMeta.step || (mode === "video" ? 32 : 64)} onChange={(event) => setHeight(Number(event.target.value))} /></Field>
+              </div>
+            ) : null}
+            <div className="control-grid">
+              <Field label="Steps"><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></Field>
+              {mode === "video" ? (
+                <Field label="FPS"><input type="number" min={1} value={fps} onChange={(event) => setFps(Number(event.target.value))} /></Field>
+              ) : (
+                <Field label="Seed"><input value={seed} placeholder="Random" onChange={(event) => setSeed(event.target.value)} /></Field>
+              )}
+            </div>
+            <button className="advanced-toggle" onClick={() => setAdvanced((value) => !value)}>
+              <span>Advanced</span>
+              <ChevronDown size={14} className={cn(advanced && "flip")} />
+            </button>
+            {advanced ? (
+              <div className="advanced-grid">
+                {currentProfile?.capabilities.textEncoder ? <Field label="Text encoder"><Select value={textEncoder} onChange={setTextEncoder} options={profileOptions.textEncoders || models?.textEncoders || []} /></Field> : null}
+                {currentProfile?.capabilities.vae ? <Field label="VAE"><Select value={vae} onChange={setVae} options={profileOptions.vaes || models?.vaes || []} /></Field> : null}
+                {currentProfile?.capabilities.weightDtype ? <Field label="Weight dtype"><Select value={weightDtype} onChange={setWeightDtype} options={profileOptions.weightDtypes || models?.weightDtypes || []} /></Field> : null}
+                <Field label="CFG"><input type="number" value={cfg} step="0.1" onChange={(event) => setCfg(Number(event.target.value))} /></Field>
+                <Field label="Sampler"><Select value={sampler} onChange={setSampler} options={profileOptions.samplers?.length ? profileOptions.samplers : models?.samplers?.length ? models.samplers : fallbackSamplers} /></Field>
+                <Field label="Scheduler"><Select value={scheduler} onChange={setScheduler} options={profileOptions.schedulers?.length ? profileOptions.schedulers : models?.schedulers?.length ? models.schedulers : fallbackSchedulers} /></Field>
+              </div>
+            ) : null}
+          </aside>
+
+          <section className="zen-prompt">
+            <textarea value={prompt} placeholder="Describe what to make..." onChange={(event) => setPrompt(event.target.value)} />
+            <div className="zen-prompt-actions">
+              <button className="generate" onClick={generate} disabled={generateDisabled}>
+                <Wand2 size={15} />
+                {mode === "image" ? `Generate ${count}` : "Generate video"}
+              </button>
+              <span>{status}</span>
+            </div>
+          </section>
+
+          <section className="zen-negative">
+            <span>Negative</span>
+            <textarea value={negative} placeholder="Things to avoid..." onChange={(event) => setNegative(event.target.value)} />
+          </section>
+
+          <div className="zen-gallery-strip">
+            {doneGallery.slice(0, 10).map((item) => (
+              <button key={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={() => setZenSelectedId(item.id)}>
+                <Media item={item} muted />
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
       <aside className="left-panel">
         <header className="brand">
           <img src="/j-ai-logo.png" alt="" />
@@ -783,7 +916,7 @@ function App() {
           ) : null}
         </section>
 
-        <button className="generate" onClick={generate} disabled={!currentProfile || (currentProfile.capabilities.textEncoder && !textEncoder) || (currentProfile.capabilities.vae && !vae)}>
+        <button className="generate" onClick={generate} disabled={generateDisabled}>
           <Wand2 size={15} />
           {mode === "image" ? `Generate ${count}` : "Generate video"}
         </button>
@@ -825,6 +958,8 @@ function App() {
           )}
         </section>
       </main>
+        </>
+      )}
 
       {settings ? (
         <div className="viewer" onClick={() => setSettings(false)}>
@@ -877,6 +1012,14 @@ function App() {
                     ]}
                   />
                 </Field>
+              </section>
+
+              <section>
+                <h3>Experience</h3>
+                <label className="check-row">
+                  <input type="checkbox" checked={prefs.zenMode} onChange={(event) => setPrefs({ zenMode: event.target.checked })} />
+                  Zen mode
+                </label>
               </section>
 
               <section>

@@ -755,6 +755,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .zen-prompt-actions .generate {
   margin-left: 0;
   flex: 0 0 auto;
+  min-height: 40px;
   height: 40px;
   padding: 0 16px;
   font-size: 13px;
@@ -823,6 +824,15 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .negative-toggle svg.flip { transform: rotate(180deg); }
 
 .zen-inline-settings .number-picker { height: 40px; }
+.zen-prompt-actions .model-trigger,
+.zen-prompt-actions .aspect-picker > button,
+.zen-prompt-actions .number-picker,
+.zen-prompt-actions .negative-toggle,
+.zen-prompt-actions .generate {
+  height: 40px;
+  min-height: 40px;
+  box-sizing: border-box;
+}
 .zen-inline-settings .number-picker-btn { width: 28px; height: 34px; }
 .zen-inline-settings .number-picker-value,
 .zen-inline-settings .number-picker-input { height: 34px; min-width: 28px; padding: 0 6px; font-size: 13px; }
@@ -1093,6 +1103,8 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: transform 240ms var(--spring), box-shadow 220ms var(--ease-out);
+  content-visibility: auto;
+  contain-intrinsic-size: 320px;
 }
 .tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .tile img, .tile video, .generating {
@@ -1105,6 +1117,8 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
     hsl(var(--input));
   background-size: 220% 100%;
   overflow: hidden;
+  content-visibility: auto;
+  contain-intrinsic-size: 320px;
 }
 .tile img.media-loading,
 .tile video.media-loading {
@@ -1204,7 +1218,14 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .tile-hover-actions .tile-delete:hover { background: hsl(var(--destructive) / 0.86); }
 
 @media (hover: hover) {
-  .tile:hover .tile-action, .tile:hover .tile-delete, .tile:hover .tile-hover-actions { opacity: 1; }
+  .tile:hover .tile-action,
+  .tile:hover .tile-delete,
+  .tile:hover .tile-hover-actions,
+  .tile:focus-within .tile-action,
+  .tile:focus-within .tile-delete,
+  .tile:focus-within .tile-hover-actions {
+    opacity: 1;
+  }
 }
 @media (hover: none) {
   .tile-action, .tile-delete, .tile-hover-actions { opacity: 1; }
@@ -1811,6 +1832,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out);
 }
 .setting-actions button:hover, .wide-button:hover { background: hsl(var(--accent)); border-color: hsl(var(--border-strong)); }

@@ -78,8 +78,8 @@ function Tooltip({
   const slideOffset = getSlideOffset(side);
 
   return (
-    <TooltipPrimitive.Provider delayDuration={delayDuration}>
-      <TooltipPrimitive.Root open={open} onOpenChange={(v) => { setInternalOpen(v); onOpenChangeProp?.(v); }}>
+    <TooltipPrimitive.Provider delayDuration={delayDuration} skipDelayDuration={0}>
+      <TooltipPrimitive.Root disableHoverableContent open={open} onOpenChange={(v) => { setInternalOpen(v); onOpenChangeProp?.(v); }}>
         <TooltipPrimitive.Trigger asChild>
           {children}
         </TooltipPrimitive.Trigger>
@@ -88,6 +88,7 @@ function Tooltip({
             <TooltipPrimitive.Content
               side={side}
               sideOffset={sideOffset}
+              collisionPadding={8}
               forceMount
               className="z-50"
               style={{ pointerEvents: "none" }}

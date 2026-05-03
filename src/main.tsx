@@ -18,6 +18,7 @@ import {
   ChevronUp,
   Copy,
   Download,
+  Github,
   Minus,
   Plus,
   RotateCcw,
@@ -176,14 +177,18 @@ function settingMax(meta?: { max?: number }) {
   return Number.isFinite(meta?.max) && Number(meta?.max) > 0 ? Number(meta?.max) : undefined;
 }
 
-function characterMeta(length: number, limit?: number) {
+function textLength(text: string) {
+  return Array.from(text).length;
+}
+
+function characterMeta(text: string, limit?: number) {
+  const length = textLength(text);
   if (!limit) return `${length.toLocaleString()} chars`;
-  const remaining = Math.max(0, limit - length);
-  return remaining === 0 ? "Limit reached" : `${remaining.toLocaleString()} left`;
+  return `${length.toLocaleString()} / ${limit.toLocaleString()}`;
 }
 
 function clampText(text: string, limit?: number) {
-  return limit ? text.slice(0, limit) : text;
+  return limit ? Array.from(text).slice(0, limit).join("") : text;
 }
 
 function fullGenerationText(item: GalleryItem) {
@@ -426,7 +431,7 @@ function Select({ value, onChange, options }: { value: string; onChange: (value:
 
 function Tip({ content, side = "bottom", children }: { content: React.ReactNode; side?: "top" | "right" | "bottom" | "left"; children: React.ReactElement }) {
   return (
-    <FluidTooltip content={content} side={side} sideOffset={10}>
+    <FluidTooltip content={content} side={side} sideOffset={8} delayDuration={120}>
       {children}
     </FluidTooltip>
   );
@@ -1088,7 +1093,7 @@ function App() {
   const fpsMeta = currentProfile?.constraints?.fps || {};
   const promptLimit = settingMax(currentProfile?.constraints?.prompt);
   const negativeLimit = settingMax(currentProfile?.constraints?.negative);
-  const promptRemaining = promptLimit ? Math.max(0, promptLimit - prompt.length) : undefined;
+  const promptRemaining = promptLimit ? Math.max(0, promptLimit - textLength(prompt)) : undefined;
   const profileOptions = currentProfile?.options || {};
   const aspectValue = `${width}x${height}`;
   const aspectPickerValue = customSize || !aspectOptions.some((item) => item.value === aspectValue) ? "custom" : aspectValue;
@@ -1679,12 +1684,12 @@ function App() {
           </aside>
 
           <section className="zen-prompt">
-            <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(clampText(event.target.value, promptLimit))} />
-            <span className={cn("prompt-count", promptRemaining === 0 && "limit")}>{characterMeta(prompt.length, promptLimit)}</span>
+            <textarea ref={zenPromptRef} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(clampText(event.target.value, promptLimit))} />
+            <span className={cn("prompt-count", promptRemaining === 0 && "limit")}>{characterMeta(prompt, promptLimit)}</span>
             <div data-open-surface className={cn("negative-drawer", showNegativePrompt && "open")}>
               <label className="negative-drawer-label">Negative prompt</label>
-              <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(clampText(event.target.value, negativeLimit))} />
-              <span>{characterMeta(negative.length, negativeLimit)}</span>
+              <textarea value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(clampText(event.target.value, negativeLimit))} />
+              <span>{characterMeta(negative, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
               <div className="prompt-left-actions">
@@ -1773,9 +1778,9 @@ function App() {
               {item.status === "pending" ? <Tip content="Cancel generation"><span className="tile-action" onClick={(event) => { event.stopPropagation(); cancelJob(item.jobId); }}>Cancel</span></Tip> : null}
               {item.status !== "pending" ? (
                 <span className="tile-hover-actions">
-                  {item.url ? <Tip content="Download"><a className="tile-icon" aria-label="Download" href={item.url} download onClick={(event) => event.stopPropagation()}><Download size={13} /></a></Tip> : null}
-                  {item.status === "done" ? <Tip content="Copy"><span className="tile-icon" role="button" aria-label="Copy" onClick={(event) => { event.stopPropagation(); copyImageAndToast(item); }}><Copy size={14} /></span></Tip> : null}
-                  <Tip content="Delete from gallery"><span className="tile-delete" role="button" aria-label="Delete from gallery" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={14} /></span></Tip>
+                  {item.url ? <Tip content="Download" side="left"><a className="tile-icon" aria-label="Download" href={item.url} download onClick={(event) => event.stopPropagation()}><Download size={13} /></a></Tip> : null}
+                  {item.status === "done" ? <Tip content="Copy" side="left"><span className="tile-icon" role="button" aria-label="Copy" onClick={(event) => { event.stopPropagation(); copyImageAndToast(item); }}><Copy size={14} /></span></Tip> : null}
+                  <Tip content="Delete from gallery" side="left"><span className="tile-delete" role="button" aria-label="Delete from gallery" onClick={(event) => { event.stopPropagation(); deleteItem(item); }}><Trash2 size={14} /></span></Tip>
                 </span>
               ) : null}
             </button>
@@ -1806,12 +1811,12 @@ function App() {
           </aside>
 
           <section className="zen-prompt">
-            <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(clampText(event.target.value, promptLimit))} />
-            <span className={cn("prompt-count", promptRemaining === 0 && "limit")}>{characterMeta(prompt.length, promptLimit)}</span>
+            <textarea ref={zenPromptRef} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(clampText(event.target.value, promptLimit))} />
+            <span className={cn("prompt-count", promptRemaining === 0 && "limit")}>{characterMeta(prompt, promptLimit)}</span>
             <div data-open-surface className={cn("negative-drawer", showNegativePrompt && "open")}>
               <label className="negative-drawer-label">Negative prompt</label>
-              <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(clampText(event.target.value, negativeLimit))} />
-              <span>{characterMeta(negative.length, negativeLimit)}</span>
+              <textarea value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(clampText(event.target.value, negativeLimit))} />
+              <span>{characterMeta(negative, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
               <div className="prompt-left-actions">
@@ -1863,7 +1868,7 @@ function App() {
                   </div>
                 </div>
                 <div className="setting-actions single">
-                  <Tip content="Open the public GitHub repo"><a className="wide-button link-button" href={githubUrl} target="_blank" rel="noreferrer">GitHub</a></Tip>
+                  <Tip content="Open the public GitHub repo"><a className="wide-button link-button" href={githubUrl} target="_blank" rel="noreferrer"><Github size={15} /> GitHub</a></Tip>
                 </div>
               </section>
 

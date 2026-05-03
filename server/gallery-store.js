@@ -31,7 +31,11 @@ export function setGallery(items) {
 function loadHiddenGalleryIds() {
   try {
     const raw = JSON.parse(fs.readFileSync(hiddenGalleryPath, "utf8"));
-    if (Array.isArray(raw)) return new Map(raw.map((key) => [key, 0]));
+    if (Array.isArray(raw)) {
+      const migrated = new Map(raw.filter((key) => !String(key).startsWith("/comfy/view?")).map((key) => [key, Date.now()]));
+      fs.writeFileSync(hiddenGalleryPath, JSON.stringify(Object.fromEntries(migrated), null, 2));
+      return migrated;
+    }
     return new Map(Object.entries(raw).map(([key, value]) => [key, Number(value) || 0]));
   } catch {
     return new Map();

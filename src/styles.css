@@ -22,9 +22,9 @@ button { color: inherit; }
 .left-panel { border-right: 1px solid var(--line); padding: 14px; background: var(--panel); overflow: auto; }
 .workspace { display: grid; grid-template-rows: auto 1fr; gap: 12px; padding: 14px; min-width: 0; }
 
-.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.brand { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+.brand img { width: 24px; height: 24px; display: block; filter: invert(1); }
 .brand h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: 0; }
-.brand p { margin: 1px 0 0; color: var(--muted); font-size: 12px; }
 
 .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: #070707; margin-bottom: 10px; }
 .mode-tabs button, .advanced-toggle, .generate, .icon-button, .tile, .danger-button { border: 1px solid transparent; background: transparent; cursor: pointer; transition: border-color 140ms ease, background 140ms ease, opacity 140ms ease; }
@@ -80,7 +80,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--soft); }
 
 .empty { grid-column: 1 / -1; text-align: center; align-self: center; justify-self: center; max-width: 360px; color: var(--muted); }
 .empty h2 { color: var(--text); font-size: 19px; font-weight: 600; margin: 12px 0 5px; letter-spacing: 0; }
-.empty p { line-height: 1.45; margin: 0; font-size: 13px; }
 
 .viewer { position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 20; display: grid; place-items: center; padding: 22px; }
 .viewer-bar { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; }

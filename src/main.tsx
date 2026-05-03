@@ -289,10 +289,8 @@ function App() {
     <div className="app-shell">
       <aside className="left-panel">
         <header className="brand">
-          <div>
-            <h1>J AI Studio</h1>
-            <p>Local Comfy, simple prompts.</p>
-          </div>
+          <img src="/j-ai-logo.png" alt="" />
+          <h1>J AI Studio</h1>
         </header>
 
         <div className="mode-tabs" role="tablist" aria-label="Generation mode">
@@ -390,7 +388,6 @@ function App() {
           )) : (
             <div className="empty">
               <h2>No outputs yet</h2>
-              <p>Start a batch and each pending result appears here while Comfy renders.</p>
             </div>
           )}
         </section>
@@ -402,7 +399,6 @@ function App() {
             <header>
               <div>
                 <h2>Settings</h2>
-                <p>Local server and generation defaults.</p>
               </div>
               <button className="icon-button" onClick={() => setSettings(false)}><X size={15} /></button>
             </header>
@@ -447,7 +443,6 @@ function App() {
 
               <section>
                 <h3>Localhost</h3>
-                <p>Stops J AI Studio. ComfyUI can keep running for the next launch.</p>
                 <button className="danger-button" onClick={shutdown}><Power size={15} /> Close localhost</button>
               </section>
             </div>

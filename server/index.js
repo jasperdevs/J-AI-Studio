@@ -517,23 +517,28 @@ function cleanupGalleryState() {
 }
 
 function generationSettings(body) {
-  return {
+  const settings = {
     workflow: body.workflow || "",
     steps: Number(body.steps || 0),
     cfg: Number(body.cfg || 0),
     sampler: body.sampler || "",
     scheduler: body.scheduler || "",
     seed: body.seed || "Random",
-    count: Number(body.count || 1),
-    frames: Number(body.frames || 0),
-    fps: Number(body.fps || 0),
-    denoise: Number(body.denoise || 0),
     textEncoder: body.textEncoder || "",
     vae: body.vae || "",
     clipType: body.clipType || "",
     weightDtype: body.weightDtype || "",
     referenceImageName: body.startImageName || ""
   };
+  if (body.kind === "image") {
+    settings.count = Number(body.count || 1);
+    if (body.startImage) settings.denoise = Number(body.denoise || 0);
+  }
+  if (body.kind === "video") {
+    settings.frames = Number(body.frames || 0);
+    settings.fps = Number(body.fps || 0);
+  }
+  return settings;
 }
 
 function replaceGalleryJob(id, outputs, body, status = "done") {

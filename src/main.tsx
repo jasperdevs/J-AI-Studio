@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { Toaster, toast } from "sonner";
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-500.css";
 import "@fontsource/inter/latin-600.css";
@@ -29,7 +30,6 @@ type GenerationSettings = Record<string, string | number | boolean | null | unde
 type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; width?: number; height?: number; createdAt?: string; durationMs?: number; model?: string; settings?: GenerationSettings; referenceImage?: string; referenceImageName?: string };
 type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress };
 type SelectOption = { label: string; value: string };
-type Toast = { id: string; message: string; tone?: "default" | "success" | "error" };
 type Profile = {
   id: string;
   kind: Mode;
@@ -169,6 +169,36 @@ function fullGenerationText(item: GalleryItem) {
   return lines.join("\n");
 }
 
+function generationDetailEntries(item: GalleryItem) {
+  const settings = item.settings || {};
+  const rows: Array<[string, string]> = [];
+  const add = (label: string, value: unknown) => {
+    if (value === "" || value === undefined || value === null || value === 0 || value === false) return;
+    rows.push([label, String(value)]);
+  };
+  add("Workflow", settings.workflow);
+  add("Steps", settings.steps);
+  add("CFG", settings.cfg);
+  add("Sampler", settings.sampler);
+  add("Scheduler", settings.scheduler);
+  add("Seed", settings.seed);
+  if (item.type === "image") {
+    const count = Number(settings.count || 0);
+    if (count > 1) add("Images", count);
+    if (item.referenceImage || settings.referenceImageName) add("Reference", settings.referenceImageName || item.referenceImageName || "Selected");
+    if (item.referenceImage || settings.referenceImageName) add("Denoise", settings.denoise);
+  }
+  if (item.type === "video") {
+    add("Frames", settings.frames);
+    add("FPS", settings.fps);
+  }
+  add("Text encoder", settings.textEncoder);
+  add("VAE", settings.vae);
+  add("CLIP type", settings.clipType);
+  add("Weight dtype", settings.weightDtype);
+  return rows;
+}
+
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -188,6 +218,21 @@ async function copyText(text: string) {
     } catch {
       return false;
     }
+  }
+}
+
+async function copyImage(item: GalleryItem) {
+  if (item.type !== "image") return copyText(item.url);
+  try {
+    const response = await fetch(item.url);
+    const blob = await response.blob();
+    const type = blob.type || "image/png";
+    await navigator.clipboard.write([
+      new ClipboardItem({ [type]: blob })
+    ]);
+    return true;
+  } catch {
+    return copyText(item.url);
   }
 }
 
@@ -367,7 +412,6 @@ function App() {
   const [zenGalleryOpen, setZenGalleryOpen] = useState(true);
   const [zenSelectedId, setZenSelectedId] = useState("");
   const [status, setStatus] = useState("Ready");
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [active, setActive] = useState<GalleryItem | null>(null);
   const [viewerZoom, setViewerZoom] = useState(1);
@@ -560,12 +604,10 @@ function App() {
     setPrefs({ zenMode: enabled });
   }
 
-  function showToast(message: string, tone: Toast["tone"] = "default") {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    setToasts((current) => [{ id, message, tone }, ...current].slice(0, 4));
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 2400);
+  function showToast(message: string, tone: "default" | "success" | "error" = "default") {
+    if (tone === "success") toast.success(message);
+    else if (tone === "error") toast.error(message);
+    else toast(message);
   }
 
   async function copyAndToast(text: string, message = "Copied") {
@@ -575,6 +617,11 @@ function App() {
     }
     const copied = await copyText(text);
     showToast(copied ? message : "Copy failed", copied ? "success" : "error");
+  }
+
+  async function copyImageAndToast(item: GalleryItem) {
+    const copied = await copyImage(item);
+    showToast(copied ? (item.type === "image" ? "Image copied" : "Output link copied") : "Copy failed", copied ? "success" : "error");
   }
 
   function refreshModels(notify = true) {
@@ -906,6 +953,10 @@ function App() {
 
   function clickViewer(event: React.MouseEvent) {
     event.stopPropagation();
+    if (event.target === event.currentTarget) {
+      setActive(null);
+      return;
+    }
     if (viewerDragRef.current?.moved) return;
     if (viewerZoom > 1) {
       zoomViewer(1);
@@ -1333,7 +1384,7 @@ function App() {
                   <button className="text-button viewer-zoom has-tip" data-tip="Reset zoom (0)" onClick={resetViewer}><RotateCcw size={13} /> {Math.round(viewerZoom * 100)}%</button>
                   <button className="icon-button has-tip" data-tip="Zoom in (+)" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)}><ZoomIn size={15} /></button>
                   <span className="viewer-divider" />
-                  <button className="icon-button has-tip" data-tip="Copy output link" aria-label="Copy output link" onClick={() => copyAndToast(active.url, "Output link copied")}><Copy size={15} /></button>
+                  <button className="icon-button has-tip" data-tip={active.type === "image" ? "Copy image" : "Copy output link"} aria-label={active.type === "image" ? "Copy image" : "Copy output link"} onClick={() => copyImageAndToast(active)}><Copy size={15} /></button>
                   <a className="icon-button has-tip" data-tip="Download file" aria-label="Download file" href={active.url} download><Download size={15} /></a>
                   <button className="icon-button danger-tone has-tip" data-tip="Delete (Del)" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button>
                   <span className="viewer-divider" />
@@ -1383,12 +1434,19 @@ function App() {
                         <span>Output</span><strong>{active.outputName || active.filename}</strong>
                         {active.createdAt ? <><span>Generated</span><strong>{formatGeneratedAt(active.createdAt)}</strong></> : null}
                         {active.durationMs ? <><span>Time</span><strong>{formatElapsed(active.durationMs)}</strong></> : null}
-                        {Object.entries(active.settings || {}).map(([key, value]) => value ? (
-                          <React.Fragment key={key}>
-                            <span>{key}</span><strong>{String(value)}</strong>
-                          </React.Fragment>
-                        ) : null)}
                       </div>
+                      {generationDetailEntries(active).length ? (
+                        <details className="settings-disclosure">
+                          <summary>Generation settings</summary>
+                          <div className="detail-grid">
+                            {generationDetailEntries(active).map(([key, value]) => (
+                              <React.Fragment key={key}>
+                                <span>{key}</span><strong>{value}</strong>
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        </details>
+                      ) : null}
                     </div>
                     <div className="viewer-side-foot">
                       <button onClick={() => copyAndToast(active.prompt || "", "Prompt copied")}>Copy prompt</button>
@@ -1397,39 +1455,19 @@ function App() {
                   </aside>
                 ) : null}
               </div>
-              {hasNeighbors ? (
-                <footer className="viewer-strip" onClick={(event) => event.stopPropagation()}>
-                  {doneItems.map((item) => (
-                    <button
-                      key={item.id}
-                      className={cn("viewer-thumb", item.id === active.id && "active")}
-                      aria-label={`View ${titleFromPrompt(item.prompt || item.filename) || item.filename}`}
-                      onClick={() => { resetViewer(); setActive(item); }}
-                    >
-                      <Media item={item} muted />
-                    </button>
-                  ))}
-                </footer>
-              ) : null}
             </div>
           </div>
         );
       })() : null}
 
-      <div className="toast-stack" role="status" aria-live="polite" aria-atomic="true">
-        {toasts.map((toast) => (
-          <div key={toast.id} className={cn("toast", toast.tone)}>
-            {toast.message}
-          </div>
-        ))}
-      </div>
+      <Toaster theme="dark" position="bottom-right" richColors closeButton toastOptions={{ className: "sonner-toast" }} />
     </div>
   );
 }
 
 function Media({ item, muted = false }: { item: Output; muted?: boolean }) {
-  if (item.type === "video") return <video src={item.url} controls={!muted} muted={muted} loop autoPlay={muted} />;
-  return <img src={item.url} alt={item.filename} />;
+  if (item.type === "video") return <video src={item.url} controls={!muted} muted={muted} loop autoPlay={muted} draggable={false} />;
+  return <img src={item.url} alt={item.filename} draggable={false} onDragStart={(e) => e.preventDefault()} />;
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

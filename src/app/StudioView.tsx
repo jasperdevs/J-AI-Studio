@@ -1,12 +1,12 @@
-// @ts-nocheck
 import React from 'react';
 import { Toaster } from 'sonner';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, Github, Maximize2, Minimize2, PanelLeft, RotateCcw, Settings, SlidersHorizontal, Trash2, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { githubUrl } from './constants';
-import { cn, fullGenerationText } from './format';
+import { cn } from './format';
 import { AspectPicker, Field, GallerySkeleton, Media, ModelPicker, NumberPicker, Skeleton, StudioSelect as Select, Tip } from './components';
+import type { GalleryItem } from './types';
 export function StudioView({ view }: { view: Record<string, any> }) {
-  const { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, characterMeta, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, doneGallery, zenGallery, formatElapsed, gallery, galleryColumnCount, galleryColumns, galleryLoaded, galleryStageRef, generate, generationDetailEntries, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, settings, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, status, steps, stepsMeta, stopViewerDrag, submitZenPrompt, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenSelectedId, zenStripDragRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, titleFromPrompt, zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, setPrefs } = view;
+  const { active, applyAllSettings, applyAspect, aspectOptions, aspectPickerValue, aspectValue, defaultAspectSize, canUseStartImage, cancelJob, cancelQueue, characterMeta, clearAllCache, clearFailedItems, clearGallery, clickViewer, copyAndToast, copyImageAndToast, count, countMeta, currentProfile, customSize, deleteItem, zenGallery, formatElapsed, gallery, galleryColumnCount, galleryColumns, galleryLoaded, galleryStageRef, generate, generationDetailEntries, goLatestZen, hasMoreGallery, health, height, heightMeta, isDraggingViewer, isMobile, loadMoreGalleryItems, mode, model, modelProfiles, models, moveViewer, moveViewerTouch, moveZen, negative, negativeLimit, now, onGalleryScroll, openItem, openOutputFolder, paths, prefs, prompt, promptLimit, refreshHealth, refreshModels, resetAllSettings, resetViewer, runningCount, setActive, setCount, setHeight, setNegative, setPrompt, setSettings, setShowDetails, setShowGenerationSettings, setShowNegativePrompt, setSteps, setWidth, setZenControls, setZenGalleryOpen, setZenMode, showDetails, settings, showGenerationSettings, showNegativePrompt, sidebarControls, startViewerDrag, startViewerTouch, steps, stepsMeta, stopViewerDrag, submitZenPrompt, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, wheelViewer, width, widthMeta, zenControls, zenDisplayItem, zenGalleryOpen, zenItem, zenPromptRef, zenStripRef, dragViewer, dragZenStrip, endViewerTouch, selectZenItem, startZenStripDrag, stopZenStripDrag, titleFromPrompt, zoomViewer, clampText, promptRemaining, chooseModel, visibleGallery, setPrefs } = view;
   return (
     <div className={cn(prefs.zenMode ? "zen-shell" : "app-shell", showNegativePrompt && "negative-open")}>
       {prefs.zenMode ? (
@@ -77,7 +77,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
               <Tip content="Next output"><button aria-label="Next output" onClick={() => moveZen(1)}><ChevronRight size={22} /></button></Tip>
             </div>
           ) : null}
-          <Tip content="Controls"><button data-open-trigger className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
+          <Tip content="Controls"><button data-open-trigger className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value: boolean) => !value)}>
             <PanelLeft size={16} />
           </button></Tip>
           {zenItem ? (
@@ -110,7 +110,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
             </div>
             <div className="zen-prompt-actions">
               <div className="prompt-left-actions">
-                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
+                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value: boolean) => !value)}>
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative
                 </button></Tip>
@@ -145,7 +145,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                 onPointerUp={stopZenStripDrag}
                 onPointerCancel={stopZenStripDrag}
               >
-                {zenGallery.map((item) => (
+                {zenGallery.map((item: GalleryItem) => (
                   <Tip key={item.id} content={titleFromPrompt(item.prompt || item.filename)}><button data-zen-id={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={(event) => { event.stopPropagation(); selectZenItem(item.id); }} onDragStart={(event) => event.preventDefault()}>
                     <Media item={item} muted />
                   </button></Tip>
@@ -158,9 +158,9 @@ export function StudioView({ view }: { view: Record<string, any> }) {
         <>
           <main ref={galleryStageRef} className="stage-gallery" onScroll={onGalleryScroll}>
             <section className="gallery" style={{ "--gallery-columns": galleryColumnCount } as React.CSSProperties}>
-          {!galleryLoaded ? <GallerySkeleton columns={galleryColumnCount} /> : visibleGallery.length ? galleryColumns.map((column, columnIndex) => (
+          {!galleryLoaded ? <GallerySkeleton columns={galleryColumnCount} /> : visibleGallery.length ? galleryColumns.map((column: GalleryItem[], columnIndex: number) => (
             <div className="gallery-column" key={`gallery-column-${columnIndex}`}>
-              {column.map((item) => {
+              {column.map((item: GalleryItem) => {
             const ratio = item.progress?.max ? Math.min(1, Math.max(0, item.progress.value / item.progress.max)) : 0;
             const indeterminate = !item.progress?.max;
             return (
@@ -216,7 +216,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
             ) : null}
             <div className="bottom-fade" />
           </main>
-          <Tip content="Controls"><button data-open-trigger className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
+          <Tip content="Controls"><button data-open-trigger className="zen-control-button" aria-label="Controls" onClick={() => setZenControls((value: boolean) => !value)}>
             <PanelLeft size={16} />
           </button></Tip>
           <div className="zen-top-actions">
@@ -238,7 +238,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
             </div>
             <div className="zen-prompt-actions">
               <div className="prompt-left-actions">
-                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value) => !value)}>
+                <Tip content={showNegativePrompt ? "Hide negative prompt" : "Show negative prompt"}><button data-open-trigger type="button" className={cn("negative-toggle", showNegativePrompt && "active")} onClick={() => setShowNegativePrompt((value: boolean) => !value)}>
                   <ChevronUp size={13} className={cn(!showNegativePrompt && "flip")} />
                   Negative
                 </button></Tip>
@@ -391,7 +391,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
         </div>
       ) : null}
       {active ? (() => {
-        const viewerItems = visibleGallery.filter((item) => item.status === "pending" || item.status === "done" || item.status === "error");
+        const viewerItems = visibleGallery.filter((item: GalleryItem) => item.status === "pending" || item.status === "done" || item.status === "error");
         const hasNeighbors = viewerItems.length > 1;
         return (
           <div className="scrim" onClick={(event) => {
@@ -465,7 +465,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                         <details className="settings-disclosure" open={showGenerationSettings} onToggle={(event) => setShowGenerationSettings(event.currentTarget.open)}>
                           <summary>Generation settings</summary>
                           <div className="detail-grid">
-                            {generationDetailEntries(active).map(([key, value]) => (
+                            {generationDetailEntries(active).map(([key, value]: [string, string]) => (
                               <React.Fragment key={key}>
                                 <span>{key}</span><strong>{value}</strong>
                               </React.Fragment>
@@ -485,7 +485,7 @@ export function StudioView({ view }: { view: Record<string, any> }) {
                   {active.url ? <Tip content="Download file"><a className="icon-button" aria-label="Download file" href={active.url} download><Download size={15} /></a></Tip> : null}
                   <Tip content="Delete (Del)"><button className="icon-button danger-tone" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button></Tip>
                   <span className="viewer-divider" />
-                  <Tip content={showDetails ? "Hide details" : "Show details"}><button className={cn("icon-button", showDetails && "active")} aria-label="Toggle details" aria-pressed={showDetails} onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={15} /></button></Tip>
+                  <Tip content={showDetails ? "Hide details" : "Show details"}><button className={cn("icon-button", showDetails && "active")} aria-label="Toggle details" aria-pressed={showDetails} onClick={() => setShowDetails((value: boolean) => !value)}><SlidersHorizontal size={15} /></button></Tip>
                   <Tip content="Close (Esc)"><button className="icon-button" aria-label="Close" onClick={() => setActive(null)}><X size={16} /></button></Tip>
                 </div>
               </div>

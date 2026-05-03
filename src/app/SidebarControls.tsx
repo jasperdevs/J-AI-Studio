@@ -1,12 +1,10 @@
-// @ts-nocheck
-import React from 'react';
 import { fallbackSamplers, fallbackSchedulers } from './constants';
 import { cn } from './format';
 import { Field, NumberPicker, Skeleton, StudioSelect as Select, Tip } from './components';
 
 export function SidebarControls({ view }: { view: any }) {
   const {
-    canUseStartImage, cfg, cfgMeta, changeMode, clipType, currentProfile, customSize, denoise,
+    canUseStartImage, cfg, cfgMeta, changeMode, currentProfile, customSize, denoise,
     denoiseMeta, fps, fpsMeta, frameMeta, frames, height, heightMeta, mode, models,
     profileOptions, readStartImage, sampler, scheduler, seed, setCfg, setDenoise, setFps,
     setFrames, setHeight, setSampler, setScheduler, setSeed, setStartImage, setStartImageName,

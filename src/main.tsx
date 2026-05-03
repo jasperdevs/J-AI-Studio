@@ -1,46 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Toaster, toast } from "sonner";
-import {
-  Select as FluidSelect,
-  SelectContent as FluidSelectContent,
-  SelectItem as FluidSelectItem,
-  SelectTrigger as FluidSelectTrigger
-} from "@/components/ui/select";
-import { Tooltip as FluidTooltip } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-500.css";
 import "@fontsource/inter/latin-600.css";
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Copy,
-  Download,
-  Github,
-  Minus,
-  Plus,
-  RotateCcw,
-  Maximize2,
-  Minimize2,
-  Settings,
-  SlidersHorizontal,
-  PanelLeft,
-  Trash2,
-  Wand2,
-  X,
-  ZoomIn,
-  ZoomOut
-} from "lucide-react";
 import "./styles.css";
 
-import type { AspectPreset, GalleryItem, Health, Job, Mode, Models, Output, Paths, Preferences, Profile, TouchGesture } from './app/types';
-import { defaultPrefs, fallbackAspectPresets, fallbackSamplers, fallbackSchedulers, galleryBatchSize, galleryInitialBatch, githubUrl } from './app/constants';
+import type { GalleryItem, Health, Mode, Models, Paths, Preferences, Profile, TouchGesture } from './app/types';
+import { fallbackAspectPresets, galleryBatchSize, galleryInitialBatch } from './app/constants';
 import { apiJson, copyImage, copyText, loadDraft, loadPrefs } from './app/api';
-import { aspectIconStyle, characterMeta, clampText, cn, formatElapsed, formatGeneratedAt, fullGenerationText, generationDetailEntries, settingMax, textLength, titleFromPrompt } from './app/format';
-import { dedupeGalleryItems, distributeGalleryColumns, galleryColumnTarget, sortGalleryItems, touchCenter, touchDistance, useGalleryColumnCount } from './app/gallery';
-import { Field, NumberPicker, Skeleton, StudioSelect as Select, Tip } from './app/components';
+import { characterMeta, clampText, formatElapsed, generationDetailEntries, settingMax, textLength, titleFromPrompt } from './app/format';
+import { distributeGalleryColumns, sortGalleryItems, useGalleryColumnCount } from './app/gallery';
 import { StudioView } from './app/StudioView';
 import { SidebarControls } from './app/SidebarControls';
 import { useGenerationActions } from './app/useGenerationActions';
@@ -530,7 +500,7 @@ function App() {
   const { generate, cancelJob, cancelQueue, clearGallery, clearFailedItems, resetAllSettings, clearAllCache, openOutputFolder, deleteItem } = generationActions;
 
   const viewerActions = useViewerControls({
-    active, deleteItem, doneGallery: zenGallery, generate, generateDisabled, height, lastTapRef, mode, models, prefs, setActive, setCfg, setClipType, setCount, setDenoise, setFps, setFrames, setHeight, setIsDraggingViewer, setMode, setModel, setNegative, setPrompt, setSampler, setScheduler, setSeed, setShowDetails, setStartImage, setStartImageName, setTextEncoder, setVae, setViewerPan, setViewerZoom, setWeightDtype, setWidth, setZenSelectedId, showToast, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, visibleGallery, width, zenItem, zenStripDragRef, zenStripRef
+    active, deleteItem, doneGallery: zenGallery, generate, generateDisabled, height, lastTapRef, mode, models, prefs, setActive, setCfg, setClipType, setCount, setCustomSize, setDenoise, setFps, setFrames, setHeight, setIsDraggingViewer, setMode, setModel, setNegative, setPrompt, setSampler, setScheduler, setSeed, setShowDetails, setStartImage, setStartImageName, setSteps, setTextEncoder, setVae, setViewerPan, setViewerZoom, setWeightDtype, setWidth, setZenSelectedId, showToast, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan, viewerZoom, visibleGallery, width, zenItem, zenStripDragRef, zenStripRef
   });
   const { resetViewer, openItem, applyAllSettings, moveZen, moveViewer, goLatestZen, submitZenPrompt, startZenStripDrag, dragZenStrip, stopZenStripDrag, selectZenItem, zoomViewer, wheelViewer, clickViewer, startViewerDrag, dragViewer, stopViewerDrag, startViewerTouch, moveViewerTouch, endViewerTouch } = viewerActions;
 

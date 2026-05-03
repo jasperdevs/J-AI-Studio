@@ -1,11 +1,11 @@
-// @ts-nocheck
 import { apiJson } from './api';
 import { dedupeGalleryItems } from './gallery';
+import type { GalleryItem, Job } from './types';
 
 export function useGenerationActions(view: any) {
   const {
     active, canUseStartImage, confirmAction, count, currentProfile, denoise,
-    frames, fps, generateDisabled, generatePostingRef, height, kind, loadGallery, mode,
+    frames, fps, generateDisabled, generatePostingRef, height, loadGallery, mode,
     model, negative, prefs, prompt, sampler, scheduler, seed, setActive, setGallery,
     setStatus, setZenSelectedId, showToast, startImage, startImageName, steps, cfg,
     textEncoder, vae, clipType, weightDtype, width
@@ -67,7 +67,7 @@ export function useGenerationActions(view: any) {
           body: JSON.stringify({ ...requestBody, count: requestCount })
         });
         queuedJobs.push(jobId);
-        if (items?.length) setGallery((current) => dedupeGalleryItems([...items, ...current]));
+        if (items?.length) setGallery((current: GalleryItem[]) => dedupeGalleryItems([...items, ...current]));
       }
       generatePostingRef.current = false;
 
@@ -76,19 +76,19 @@ export function useGenerationActions(view: any) {
           await new Promise((resolve) => setTimeout(resolve, 1600));
           const job: Job = await apiJson<Job>(`/api/jobs/${jobId}`);
           if (job.status === "missing") {
-            setGallery((current) => current.map((item) => item.jobId === jobId ? { ...item, status: "error", filename: "Generation interrupted" } : item));
+            setGallery((current: GalleryItem[]) => current.map((item: GalleryItem) => item.jobId === jobId ? { ...item, status: "error", filename: "Generation interrupted" } : item));
             return job;
           }
           if (job.status === "error") {
             const message = job.error || "Generation failed";
-            setGallery((current) => current.map((item) => item.jobId === jobId ? { ...item, status: "error", filename: message } : item));
+            setGallery((current: GalleryItem[]) => current.map((item: GalleryItem) => item.jobId === jobId ? { ...item, status: "error", filename: message } : item));
             showToast(message, "error");
             setStatus(message);
             return job;
           }
           if (job.status === "done" || job.status === "canceled") return job;
           if (job.preview || job.progress?.max) {
-            setGallery((current) => current.map((item) => item.jobId === jobId ? {
+            setGallery((current: GalleryItem[]) => current.map((item: GalleryItem) => item.jobId === jobId ? {
               ...item,
               preview: job.preview || item.preview,
               progress: job.progress || item.progress,
@@ -125,14 +125,14 @@ export function useGenerationActions(view: any) {
   async function cancelJob(jobId: string | undefined) {
     if (!jobId) return;
     if (!confirmAction("Cancel this generation?")) return;
-    setGallery((current) => current.filter((item) => item.jobId !== jobId));
+    setGallery((current: GalleryItem[]) => current.filter((item: GalleryItem) => item.jobId !== jobId));
     await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).catch(() => null);
     setStatus("Ready");
   }
 
   async function cancelQueue() {
     if (!confirmAction("Cancel everything currently queued or generating?")) return;
-    setGallery((current) => current.filter((item) => item.status !== "pending" && item.status !== "canceled"));
+    setGallery((current: GalleryItem[]) => current.filter((item: GalleryItem) => item.status !== "pending" && item.status !== "canceled"));
     await fetch("/api/queue/cancel", { method: "POST" }).catch(() => null);
     setStatus("Ready");
   }
@@ -178,7 +178,7 @@ export function useGenerationActions(view: any) {
 
   async function deleteItem(item: GalleryItem, confirmed = false) {
     if (!confirmed && !confirmAction("Delete this generation from the gallery?")) return;
-    setGallery((current) => current.filter((next) => next.id !== item.id));
+    setGallery((current: GalleryItem[]) => current.filter((next: GalleryItem) => next.id !== item.id));
     if (active?.id === item.id) setActive(null);
     const response = await fetch(`/api/gallery/${encodeURIComponent(item.id)}`, { method: "DELETE" }).catch(() => null);
     showToast(response?.ok ? "Deleted from gallery" : "Delete failed", response?.ok ? "success" : "error");

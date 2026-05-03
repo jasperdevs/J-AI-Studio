@@ -72,10 +72,11 @@ Copy `.env.example` to `.env` if you want to change the default ports.
 COMFY_URL=http://127.0.0.1:8188
 HOST=127.0.0.1
 PORT=8787
-JAI_DATA_DIR=C:\Users\bunny\AI\J-AI-Studio-Data
+JAI_DATA_DIR=./data
+COMFY_OUTPUT_DIR=
 ```
 
-`COMFY_URL` is the ComfyUI server J AI Studio should talk to. `HOST` and `PORT` control where J AI Studio itself is served. `JAI_DATA_DIR` controls where local gallery metadata is stored, which is useful when the development repo is separate from your local model/runtime folders.
+`COMFY_URL` is the ComfyUI server J AI Studio should talk to. `HOST` and `PORT` control where J AI Studio itself is served. `JAI_DATA_DIR` controls where local gallery metadata is stored. `COMFY_OUTPUT_DIR` is optional; set it when you want the app's output-folder button to open a specific ComfyUI output directory.
 
 ## Development
 
@@ -102,10 +103,9 @@ To make it reachable from another device on your network, set `HOST=0.0.0.0` and
 On Windows, you can make a shortcut that starts ComfyUI, starts J AI Studio, and opens the browser. Point the shortcut at a PowerShell script like this:
 
 ```powershell
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$appRoot = Join-Path $root "J-AI-Studio"
-$comfyRoot = Join-Path $root "SwarmUI\dlbackend\comfy\ComfyUI"
-$python = Join-Path $root "SwarmUI\dlbackend\comfy\python_embeded\python.exe"
+$appRoot = "C:\path\to\J-AI-Studio"
+$comfyRoot = "C:\path\to\ComfyUI"
+$python = "C:\path\to\python.exe"
 
 if (-not (Get-NetTCPConnection -LocalPort 8188 -State Listen -ErrorAction SilentlyContinue)) {
   Start-Process $python "main.py --listen 127.0.0.1 --port 8188 --disable-auto-launch" -WorkingDirectory $comfyRoot -WindowStyle Hidden

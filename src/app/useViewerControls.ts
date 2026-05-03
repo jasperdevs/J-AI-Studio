@@ -1,14 +1,15 @@
-// @ts-nocheck
 import { fallbackAspectPresets } from './constants';
 import { clampText, settingMax } from './format';
 import { touchCenter, touchDistance } from './gallery';
+import type React from 'react';
+import type { GalleryItem, Profile } from './types';
 
 export function useViewerControls(view: any) {
   const {
-    active, deleteItem, doneGallery, generate, generateDisabled, height, itemSettings, lastTapRef,
-    mode, models, prefs, setActive, setCfg, setClipType, setCount, setDenoise, setFps,
+    active, doneGallery, generate, generateDisabled, height, lastTapRef,
+    models, prefs, setActive, setCfg, setClipType, setCount, setCustomSize, setDenoise, setFps,
     setFrames, setHeight, setIsDraggingViewer, setMode, setModel, setNegative, setPrompt,
-    setSampler, setScheduler, setSeed, setShowDetails, setStartImage, setStartImageName,
+    setSampler, setScheduler, setSeed, setShowDetails, setStartImage, setStartImageName, setSteps,
     setTextEncoder, setVae, setViewerPan, setViewerZoom, setWeightDtype, setWidth,
     setZenSelectedId, showToast, touchGestureRef, viewerDragEndRef, viewerDragRef, viewerPan,
     viewerZoom, visibleGallery, width, zenItem, zenStripDragRef, zenStripRef
@@ -28,7 +29,7 @@ export function useViewerControls(view: any) {
   function applyAllSettings(item: GalleryItem) {
     const itemSettings = item.settings || {};
     const nextMode = item.type;
-    const matchingProfile = models?.profiles.find((profile) => profile.kind === nextMode && profile.model === item.model);
+    const matchingProfile = models?.profiles.find((profile: Profile) => profile.kind === nextMode && profile.model === item.model);
     const matchingAspects = matchingProfile?.aspectPresets?.length ? matchingProfile.aspectPresets : fallbackAspectPresets[nextMode];
     setMode(nextMode);
     if (matchingProfile) setModel(matchingProfile.id);
@@ -54,20 +55,20 @@ export function useViewerControls(view: any) {
     if (itemSettings.weightDtype) setWeightDtype(String(itemSettings.weightDtype));
     setStartImage(item.referenceImage || "");
     setStartImageName(item.referenceImageName || String(itemSettings.referenceImageName || ""));
-    setCustomSize(!matchingAspects.some((option) => option.w === Number(item.width) && option.h === Number(item.height)));
+    setCustomSize(!matchingAspects.some((option: { w: number; h: number }) => option.w === Number(item.width) && option.h === Number(item.height)));
     showToast("All settings applied", "success");
   }
 
   function moveZen(direction: 1 | -1) {
     if (!doneGallery.length) return;
-    const currentIndex = Math.max(0, doneGallery.findIndex((item) => item.id === zenItem?.id));
+    const currentIndex = Math.max(0, doneGallery.findIndex((item: GalleryItem) => item.id === zenItem?.id));
     setZenSelectedId(doneGallery[(currentIndex + direction + doneGallery.length) % doneGallery.length].id);
   }
 
   function moveViewer(direction: 1 | -1) {
     if (!active) return;
-    const doneItems = visibleGallery.filter((item) => item.status === "pending" || item.status === "done" || item.status === "error");
-    const currentIndex = doneItems.findIndex((item) => item.id === active.id);
+    const doneItems = visibleGallery.filter((item: GalleryItem) => item.status === "pending" || item.status === "done" || item.status === "error");
+    const currentIndex = doneItems.findIndex((item: GalleryItem) => item.id === active.id);
     if (currentIndex < 0 || doneItems.length < 2) return;
     resetViewer();
     setActive(doneItems[(currentIndex + direction + doneItems.length) % doneItems.length]);

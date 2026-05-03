@@ -143,8 +143,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 .compact-panel { padding-bottom: 10px; }
 
-.field { display: grid; gap: 6px; margin-bottom: 12px; }
+.field { display: grid; gap: 6px; margin-bottom: 12px; min-width: 0; }
 .field:last-child { margin-bottom: 0; }
+.field > div, .field > label { min-width: 0; }
 .field > span,
 .section-title {
   color: hsl(var(--muted-foreground));
@@ -638,7 +639,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 0;
   border-top: 0;
 }
@@ -654,32 +655,43 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   white-space: nowrap;
   padding-right: 4px;
 }
-.zen-prompt-actions .generate { margin-left: 0; flex: 0 0 auto; height: 34px; padding: 0 14px; font-size: 13px; }
+.zen-prompt-actions .generate {
+  margin-left: 0;
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
 
 .zen-inline-settings {
-  display: grid;
-  grid-template-columns: auto minmax(118px, 1fr) 132px;
+  display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 390px;
 }
+.zen-inline-settings > * { flex: 0 0 auto; }
 .zen-inline-settings .aspect-picker { width: auto; }
 .zen-inline-settings .aspect-picker > button {
-  height: 34px;
-  min-height: 34px;
-  grid-template-columns: 22px minmax(0, 1fr) 12px;
-  padding: 0 8px;
+  height: 32px;
+  min-height: 32px;
+  grid-template-columns: 18px minmax(0, 1fr) 12px;
+  padding: 0 10px;
   font-size: 12px;
+  gap: 7px;
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
 }
-.zen-inline-settings .aspect-shape { transform: scale(0.78); }
+.zen-inline-settings .aspect-picker > button:hover { border-color: hsl(var(--border-strong)); background: hsl(var(--accent)); }
+.zen-inline-settings .aspect-shape { transform: scale(0.7); }
 
 .negative-toggle {
-  height: 34px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 10px;
+  padding: 0 11px;
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   background: hsl(var(--input));
@@ -687,9 +699,14 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out), color 160ms var(--ease-out);
 }
-.negative-toggle.active,
 .negative-toggle:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border-strong));
+}
+.negative-toggle.active {
   background: hsl(var(--accent));
   color: hsl(var(--foreground));
   border-color: hsl(var(--border-strong));
@@ -697,7 +714,14 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .negative-toggle svg { transition: transform 160ms var(--ease-out); }
 .negative-toggle svg.flip { transform: rotate(180deg); }
 
-.zen-steps {
+.zen-inline-settings .number-picker { height: 32px; }
+.zen-inline-settings .number-picker-btn { width: 24px; height: 26px; }
+.zen-inline-settings .number-picker-value,
+.zen-inline-settings .number-picker-input { height: 26px; min-width: 24px; padding: 0 4px; font-size: 13px; }
+.zen-inline-settings .number-picker-input { width: 40px; min-width: 40px; }
+.zen-inline-settings .number-picker-label { padding: 0 4px 0 7px; }
+
+.number-picker {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -708,9 +732,19 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   background: hsl(var(--input));
   user-select: none;
   touch-action: none;
+  transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out);
 }
-.zen-steps:focus-within { border-color: hsl(var(--ring)); }
-.zen-steps-label {
+.number-picker:hover { border-color: hsl(var(--border-strong)); }
+.number-picker:focus-within { border-color: hsl(var(--ring)); }
+.number-picker.is-fill { display: flex; width: 100%; justify-content: space-between; }
+.number-picker.is-fill .number-picker-value,
+.number-picker.is-fill .number-picker-input { flex: 1 1 auto; }
+.number-picker.is-sm { height: 32px; gap: 0; }
+.number-picker.is-sm .number-picker-btn { width: 24px; height: 26px; }
+.number-picker.is-sm .number-picker-value,
+.number-picker.is-sm .number-picker-input { height: 26px; min-width: 26px; font-size: 13px; }
+.number-picker.is-sm .number-picker-label { padding: 0 4px 0 7px; }
+.number-picker-label {
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
@@ -718,8 +752,9 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   color: hsl(var(--muted-foreground));
   padding: 0 4px 0 8px;
   pointer-events: none;
+  white-space: nowrap;
 }
-.zen-steps-btn {
+.number-picker-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -732,13 +767,13 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   cursor: pointer;
   transition: background 120ms var(--ease-out), color 120ms var(--ease-out), transform 80ms var(--ease-out);
 }
-.zen-steps-btn:hover:not(:disabled) {
+.number-picker-btn:hover:not(:disabled) {
   background: hsl(var(--accent));
   color: hsl(var(--foreground));
 }
-.zen-steps-btn:active:not(:disabled) { transform: scale(0.92); }
-.zen-steps-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.zen-steps-value {
+.number-picker-btn:active:not(:disabled) { transform: scale(0.92); }
+.number-picker-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.number-picker-value {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -755,9 +790,10 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   cursor: text;
   transition: background 120ms var(--ease-out);
 }
-.zen-steps-value:hover { background: hsl(var(--accent) / 0.6); }
-.zen-steps-input {
-  width: 44px;
+.number-picker-value:hover { background: hsl(var(--accent) / 0.6); }
+.number-picker-input {
+  width: 100%;
+  min-width: 44px;
   min-height: 0;
   height: 28px;
   padding: 0 4px;
@@ -771,9 +807,16 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   text-align: center;
   -moz-appearance: textfield;
 }
-.zen-steps-input::-webkit-outer-spin-button,
-.zen-steps-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.zen-steps-input:focus { outline: 1px solid hsl(var(--ring)); outline-offset: -1px; }
+.number-picker-input::-webkit-outer-spin-button,
+.number-picker-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.number-picker-input:focus { outline: 1px solid hsl(var(--ring)); outline-offset: -1px; }
+
+.number-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
 
 .zen-prompt .aspect-menu,
 .zen-prompt .model-menu {
@@ -892,6 +935,26 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 .text-button { color: hsl(var(--foreground)); font-size: 12px; text-decoration: none; white-space: nowrap; font-weight: 500; }
 .icon-button:hover, .queue-button:hover, .text-button:hover { background: hsl(var(--accent)); border-color: hsl(var(--border-strong)); color: hsl(var(--foreground)); }
 .status-pill:hover { background: hsl(var(--card)); border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+
+.skeleton {
+  display: block;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(110deg, hsl(var(--input)) 0%, hsl(var(--accent)) 42%, hsl(var(--input)) 84%),
+    hsl(var(--input));
+  background-size: 220% 100%;
+  animation: mediaShimmer 1.1s var(--ease-soft) infinite;
+}
+.skeleton-control { width: 100%; height: 58px; border: 1px solid hsl(var(--border)); }
+.skeleton-text { display: inline-block; width: 112px; height: 14px; vertical-align: middle; }
+.skeleton-text.short { width: 82px; }
+.skeleton-text.tiny { width: 34px; }
+.skeleton-text.path { width: min(260px, 52vw); }
+.skeleton-media { width: 100%; aspect-ratio: var(--tile-ratio, 1); border-radius: var(--radius); }
+.skeleton-tile { cursor: default; box-shadow: none; }
+.skeleton-tile:hover { transform: none; box-shadow: none; }
+.skeleton-stage { background: hsl(var(--background)); }
+.skeleton-logo { width: 56px; height: 56px; border-radius: 18px; opacity: 0.75; }
 
 .gallery {
   display: grid;
@@ -1632,7 +1695,7 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
 @media (max-width: 620px) {
   body { overflow: hidden; }
   .left-panel, .workspace { padding: 12px; }
-  .control-grid, .split, .advanced-grid { grid-template-columns: 1fr; }
+  .control-grid, .split, .advanced-grid, .number-row { grid-template-columns: 1fr; }
   .topbar { justify-content: flex-start; }
   .status-pill { min-height: 30px; }
   .stage-gallery {
@@ -1716,25 +1779,33 @@ input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground) /
   .zen-prompt-actions .generate {
     min-width: 104px;
     justify-content: center;
-    padding: 0 12px;
+    padding: 0 14px;
   }
   .zen-inline-settings {
     grid-column: 1 / -1;
     grid-row: 1;
-    grid-template-columns: 36px minmax(0, 1fr) 108px;
-    min-width: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
   }
-  .negative-toggle {
+  .zen-inline-settings::-webkit-scrollbar { display: none; }
+  .zen-inline-settings .negative-toggle {
     width: 36px;
     height: 36px;
     padding: 0;
     font-size: 0;
+    flex: 0 0 auto;
   }
-  .zen-steps { gap: 2px; padding: 2px; height: 36px; }
-  .zen-steps-label { font-size: 11px; padding: 0 4px 0 6px; }
-  .zen-steps-btn { width: 32px; height: 32px; }
-  .zen-steps-value { min-width: 28px; height: 32px; font-size: 13px; }
-  .zen-steps-input { width: 42px; height: 32px; font-size: 13px; }
+  .zen-inline-settings .aspect-picker > button { height: 36px; min-height: 36px; }
+  .zen-inline-settings .number-picker { gap: 2px; padding: 2px; height: 36px; }
+  .zen-inline-settings .number-picker-label { font-size: 11px; padding: 0 4px 0 7px; }
+  .zen-inline-settings .number-picker-btn { width: 28px; height: 30px; }
+  .zen-inline-settings .number-picker-value,
+  .zen-inline-settings .number-picker-input { min-width: 26px; height: 30px; font-size: 13px; }
+  .zen-inline-settings .number-picker-input { width: 42px; min-width: 42px; }
   .zen-status {
     grid-column: 1;
     grid-row: 2;

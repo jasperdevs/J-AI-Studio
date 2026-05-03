@@ -1323,7 +1323,8 @@ function App() {
           <section className="zen-prompt">
             <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
             <div className={cn("negative-drawer", showNegativePrompt && "open")}>
-              <textarea maxLength={negativeLimit} value={negative} placeholder="Negative prompt..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
+              <label className="negative-drawer-label">Negative prompt</label>
+              <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
               <span>{characterMeta(negative.length, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
@@ -1435,7 +1436,8 @@ function App() {
           <section className="zen-prompt">
             <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
             <div className={cn("negative-drawer", showNegativePrompt && "open")}>
-              <textarea maxLength={negativeLimit} value={negative} placeholder="Negative prompt..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
+              <label className="negative-drawer-label">Negative prompt</label>
+              <textarea maxLength={negativeLimit} value={negative} placeholder="What to avoid..." onChange={(event) => setNegative(event.target.value.slice(0, negativeLimit))} />
               <span>{characterMeta(negative.length, negativeLimit)}</span>
             </div>
             <div className="zen-prompt-actions">
@@ -1544,25 +1546,6 @@ function App() {
             setActive(null);
           }} onWheel={(event) => event.preventDefault()}>
             <div className="viewer-shell" onClick={(event) => event.stopPropagation()}>
-              <header className="viewer-topbar">
-                <div />
-                <div className="viewer-tools">
-                  {viewerZoom > 1 ? (
-                    <>
-                      <Tip content="Zoom out (-)"><button className="icon-button" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)}><ZoomOut size={15} /></button></Tip>
-                      <Tip content="Reset zoom (0)"><button className="text-button viewer-zoom" onClick={resetViewer}><RotateCcw size={13} /> {Math.round(viewerZoom * 100)}%</button></Tip>
-                      <Tip content="Zoom in (+)"><button className="icon-button" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)}><ZoomIn size={15} /></button></Tip>
-                      <span className="viewer-divider" />
-                    </>
-                  ) : null}
-                  <Tip content={active.type === "image" ? "Copy image" : "Copy output link"}><button className="icon-button" aria-label={active.type === "image" ? "Copy image" : "Copy output link"} onClick={() => copyImageAndToast(active)}><Copy size={15} /></button></Tip>
-                  <Tip content="Download file"><a className="icon-button" aria-label="Download file" href={active.url} download><Download size={15} /></a></Tip>
-                  <Tip content="Delete (Del)"><button className="icon-button danger-tone" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button></Tip>
-                  <span className="viewer-divider" />
-                  <Tip content={showDetails ? "Hide details" : "Show details"}><button className={cn("icon-button", showDetails && "active")} aria-label="Toggle details" aria-pressed={showDetails} onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={15} /></button></Tip>
-                  <Tip content="Close (Esc)"><button className="icon-button" aria-label="Close" onClick={() => setActive(null)}><X size={16} /></button></Tip>
-                </div>
-              </header>
               <div className={cn("viewer-stage", showDetails && "with-side")}>
                 <div
                   className={cn("viewer-canvas", viewerZoom > 1 && "is-zoomed", isDraggingViewer && "is-dragging")}
@@ -1634,6 +1617,22 @@ function App() {
                     </div>
                   </aside>
                 ) : null}
+                <div className={cn("viewer-dock", showDetails && "with-side")}>
+                  {viewerZoom > 1 ? (
+                    <>
+                      <Tip content="Zoom out (-)"><button className="icon-button" aria-label="Zoom out" onClick={() => zoomViewer(viewerZoom - 0.25)}><ZoomOut size={15} /></button></Tip>
+                      <Tip content="Reset zoom (0)"><button className="text-button viewer-zoom" onClick={resetViewer}><RotateCcw size={13} /> {Math.round(viewerZoom * 100)}%</button></Tip>
+                      <Tip content="Zoom in (+)"><button className="icon-button" aria-label="Zoom in" onClick={() => zoomViewer(viewerZoom + 0.25)}><ZoomIn size={15} /></button></Tip>
+                      <span className="viewer-divider" />
+                    </>
+                  ) : null}
+                  <Tip content={active.type === "image" ? "Copy image" : "Copy output link"}><button className="icon-button" aria-label={active.type === "image" ? "Copy image" : "Copy output link"} onClick={() => copyImageAndToast(active)}><Copy size={15} /></button></Tip>
+                  <Tip content="Download file"><a className="icon-button" aria-label="Download file" href={active.url} download><Download size={15} /></a></Tip>
+                  <Tip content="Delete (Del)"><button className="icon-button danger-tone" aria-label="Delete from gallery" onClick={() => deleteItem(active)}><Trash2 size={15} /></button></Tip>
+                  <span className="viewer-divider" />
+                  <Tip content={showDetails ? "Hide details" : "Show details"}><button className={cn("icon-button", showDetails && "active")} aria-label="Toggle details" aria-pressed={showDetails} onClick={() => setShowDetails((value) => !value)}><SlidersHorizontal size={15} /></button></Tip>
+                  <Tip content="Close (Esc)"><button className="icon-button" aria-label="Close" onClick={() => setActive(null)}><X size={16} /></button></Tip>
+                </div>
               </div>
             </div>
           </div>

@@ -177,6 +177,7 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
             ).current = node;
         }}
         type="button"
+        data-open-trigger
         role="combobox"
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -410,6 +411,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
         value={{ registerItem, activeIndex, checkedIndex }}
       >
         <div
+          data-open-surface
           style={{
             position: "fixed",
             top: triggerRect.bottom + 6,

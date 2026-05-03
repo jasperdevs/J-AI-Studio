@@ -569,14 +569,14 @@ function AspectPicker({ value, options, onChange }: { value: string; options: As
     return () => window.removeEventListener("pointerdown", closeOnOutside, true);
   }, [open]);
   return (
-    <div className="aspect-picker" ref={pickerRef}>
-      <Tip content="Aspect ratio"><button type="button" className="aspect-trigger" onClick={() => setOpen((next) => !next)}>
+    <div className="aspect-picker" ref={pickerRef} data-open-surface={open || undefined}>
+      <Tip content="Aspect ratio"><button type="button" data-open-trigger className="aspect-trigger" onClick={() => setOpen((next) => !next)}>
           {selected ? <span className="aspect-shape" style={aspectIconStyle(selected)} /> : <span className="aspect-shape custom" />}
           <span>{selected ? selected.label : "Custom"}</span>
           <ChevronDown size={14} className={cn(open && "flip")} />
         </button></Tip>
       {open ? (
-        <div className="aspect-menu">
+        <div className="aspect-menu" data-open-surface>
           {options.map((option) => (
             <Tip key={option.value} content={`${option.label} ${option.value}`}><button
                 type="button"
@@ -630,8 +630,8 @@ function ModelPicker({ value, profiles, onChange, compact = false }: { value: st
     return () => window.removeEventListener("pointerdown", closeOnOutside, true);
   }, [open]);
   return (
-    <div className={cn("model-picker", compact && "is-compact")} ref={pickerRef}>
-      <Tip content="Choose model"><button type="button" className="model-trigger" onClick={() => setOpen((next) => !next)}>
+    <div className={cn("model-picker", compact && "is-compact")} ref={pickerRef} data-open-surface={open || undefined}>
+      <Tip content="Choose model"><button type="button" data-open-trigger className="model-trigger" onClick={() => setOpen((next) => !next)}>
           <span className="model-glyph">{selected?.kind === "video" ? "V" : "I"}</span>
           {compact ? (
             <span className="model-copy"><strong>{selected?.displayName || selected?.label || "No model"}</strong></span>
@@ -644,7 +644,7 @@ function ModelPicker({ value, profiles, onChange, compact = false }: { value: st
           <ChevronDown size={14} className={cn(open && "flip")} />
         </button></Tip>
       {open ? (
-        <div className="model-menu">
+        <div className="model-menu" data-open-surface>
           {profiles.map((profile) => (
             <Tip key={profile.id} content={profile.displayName || profile.label}><button
                 type="button"

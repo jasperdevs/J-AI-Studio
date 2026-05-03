@@ -658,6 +658,15 @@ function clampInteger(value, fallback, min, max) {
   return Math.round(clampNumber(value, fallback, min, max));
 }
 
+function ensureOption(info, node, key, value, label) {
+  const selected = String(value || "");
+  if (!selected) throw new Error(`${label} is required for this workflow.`);
+  const options = optionsFor(info, node, key);
+  if (options.length && !options.includes(selected)) {
+    throw new Error(`${label} is not installed or ComfyUI cannot see it: ${selected}`);
+  }
+}
+
 function sanitizeGenerateBody(input = {}, info = {}) {
   const kind = input.kind === "video" ? "video" : "image";
   const workflow = String(input.workflow || "");
@@ -670,6 +679,16 @@ function sanitizeGenerateBody(input = {}, info = {}) {
   if ((workflow === "unet-image" || workflow === "wan-video") && (!input.textEncoder || !input.vae)) {
     throw new Error("This workflow needs a text encoder and VAE.");
   }
+
+  if (workflow === "checkpoint-image") {
+    ensureOption(info, "CheckpointLoaderSimple", "ckpt_name", input.model, "Model");
+  } else {
+    ensureOption(info, "UNETLoader", "unet_name", input.model, "Model");
+    ensureOption(info, "CLIPLoader", "clip_name", input.textEncoder, "Text encoder");
+    ensureOption(info, "VAELoader", "vae_name", input.vae, "VAE");
+  }
+  if (input.sampler) ensureOption(info, "KSampler", "sampler_name", input.sampler, "Sampler");
+  if (input.scheduler) ensureOption(info, "KSampler", "scheduler", input.scheduler, "Scheduler");
 
   const latentNode = workflow === "wan-video" ? "Wan22ImageToVideoLatent" : workflow === "unet-image" ? "EmptySD3LatentImage" : "EmptyLatentImage";
   const widthRange = nodeRange(info, latentNode, "width", { default: kind === "video" ? 512 : 1024, min: 16, max: 16384 });

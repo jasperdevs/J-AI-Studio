@@ -1187,7 +1187,14 @@ function App() {
             setGallery((current) => current.map((item) => item.jobId === jobId ? { ...item, status: "error", filename: "Generation interrupted" } : item));
             return job;
           }
-          if (job.status === "done" || job.status === "error" || job.status === "canceled") return job;
+          if (job.status === "error") {
+            const message = job.error || "Generation failed";
+            setGallery((current) => current.map((item) => item.jobId === jobId ? { ...item, status: "error", filename: message } : item));
+            showToast(message, "error");
+            setStatus(message);
+            return job;
+          }
+          if (job.status === "done" || job.status === "canceled") return job;
           if (job.preview || job.progress?.max) {
             setGallery((current) => current.map((item) => item.jobId === jobId ? {
               ...item,
@@ -1696,7 +1703,7 @@ function App() {
                 <NumberPicker label="Steps" value={steps} onChange={setSteps} min={stepsMeta.min || 1} max={stepsMeta.max || 150} step={stepsMeta.step || 1} size="sm" />
                 {mode === "image" ? <NumberPicker label="Variants" value={count} onChange={setCount} min={countMeta.min || 1} max={countMeta.max ?? 8} step={countMeta.step || 1} size="sm" /> : null}
               </div>
-              <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={generateDisabled}>
+              <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={!currentProfile}>
                 <Wand2 size={15} />
                 Generate
               </button></Tip>
@@ -1821,7 +1828,7 @@ function App() {
                 <NumberPicker label="Steps" value={steps} onChange={setSteps} min={stepsMeta.min || 1} max={stepsMeta.max || 150} step={stepsMeta.step || 1} size="sm" />
                 {mode === "image" ? <NumberPicker label="Variants" value={count} onChange={setCount} min={countMeta.min || 1} max={countMeta.max ?? 8} step={countMeta.step || 1} size="sm" /> : null}
               </div>
-              <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={generateDisabled}>
+              <Tip content={mode === "image" ? `Generate ${count} image${count === 1 ? "" : "s"}` : "Generate video"}><button className="generate" onClick={generate} disabled={!currentProfile}>
                 <Wand2 size={15} />
                 Generate
               </button></Tip>

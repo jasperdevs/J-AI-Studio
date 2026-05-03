@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Copy,
   Download,
   Power,
@@ -27,7 +28,7 @@ type Mode = "image" | "video";
 type Progress = { value: number; max: number; node?: string };
 type Output = { url: string; filename: string; type: "image" | "video"; prompt?: string; negative?: string; outputName?: string };
 type GenerationSettings = Record<string, string | number | boolean | null | undefined>;
-type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; width?: number; height?: number; createdAt?: string; durationMs?: number; model?: string; settings?: GenerationSettings; referenceImage?: string; referenceImageName?: string };
+type GalleryItem = Output & { id: string; jobId?: string; status: "done" | "pending" | "error" | "canceled"; progress?: Progress; preview?: string; width?: number; height?: number; createdAt?: string; durationMs?: number; model?: string; settings?: GenerationSettings; referenceImage?: string; referenceImageName?: string };
 type Job = { status: string; outputs: GalleryItem[]; error?: string; progress?: Progress };
 type SelectOption = { label: string; value: string };
 type Profile = {
@@ -423,6 +424,7 @@ function App() {
   const [startImageName, setStartImageName] = useState(String(initialDraft.startImageName || ""));
   const generatePostingRef = useRef(false);
   const viewerDragRef = useRef<{ id: number; x: number; y: number; panX: number; panY: number; moved: boolean } | null>(null);
+  const viewerDragEndRef = useRef<number>(0);
   const [isDraggingViewer, setIsDraggingViewer] = useState(false);
   const zenPromptRef = useRef<HTMLTextAreaElement | null>(null);
   const zenStripRef = useRef<HTMLDivElement | null>(null);
@@ -749,7 +751,12 @@ function App() {
     try {
       const imageRuns = mode === "image" && prefs.variationQueueMode === "separate" ? count : 1;
       const requestCount = mode === "image" && prefs.variationQueueMode === "separate" ? 1 : count;
-      setStatus(mode === "image" ? `Queued ${count} image${count === 1 ? "" : "s"}` : "Queued video");
+      const startMessage = mode === "image"
+        ? prefs.variationQueueMode === "separate" && count > 1
+          ? `Started ${count} separate generations`
+          : `Started ${count} image${count === 1 ? "" : "s"}`
+        : "Started video";
+      setStatus(startMessage);
 
       const requestBody = {
         kind: mode,
@@ -785,7 +792,7 @@ function App() {
         queuedJobs.push(jobId);
         if (items?.length) setGallery((current) => dedupeGalleryItems([...items, ...current]));
       }
-      showToast(mode === "image" ? `Queued ${count} image${count === 1 ? "" : "s"}` : "Queued video", "success");
+      showToast(startMessage, "success");
       generatePostingRef.current = false;
 
       await Promise.all(queuedJobs.map(async (jobId) => {
@@ -995,7 +1002,9 @@ function App() {
 
   function stopViewerDrag(event: React.PointerEvent) {
     if (viewerDragRef.current?.id === event.pointerId) {
+      const moved = viewerDragRef.current.moved;
       setIsDraggingViewer(false);
+      if (moved) viewerDragEndRef.current = Date.now();
       window.setTimeout(() => { viewerDragRef.current = null; }, 0);
     }
   }
@@ -1045,6 +1054,11 @@ function App() {
           <button className="zen-control-button has-tip" data-tip="Controls" aria-label="Controls" onClick={() => setZenControls((value) => !value)}>
             <PanelLeft size={16} />
           </button>
+          {doneGallery.length && !zenGalleryOpen ? (
+            <button className="zen-gallery-restore has-tip" data-tip="Show gallery" aria-label="Show gallery" onClick={() => setZenGalleryOpen(true)}>
+              <ChevronDown size={16} />
+            </button>
+          ) : null}
           <div className="zen-top-actions">
             <button className="icon-button has-tip" data-tip="Settings" aria-label="Settings" onClick={() => setSettings(true)}><Settings2 size={15} /></button>
             <button className="icon-button has-tip" data-tip="Exit zen" aria-label="Exit zen" onClick={() => setZenMode(false)}><X size={15} /></button>
@@ -1109,10 +1123,13 @@ function App() {
           <section className="zen-prompt">
             <textarea ref={zenPromptRef} maxLength={promptLimit} value={prompt} placeholder="Describe what to make..." onKeyDown={submitZenPrompt} onChange={(event) => setPrompt(event.target.value.slice(0, promptLimit))} />
             <div className="zen-prompt-actions">
-              <span>{status}</span>
+              <span className="zen-status" title={status}>{status}</span>
               <div className="zen-inline-settings">
                 <AspectPicker value={aspectPickerValue} onChange={(value) => applyAspect(value)} options={aspectOptions} />
-                <label><span>Steps</span><input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} /></label>
+                <label className="zen-steps">
+                  <span>Steps</span>
+                  <input type="number" min={1} value={steps} onChange={(event) => setSteps(Number(event.target.value))} />
+                </label>
               </div>
               <button className="generate" onClick={generate} disabled={generateDisabled}>
                 <Wand2 size={15} />
@@ -1121,28 +1138,24 @@ function App() {
             </div>
           </section>
 
-          {doneGallery.length ? (
-            <div className={cn("zen-gallery-wrap", !zenGalleryOpen && "collapsed")}>
-              <button className="zen-latest" onClick={() => setZenGalleryOpen((value) => !value)}>{zenGalleryOpen ? "Hide" : "Gallery"}</button>
-              {zenGalleryOpen ? (
-                <>
-                  {doneGallery[0]?.id !== zenItem?.id ? <button className="zen-latest" onClick={goLatestZen}>Latest</button> : null}
-                  <div
-                    ref={zenStripRef}
-                    className="zen-gallery-strip"
-                    onPointerDown={startZenStripDrag}
-                    onPointerMove={dragZenStrip}
-                    onPointerUp={stopZenStripDrag}
-                    onPointerCancel={stopZenStripDrag}
-                  >
-                    {doneGallery.map((item) => (
-                      <button key={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={() => selectZenItem(item.id)} onDragStart={(event) => event.preventDefault()}>
-                        <Media item={item} muted />
-                      </button>
-                    ))}
-                  </div>
-                </>
-              ) : null}
+          {doneGallery.length && zenGalleryOpen ? (
+            <div className="zen-gallery-wrap">
+              <button className="zen-gallery-toggle has-tip" data-tip="Hide gallery" aria-label="Hide gallery" onClick={() => setZenGalleryOpen(false)}><ChevronUp size={16} /></button>
+              {doneGallery[0]?.id !== zenItem?.id ? <button className="zen-latest" onClick={goLatestZen}>Latest</button> : null}
+              <div
+                ref={zenStripRef}
+                className="zen-gallery-strip"
+                onPointerDown={startZenStripDrag}
+                onPointerMove={dragZenStrip}
+                onPointerUp={stopZenStripDrag}
+                onPointerCancel={stopZenStripDrag}
+              >
+                {doneGallery.map((item) => (
+                  <button key={item.id} className={cn(item.id === zenItem?.id && "active")} onClick={() => selectZenItem(item.id)} onDragStart={(event) => event.preventDefault()}>
+                    <Media item={item} muted />
+                  </button>
+                ))}
+              </div>
             </div>
           ) : null}
         </>
@@ -1263,13 +1276,21 @@ function App() {
             return (
             <button key={item.id} className={cn("tile", item.status)} style={{ "--tile-ratio": `${item.width || 1} / ${item.height || 1}` } as React.CSSProperties} onClick={() => item.status === "done" && openItem(item)}>
               {item.status === "pending" ? (
-                <div className="generating" style={{ "--progress-ratio": ratio } as React.CSSProperties}>
-                  <div className="noise-layer" />
-                  <div className="grain-clear" />
-                  <div className="generate-meta">
-                    <strong>{item.progress?.max ? `${Math.round(ratio * 100)}%` : "Queued"}</strong>
-                    <span className="dot" />
-                    <em>{formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString()))}</em>
+                <div className={cn("generating", item.preview && "has-preview")} style={{ "--progress-ratio": ratio } as React.CSSProperties}>
+                  {item.preview ? <img className="generate-preview" src={item.preview} alt="" draggable={false} /> : null}
+                  {!item.preview ? <div className="noise-layer" /> : null}
+                  <div className="generate-overlay">
+                    <span className="generate-step">
+                      {item.progress?.max ? (
+                        <>
+                          <span className="generate-step-label">Step</span>
+                          <span className="generate-step-count">{item.progress.value}<i>/</i>{item.progress.max}</span>
+                        </>
+                      ) : (
+                        <span className="generate-step-label is-queued">Queued</span>
+                      )}
+                    </span>
+                    <span className="generate-elapsed">{formatElapsed(now - Date.parse(item.createdAt || new Date().toISOString()))}</span>
                   </div>
                   <div className={cn("generate-bar", indeterminate && "is-indeterminate")}>
                     <div className="generate-bar-fill" />
@@ -1335,16 +1356,16 @@ function App() {
                   <Field label="Video steps"><input type="number" min={1} value={prefs.defaultVideoSteps} onChange={(event) => setPrefs({ defaultVideoSteps: Number(event.target.value) })} /></Field>
                 </div>
                 <Field label="Video FPS"><input type="number" min={1} value={prefs.defaultFps} onChange={(event) => setPrefs({ defaultFps: Number(event.target.value) })} /></Field>
-                <Field label="Multi-image queueing">
+                <Field label="Variation mode">
                   <Select
                     value={prefs.variationQueueMode}
                     onChange={(value) => setPrefs({ variationQueueMode: value === "separate" ? "separate" : "batch" })}
                     options={[
-                      { label: "One job, multiple images", value: "batch" },
-                      { label: "Separate jobs", value: "separate" }
+                      { label: "Together in one run", value: "batch" },
+                      { label: "Start each image now", value: "separate" }
                     ]}
                   />
-                  <span className="field-meta">{prefs.variationQueueMode === "batch" ? "Fastest. One Comfy job makes all variations together." : "Queues each variation as its own cancelable job."}</span>
+                  <span className="field-meta">{prefs.variationQueueMode === "batch" ? "One generation produces all variations together." : "Creates one generation per image immediately, so each card can be canceled separately."}</span>
                 </Field>
               </section>
 
@@ -1384,7 +1405,11 @@ function App() {
         const doneItems = visibleGallery.filter((item) => item.status === "done");
         const hasNeighbors = doneItems.length > 1;
         return (
-          <div className="scrim" onClick={() => setActive(null)} onWheel={(event) => event.preventDefault()}>
+          <div className="scrim" onClick={(event) => {
+            if (event.target !== event.currentTarget) return;
+            if (Date.now() - viewerDragEndRef.current < 200) return;
+            setActive(null);
+          }} onWheel={(event) => event.preventDefault()}>
             <div className="viewer-shell" onClick={(event) => event.stopPropagation()}>
               <header className="viewer-topbar">
                 <div className="viewer-title">

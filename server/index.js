@@ -53,7 +53,8 @@ function loadGallery() {
 
 function saveGallery() {
   fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(galleryPath, JSON.stringify(gallery.slice(0, 200), null, 2));
+  const persistable = gallery.slice(0, 200).map(({ preview, ...rest }) => rest);
+  fs.writeFileSync(galleryPath, JSON.stringify(persistable, null, 2));
 }
 
 function promptTitle(text = "") {
@@ -580,7 +581,7 @@ function replaceGalleryJob(id, outputs, body, status = "done") {
   return completed;
 }
 
-function updateGalleryJob(id, patch) {
+function updateGalleryJob(id, patch, options = {}) {
   let changed = false;
   gallery = gallery.map((item) => {
     if (item.jobId === id || item.id === id || item.url === id) {
@@ -589,7 +590,7 @@ function updateGalleryJob(id, patch) {
     }
     return item;
   });
-  if (changed) saveGallery();
+  if (changed && options.persist !== false) saveGallery();
   return changed;
 }
 
@@ -601,7 +602,26 @@ function watchProgress(id, promptId) {
   } catch {
     return null;
   }
+  socket.binaryType = "arraybuffer";
   socket.addEventListener("message", (event) => {
+    if (event.data instanceof ArrayBuffer) {
+      try {
+        const view = new DataView(event.data);
+        if (view.byteLength < 8) return;
+        const eventType = view.getUint32(0);
+        if (eventType !== 1) return;
+        const imageType = view.getUint32(4);
+        const mime = imageType === 2 ? "image/png" : "image/jpeg";
+        const base64 = Buffer.from(event.data, 8).toString("base64");
+        const preview = `data:${mime};base64,${base64}`;
+        const current = jobs.get(id) || {};
+        jobs.set(id, { ...current, preview });
+        updateGalleryJob(id, { preview }, { persist: false });
+      } catch {
+        // Ignore malformed binary frames.
+      }
+      return;
+    }
     try {
       const message = JSON.parse(event.data);
       const data = message.data || {};
